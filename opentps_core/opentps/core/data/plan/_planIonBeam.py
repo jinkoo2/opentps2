@@ -2,7 +2,6 @@ from __future__ import annotations
 
 __all__ = ['PlanIonBeam']
 
-
 import copy
 from typing import Optional, Sequence, Union
 import unittest
@@ -14,7 +13,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from opentps.core.data.plan._planIonLayer import PlanIonLayer
     from opentps.core.data.plan._rangeShifter import RangeShifter
-
 
 
 class PlanIonBeam:
@@ -54,8 +52,9 @@ class PlanIonBeam:
     meterset: float
         meterset of the beam
     """
+
     def __init__(self):
-        self._layers:Sequence[PlanIonLayer] = []
+        self._layers: Sequence[PlanIonLayer] = []
 
         self.name = ""
         self.isocenterPosition = [0, 0, 0]
@@ -232,7 +231,6 @@ class PlanIonBeam:
 
         # Remove empty layers
         self._layers = [layer for layer in self._layers if len(layer._mu) > 0]
-        
 
     def reorderLayers(self, order: Optional[Union[str, Sequence[int]]] = 'decreasing'):
         """
@@ -260,28 +258,38 @@ class PlanIonBeam:
                 current_nominalEnergy = self._layers[ind].nominalEnergy
                 same_energy_layer = np.abs(np.array(unique_nominalEnergies) - current_nominalEnergy) < 0.05
                 if np.any(same_energy_layer):
-                    #fusion
-                    match_ind = np.flatnonzero(same_energy_layer)[0] # first (and only) index respecting constraint 
+                    # fusion
+                    match_ind = np.flatnonzero(same_energy_layer)[0]  # first (and only) index respecting constraint
                     if self._layers[ind].numberOfPaintings != self._layers[match_ind].numberOfPaintings:
-                        print(f"Warning: numberOfPaintings different in layers with same nominal energy. Choosing the numberOfPaintings {self._layers[match_ind].numberOfPaintings}")
-                    if self._layers[ind].rangeShifterSettings.__dict__ != self._layers[match_ind].rangeShifterSettings.__dict__:
-                        print(f"Warning: rangeShifterSettings different in layers with same nominal energy. Choosing the rangeShifterSettings {self._layers[match_ind].rangeShifterSettings}")
+                        print(
+                            f"Warning: numberOfPaintings different in layers with same nominal energy. Choosing the numberOfPaintings {self._layers[match_ind].numberOfPaintings}")
+                    if self._layers[ind].rangeShifterSettings.__dict__ != self._layers[
+                        match_ind].rangeShifterSettings.__dict__:
+                        print(
+                            f"Warning: rangeShifterSettings different in layers with same nominal energy. Choosing the rangeShifterSettings {self._layers[match_ind].rangeShifterSettings}")
                     if self._layers[ind].scalingFactor != self._layers[match_ind].scalingFactor:
-                        print(f"Warning: scalingFactor different in layers with same nominal energy. Choosing scalingFactor {self._layers[match_ind].scalingFactor}")
-                                
+                        print(
+                            f"Warning: scalingFactor different in layers with same nominal energy. Choosing scalingFactor {self._layers[match_ind].scalingFactor}")
+
                     self._layers[match_ind]._x = np.concatenate((self._layers[match_ind]._x, self._layers[ind]._x))
                     self._layers[match_ind]._y = np.concatenate((self._layers[match_ind]._y, self._layers[ind]._y))
                     self._layers[match_ind]._mu = np.concatenate((self._layers[match_ind]._mu, self._layers[ind]._mu))
-                    if len(self._layers[match_ind]._startTime)>0 or len(self._layers[ind]._startTime)>0:
-                        #check both are non empty
-                        if len(self._layers[match_ind]._startTime)==0 or len(self._layers[ind]._startTime)==0:
-                            print(f"When attempting to merge layers at energy {current_nominalEnergy}, one layer contain delivery timings while the other do not.")
-                        self._layers[match_ind]._startTime = np.concatenate((self._layers[match_ind]._startTime, self._layers[ind]._startTime))
-                    if len(self._layers[match_ind]._irradiationDuration)>0 or len(self._layers[ind]._irradiationDuration)>0:
-                        #check both are non empty
-                        if len(self._layers[match_ind]._irradiationDuration)==0 or len(self._layers[ind]._irradiationDuration)==0:
-                            print(f"When attempting to merge layers at energy {current_nominalEnergy}, one layer contain irradiation durations while the other do not.")
-                        self._layers[match_ind]._irradiationDuration = np.concatenate((self._layers[match_ind]._irradiationDuration, self._layers[ind]._irradiationDuration))
+                    if len(self._layers[match_ind]._startTime) > 0 or len(self._layers[ind]._startTime) > 0:
+                        # check both are non empty
+                        if len(self._layers[match_ind]._startTime) == 0 or len(self._layers[ind]._startTime) == 0:
+                            print(
+                                f"When attempting to merge layers at energy {current_nominalEnergy}, one layer contain delivery timings while the other do not.")
+                        self._layers[match_ind]._startTime = np.concatenate(
+                            (self._layers[match_ind]._startTime, self._layers[ind]._startTime))
+                    if len(self._layers[match_ind]._irradiationDuration) > 0 or len(
+                            self._layers[ind]._irradiationDuration) > 0:
+                        # check both are non empty
+                        if len(self._layers[match_ind]._irradiationDuration) == 0 or len(
+                                self._layers[ind]._irradiationDuration) == 0:
+                            print(
+                                f"When attempting to merge layers at energy {current_nominalEnergy}, one layer contain irradiation durations while the other do not.")
+                        self._layers[match_ind]._irradiationDuration = np.concatenate(
+                            (self._layers[match_ind]._irradiationDuration, self._layers[ind]._irradiationDuration))
                     self.removeLayer(self._layers[ind])
                 else:
                     unique_nominalEnergies.append(current_nominalEnergy)
@@ -324,12 +332,13 @@ class PlanIonLayerBeamCase(unittest.TestCase):
         beam.appendLayer(layer3)
 
         beam._fusionDuplicates()
-        self.assertEqual(len(beam._layers),2)
+        self.assertEqual(len(beam._layers), 2)
         np.testing.assert_array_equal(beam._layers[0].spotX, np.array([0, 2, 1, 3, 1, 3, 2, 4]))
         np.testing.assert_array_equal(beam._layers[1].spotX, np.array([]))
         np.testing.assert_array_equal(beam._layers[0].spotY, np.array([1, 2, 2, 0, 2, 3, 3, 1]))
         np.testing.assert_array_equal(beam._layers[1].spotY, np.array([]))
-        np.testing.assert_array_almost_equal(beam._layers[0].spotMUs, np.array([0.2, 0.5, 0.3, 0.1, 0.3, 0.6, 0.4, 0.2]))
+        np.testing.assert_array_almost_equal(beam._layers[0].spotMUs,
+                                             np.array([0.2, 0.5, 0.3, 0.1, 0.3, 0.6, 0.4, 0.2]))
         np.testing.assert_array_equal(beam._layers[1].spotMUs, np.array([]))
 
 
