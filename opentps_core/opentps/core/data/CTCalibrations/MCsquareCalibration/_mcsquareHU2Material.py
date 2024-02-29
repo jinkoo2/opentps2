@@ -9,7 +9,7 @@ from numpy.matlib import repmat
 from opentps.core.data.CTCalibrations.MCsquareCalibration._mcsquareMaterial import MCsquareMaterial
 from opentps.core.data.CTCalibrations.MCsquareCalibration._mcsquareMolecule import MCsquareMolecule
 
-import opentps.core.processing.doseCalculation.MCsquare as MCsquareModule
+import opentps.core.processing.doseCalculation.protons.MCsquare as MCsquareModule
 
 
 class MCsquareHU2Material:

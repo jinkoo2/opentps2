@@ -1,11 +1,10 @@
-__all__ = ['PlanPhotonBeam']
-
 from __future__ import annotations
 import copy
 from typing import Sequence, Union
 import numpy as np
 
 from opentps.core.data.plan._planPhotonSegment import PlanPhotonSegment
+__all__ = ['PlanPhotonBeam']
 
 
 class PlanPhotonBeam:

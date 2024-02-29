@@ -1,7 +1,7 @@
 import os
 from abc import abstractmethod
 
-import opentps.core.processing.doseCalculation.MCsquare as MCsquare
+import opentps.core.processing.doseCalculation.protons.MCsquare as MCsquare
 
 class MCsquareMaterial:
     """

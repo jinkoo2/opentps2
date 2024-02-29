@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from opentps.core.data.plan._planIonBeam import PlanIonBeam
     from opentps.core.data.plan._planPhotonBeam import PlanPhotonBeam
     from opentps.core.data.plan._ionPlan import IonPlan
-    from opentps.core.data.plan._photonPlan import PhotonPlan
+    from opentps.core.data.plan._photonPlan import PhotonPlan   
 
 logger = logging.getLogger(__name__)
 
