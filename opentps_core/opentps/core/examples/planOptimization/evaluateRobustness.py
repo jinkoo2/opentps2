@@ -12,7 +12,7 @@ from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsquareDoseCalculator
+from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.planEvaluation.robustnessEvaluation import Robustness
 
 

@@ -12,7 +12,7 @@ from opentps.core.data._patient import Patient
 from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsquareDoseCalculator
+from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.planEvaluation.robustnessEvaluation import Robustness
 from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer, BoundConstraintsOptimizer
 from opentps.gui.panels.doseComputationPanel import DoseComputationPanel

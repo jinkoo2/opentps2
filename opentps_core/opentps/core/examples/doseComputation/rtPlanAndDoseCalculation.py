@@ -9,7 +9,7 @@ from opentps.core.data.CTCalibrations.MCsquareCalibration._mcsquareCTCalibration
 from opentps.core.io import mcsquareIO
 from opentps.core.data._dvh import DVH
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsquareDoseCalculator
+from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.io.mhdIO import exportImageMHD
 from opentps.core.data.plan._planIonBeam import PlanIonBeam
 from opentps.core.data.plan._planIonLayer import PlanIonLayer

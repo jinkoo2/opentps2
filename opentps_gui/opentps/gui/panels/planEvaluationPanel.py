@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import Qt, pyqtSignal
 from opentps.core.data import Patient
 from opentps.core.data.plan import RTPlan
-from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsquareDoseCalculator
+from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.planEvaluation.robustnessEvaluation import Robustness
 from opentps.gui.panels.patientDataWidgets import PatientDataComboBox
 from opentps.gui.panels.planDesignPanel.robustnessSettings import RobustnessSettings
