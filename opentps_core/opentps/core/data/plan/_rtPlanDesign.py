@@ -1,5 +1,5 @@
 
-__all__ = ['PlanDesign']
+__all__ = ['RTPlanDesign']
 
 import logging
 import time
@@ -21,7 +21,7 @@ from opentps.core.processing.planOptimization.planInitializer import PlanInitial
 logger = logging.getLogger(__name__)
 
 
-class PlanDesign(PatientData):
+class RTPlanDesign(PatientData):
     """
     This class is used to store the plan design. It inherits from PatientData.
 

@@ -1,6 +1,6 @@
 
 from opentps.core.data.plan._objectivesList import *
-from opentps.core.data.plan._planDesign import *
+from opentps.core.data.plan._rtPlanDesign import *
 from opentps.core.data.plan._planIonBeam import *
 from opentps.core.data.plan._planIonLayer import *
 from opentps.core.data.plan._planIonSpot import *

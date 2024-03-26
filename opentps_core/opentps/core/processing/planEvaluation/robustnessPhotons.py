@@ -8,109 +8,213 @@ import numpy as np
 import pickle
 import os
 
-
+from opentps.core.data._sparseBeamlets import SparseBeamlets
+import copy
 from opentps.core.data._dvhBand import DVHBand
 from opentps.core.processing.imageProcessing import resampler3D
+from opentps.core.data.images import ProbabilityMap, cleanArrayWithThreshold
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from opentps.core.data import ROIContour
-    from opentps.core.data.images import ROIMask, DoseImage
+# if TYPE_CHECKING:
+from opentps.core.data import ROIContour
+from opentps.core.data.images import ROIMask, DoseImage
 
 logger = logging.getLogger(__name__)
+from opentps.core.data._dvh import DVH
+
+
+class RobustScenario:
+    def __init__(self, sb:SparseBeamlets = None, sse = None, sre = None, pdf = 0, dilation_mm = {}):
+        self.sse = sse      # Setup Systematic Error
+        self.sre = sre      # Setup Random Error
+        self.sb = sb
+        self.dilation_mm = dilation_mm
+        self.pdf = pdf
+        self.dose = []
+        self.dvh = []
+        self.targetD95 = 0
+        self.targetD5 = 0
+        self.targetMSE = 0
+        self.selected = 0
+
+    def printInfo(self):
+        logger.info('Setup Systematic Error:{} mm'.format(self.sse))
+        logger.info('Setup Random Error:{} mm'.format(self.sre))
+        logger.info("Target_D95 = " + str(self.targetD95))
+        logger.info("Target_D5 = " + str(self.targetD5))
+        logger.info("Target_MSE = " + str(self.targetMSE)+"\n")
+        # logger.info(" ")
+
+    def save(self, file_path):
+        with open(file_path, 'wb') as fid:
+            pickle.dump(self.__dict__, fid)
+    
+    def copy(self):
+        return copy.deepcopy(self)
+
+    def load(self, file_path):
+        with open(file_path, 'rb') as fid:
+            tmp = pickle.load(fid)
+
+        self.__dict__.update(tmp)
+
+    def unload(self):
+        if self.sb != None:
+            self.sb.unload()
+    
+    def toSparseMatrix(self):
+        return self.sb.toSparseMatrix()
+    
+    def setUnitaryBeamlets(self,beamletMatrix):
+        self.sb.setUnitaryBeamlets(beamletMatrix)
+
+    def __str__(self):
+        str = 'Setup Systematic Error:{} mm\n'.format(self.sse) + 'Setup Random Error:{} mm\n'.format(self.sre)
+        for name, dilation in self.dilation_mm.items():
+            str += name + f' dilated {round(dilation,2)} mm \n'
+        return str
+    
+    def toTxt(self, path):
+        f = open(path, "w")
+        f.write(str(self))
+        f.close()
 
 class Robustness:
-    """
-    This class is used to compute the robustness of a plan.
 
-    Attributes
-    ----------
-    selectionStrategy : str
-        The selection strategy used to select the scenarios.
-        It can be "DISABLED", "ERRORSPACE_REGULAR", "ERRORSPACE_STAT" or "DOSIMETRIC".
-    setupSystematicError : list (default = [1.6, 1.6, 1.6])
-        The setup systematic error in mm.
-    setupRandomError : list (default = [1.4, 1.4, 1.4])
-        The setup random error in mm.
-    rangeSystematicError : float (default = 1.6)
-        The range systematic error in %.
-    target : ROIContour
-        The target contour.
-    targetPrescription : float (default = 60)
-        The target prescription in Gy.
-    nominal : RobustnessScenario
-        The nominal scenario.
-    numScenarios : int
-        The number of scenarios.
-    scenarios : list
-        The list of scenarios.
-    dvhBands : list
-        The list of DVH bands.
-    doseDistributionType : str
-        The dose distribution type.
-        It can be "Nominal", "Voxel wise minimum" or "Voxel wise maximum".
-    doseDistribution : list[DoseImage]
-        The dose distributions.
-    """
-    class Strategies(Enum):
+    class Strategies(Enum): #### Use these classes
         DEFAULT = "DISABLED"
         DISABLED = "DISABLED"
         ERRORSPACE_REGULAR = "ERRORSPACE_REGULAR"
         ERRORSPACE_STAT = "ERRORSPACE_STAT"
         DOSIMETRIC = "DOSIMETRIC"
-
+    
     class Modality(Enum):
         MINMAX = "MINMAX"
         PRO = "PRO"
 
     def __init__(self):
         self.selectionStrategy = self.Strategies.DEFAULT
-        self.setupSystematicError = [1.6, 1.6, 1.6]  # mm
-        self.setupRandomError = [1.4, 1.4, 1.4]  # mm
-        self.rangeSystematicError = 1.6  # %
+        self.setupSystematicError = None  # mm
+        self.numberOfSigmas = 2.5 # Number of sigmas in the normal distribution
+        self.setupRandomError = None  # mm
         self.target = []
         self.targetPrescription = 60  # Gy
-        self.nominal = RobustnessScenario()
-        self.numScenarios = 0
-        self.scenarios = []
+        self.nominal = RobustScenario()
+        # self.numScenarios = 0
+        self.scenarios:list[RobustScenario] = []
         self.dvhBands = []
         self.doseDistributionType = ""
         self.doseDistribution = []
+        self.sseNumberOfSamples = 1
         self.modality = self.Modality.MINMAX
+        
 
-    def setNominal(self, dose: DoseImage, contours: Union[ROIContour, ROIMask]):
-        """
-        Set the nominal scenario.
+    def __iter__(self):
+        self.index = 0
+        return self
 
-        Parameters
-        ----------
-        dose : DoseImage
-            The dose image.
-        contours : list[ROIContour]
-            The list of contours.
-        """
-        from opentps.core.data._dvh import DVH
-        self.nominal.dose = dose
-        self.nominal.dvh.clear()
-        for contour in contours:
-            myDVH = DVH(contour, self.nominal.dose)
-            self.nominal.dvh.append(myDVH)
-        self.nominal.dose.imageArray = self.nominal.dose.imageArray.astype(np.float32)
+    def __next__(self):
+        if self.index == 0:
+            self.index += 1
+            return self.nominal
+        if self.index < len(self.scenarios)+1:
+            result = self.scenarios[self.index - 1]
+            self.index += 1
+            return result
+        else:
+            raise StopIteration
+        
+    def setNominal(self, sb:SparseBeamlets):
+        self.nominal.sse = [0,0,0]
+        self.nominal.sb = sb
+        self.nominal.pdf = self.pdf(self.nominal.sse)
 
-    def addScenario(self, dose: DoseImage, contours: Union[ROIContour, ROIMask]):
-        """
-        Add a scenario.
+    def pdf(self, vector):
+        x,y,z = vector
+        var = np.array(self.setupSystematicError)**2
+        return np.exp(-1/2*(x**2 / var[0] + y**2 /var[1] + z**2 /var[2])) / np.sqrt((2*np.pi)**3 * np.prod(var))
 
-        Parameters
-        ----------
-        dose : DoseImage
-            The dose image.
-        contours : list[ROIContour]
-            The list of contours.
-        """
-        from opentps.core.data._dvh import DVH
-        scenario = RobustnessScenario()
+    def addScenario(self, sb:SparseBeamlets, sse , sre):
+        scenario = RobustScenario(sb, sse , sre, self.pdf(sse))
+        self.scenarios.append(scenario)
+    
+    def generateRobustScenarios4Planning(self):
+        if self.setupSystematicError!=None:
+            for index, sse in enumerate(self.setupSystematicError):
+                for scale in range(1,self.sseNumberOfSamples+1):
+                    sseScaled = sse / self.sseNumberOfSamples * scale
+                    for sign in [-1,1]:
+                        array = np.zeros(3)
+                        array[index] = sseScaled * sign * self.numberOfSigmas
+                        scenario = RobustScenario(sse = array, pdf = self.pdf(array))
+                        self.scenarios.append(scenario)
+
+
+
+    def sampleScenario(self):
+        sse_sampled = list(np.random.normal([0]*len(self.setupSystematicError),self.setupSystematicError)) if self.setupSystematicError != None else None
+        sre_sampled = np.random.uniform([self.setupRandomError,0]) if self.setupRandomError != None else None
+        return RobustScenario(sb = None, sse = sse_sampled, sre = sre_sampled)
+    
+    def unload(self):
+        self.nominal.unload()
+        for scenario in self.scenarios:
+            scenario.unload()
+
+    def setBeamWeights(self, spotMUs):
+        self.nominal.sb.beamletWeights = spotMUs
+        for scenario in self.scenarios:
+            scenario.sb.beamletWeights = spotMUs
+    
+    @property
+    def numScenarios(self): ### Should be only RO scenarios or nominal as well?
+        return len(self.scenarios) 
+
+    @property
+    def pdfScenarios(self): 
+        return np.array([scenario.pdf for scenario in self])
+
+    def load(self, path):
+        with open(path, 'rb') as file:
+            tmp = pickle.load(file)
+        self.__dict__.update(tmp)
+    
+    def save(self, path):
+        with open(path, 'wb') as file:
+            pickle.dump(self, file)
+
+
+class RobustEvaluation(Robustness):
+    
+    def __init__(self, robustness = None, contours = None):
+        if robustness != None and contours != None:
+            self.copy_attributes(robustness)
+            contours = self.convertToNominal(contours)
+            if self.nominal.sb != None:
+                self.initializeDVHs(self.nominal, self.nominal.sb.toDoseImage(), contours=contours)
+            if len(self.scenarios)>0:
+                for scenario in self.scenarios:
+                    self.initializeDVHs(scenario, scenario.sb.toDoseImage(), contours=contours)
+            self.unload()
+        else:
+            super().__init__()
+
+    def copy_attributes(self, robustness):
+        for attr_name, attr_value in vars(robustness).items():
+            setattr(self, attr_name, copy.deepcopy(attr_value))
+
+    def convertToNominal(self, structures):
+        samples = []
+        for structure in structures:
+            if isinstance(structure, ProbabilityMap):
+                samples.append(structure.getCTV())
+            else:
+                samples.append(structure)
+            assert(isinstance(samples[-1], ROIMask))
+        return samples
+
+    def initializeDVHs(self, scenario, dose: DoseImage, contours: Union[ROIContour, ROIMask]):
         scenario.dose = dose
         # Need to set patient to None for memory, est-ce que ca va poser probleme ?
         scenario.dose.patient = None
@@ -119,33 +223,23 @@ class Robustness:
             contour.patient = None
             myDVH = DVH(contour, scenario.dose)
             scenario.dvh.append(myDVH)
-        scenario.dose.imageArray = scenario.dose.imageArray.astype(
-            np.float16)  # can be reduced to float16 because all metrics are already computed and it's only used for display
+        scenario.dose.imageArray = scenario.dose.imageArray.astype(np.float32)  # can be reduced to float16 because all metrics are already computed and it's only used for display
 
+    def setNominal(self, dose: DoseImage, contours: Union[ROIContour, ROIMask]):
+        self.initializeDVHs(self.nominal, dose, contours=contours)
+
+    def addScenario(self, dose: DoseImage, contours: Union[ROIContour, ROIMask], scenario = None):
+        if scenario == None: 
+            scenario = RobustScenario()
+        self.initializeDVHs(scenario, dose, contours=contours)
+        scenario.unload()
         self.scenarios.append(scenario)
 
-    def setTarget(self, ct, target, targetPrescription):
-        """
-        Set the target contour.
-
-        Parameters
-        ----------
-        ct : CTImage
-            The CT image.
-        target : ROIContour
-            The target contour.
-        targetPrescription : float
-            The target prescription in Gy.
-        """
-        from opentps.core.data import ROIContour
-        if isinstance(target, ROIContour):
-            targetContour = target.getBinaryMask(origin=ct.origin, gridSize=ct.gridSize,
-                                                              spacing=ct.spacing)
-        else: targetContour = target
-
+    def setTarget(self, targetContour, targetPrescription):
         if not(self.nominal.dose.hasSameGrid(targetContour)):
             resampler3D.resampleImage3DOnImage3D(targetContour,self.nominal.dose, inPlace=True, fillValue=0.)
         self.target = targetContour
+        self.target.imageArray = self.target.imageArray > 0
         self.targetPrescription = targetPrescription
         for dvh in self.nominal.dvh:
             if dvh._roiName == self.target.name:
@@ -163,14 +257,6 @@ class Robustness:
                     break
 
     def recomputeDVH(self, contours):
-        """
-        Recompute the DVH.
-
-        Parameters
-        ----------
-        contours : list[ROIContour]
-            The list of contours.
-        """
         from opentps.core.data._dvh import DVH
         self.nominal.dvh.clear()
         for contour in contours:
@@ -184,43 +270,15 @@ class Robustness:
                 scenario.dvh.append(myDVH)
 
     def computeTargetMSE(self, dose):
-        """
-        Compute the target mean square error.
-
-        Parameters
-        ----------
-        dose : DoseImage
-            The dose image.
-
-        Returns
-        -------
-        float
-            The target mean square error.
-        """
         dose_vector = dose[self.target.imageArray]
         error = dose_vector - self.targetPrescription
         mse = np.mean(np.square(error))
         return mse
 
-    def analyzeErrorSpace(self, ct, metric, targetContour, targetPrescription):
-        """
-        Analyze the error space by sorting the scenarios from worst to best according to selected metric and compute the DVH-band.
-
-        Parameters
-        ----------
-        ct : CTImage
-            The CT image.
-        metric : str
-            The metric used to sort the scenarios.
-            It can be "D95" or "MSE".
-        targetContour : ROIContour
-            The target contour.
-        targetPrescription : float
-            The target prescription in Gy.
-        """
+    def analyzeErrorSpace(self, metric, targetContour, targetPrescription):
         if (
                 self.target == [] or self.target.name != targetContour.name or self.targetPrescription != targetPrescription):
-            self.setTarget(ct, targetContour, targetPrescription)
+            self.setTarget(targetContour, targetPrescription)
 
         # sort scenarios from worst to best according to selected metric
         if metric == "D95":
@@ -266,21 +324,6 @@ class Robustness:
             self.dvhBands.append(dvhBand)
 
     def analyzeDosimetricSpace(self, metric, CI, targetContour, targetPrescription):
-        """
-        Analyze the dosimetric space by sorting the scenarios from worst to best according to selected metric and compute the DVH-band.
-
-        Parameters
-        ----------
-        metric : str
-            The metric used to sort the scenarios.
-            It can be "D95" or "MSE".
-        CI : float
-            The confidence interval in %.
-        targetContour : ROIContour
-            The target contour.
-        targetPrescription : float
-            The target prescription in Gy.
-        """
         if (
                 self.target == [] or self.target.name != targetContour.name or self.targetPrescription != targetPrescription):
             self.setTarget(targetContour, targetPrescription)
@@ -336,9 +379,6 @@ class Robustness:
             self.dvhBands.append(dvhBand)
 
     def printInfo(self):
-        """
-        Print the information of the robustness evaluation.
-        """
         logger.info("Nominal scenario:")
         self.nominal.printInfo()
 
@@ -347,110 +387,17 @@ class Robustness:
             self.scenarios[i].printInfo()
 
     def save(self, folder_path):
-        """
-        Save the different scenarios and the robustness test.
-
-        Parameters
-        ----------
-        folder_path : str
-            The folder path.
-        """
-        if not os.path.isdir(folder_path):
-            os.mkdir(folder_path)
-
-        for s in range(self.numScenarios):
-            file_path = os.path.join(folder_path, "Scenario_" + str(s) + ".tps")
-            self.scenarios[s].save(file_path)
-
-
-        tmp = self.scenarios
-        self.scenarios = []
-
-        file_path = os.path.join(folder_path, "RobustnessTest" + ".tps")
-        with open(file_path, 'wb') as fid:
-            pickle.dump(self.__dict__, fid)
-
-        self.scenarios = tmp
+        try:
+            file_path = os.path.join(folder_path, "RobustnessEvaluation" + ".pkl")
+            with open(file_path, "wb") as file:
+                pickle.dump(self, file)
+        except:
+            print('could not save the RO error happened')
 
     def load(self, folder_path):
-        """
-        Load the different scenarios and the robustness test.
-
-        Parameters
-        ----------
-        folder_path : str
-            The folder path.
-        """
-        file_path = os.path.join(folder_path, "RobustnessTest" + ".tps")
-        with open(file_path, 'rb') as fid:
+        file_path = os.path.join(folder_path, "RobustnessEvaluation" + ".pkl")
+        with open(file_path, "rb") as fid:
             tmp = pickle.load(fid)
-        self.__dict__.update(tmp)
+        self.__dict__.update(tmp.__dict__)
 
-        for s in range(self.numScenarios):
-            file_path = os.path.join(folder_path, "Scenario_" + str(s) + ".tps")
-            scenario = RobustnessScenario()
-            scenario.load(file_path)
-            self.scenarios.append(scenario)
 
-class RobustnessScenario:
-    """
-    This class is used to store the information of a scenario.
-
-    Attributes
-    ----------
-    dose : DoseImage
-        The dose image.
-    dvh : list[DVH]
-        The list of DVH.
-    targetD95 : float
-        The target D95.
-    targetD5 : float
-        The target D5.
-    targetMSE : float
-        The target mean square error.
-    selected : int
-        1 if the scenario is selected, 0 otherwise.
-    """
-
-    def __init__(self):
-        self.dose = []
-        self.dvh = []
-        self.targetD95 = 0
-        self.targetD5 = 0
-        self.targetMSE = 0
-        self.selected = 0
-
-    def printInfo(self):
-        """
-        Print the information of the scenario.
-        """
-        logger.info("Target_D95 = " + str(self.targetD95))
-        logger.info("Target_D5 = " + str(self.targetD5))
-        logger.info("Target_MSE = " + str(self.targetMSE))
-        logger.info(" ")
-
-    def save(self, file_path):
-        """
-        Save the scenario.
-
-        Parameters
-        ----------
-        file_path : str
-            The file path.
-        """
-        with open(file_path, 'wb') as fid:
-            pickle.dump(self.__dict__, fid)
-
-    def load(self, file_path):
-        """
-        Load the scenario.
-
-        Parameters
-        ----------
-        file_path : str
-            The file path.
-        """
-        with open(file_path, 'rb') as fid:
-            tmp = pickle.load(fid)
-
-        self.__dict__.update(tmp)

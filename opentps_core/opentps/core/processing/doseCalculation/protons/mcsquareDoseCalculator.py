@@ -26,7 +26,7 @@ from opentps.core.data.images import Image3D
 from opentps.core.data.images import ROIMask
 from opentps.core.data.MCsquare import BDL
 from opentps.core.data.plan import RTPlan
-from opentps.core.data.plan._planDesign import PlanDesign
+from opentps.core.data.plan._rtPlanDesign import PlanDesign
 from opentps.core.data import ROIContour
 
 import opentps.core.io.mcsquareIO as mcsquareIO

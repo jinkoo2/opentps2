@@ -10,6 +10,7 @@ from opentps.core.data.images._rspImage import *
 from opentps.core.data.images._vectorField3D import *
 from opentps.core.data.images._deformation3D import *
 from opentps.core.data.images._image3D import *
+from opentps.core.data.images._probabilityMap import *
 
 
 __all__ = [s for s in dir() if not s.startswith('_')]

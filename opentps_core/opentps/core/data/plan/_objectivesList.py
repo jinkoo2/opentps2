@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 from opentps.core.data.images._roiMask import ROIMask
 from opentps.core.processing.imageProcessing import resampler3D
+from opentps.core.data.images._probabilityMap import ProbabilityMap
 
 class ObjectivesList:
     """
@@ -34,7 +35,7 @@ class ObjectivesList:
         prescription dose of the target
     """
     def __init__(self):
-        self.fidObjList:Sequence[FidObjective] = []
+        self.fidObjList:Sequence[FidObjective,ProbabilisticFidObjective] = []
         self.exoticObjList = []
         self.targetName = ""
         self.targetPrescription = 0.0
@@ -80,7 +81,7 @@ class ObjectivesList:
 
         Parameters
         ----------
-        roi: ROIContour or ROIMask
+        roi: ROIContour, ROIMask and ProbabilityMap
             region of interest
         metric: FitObjective.Metrics or str
             metric to use for the objective : "DMin", "DMax" or "DMean" or FitObjective.Metrics.DMIN, FitObjective.Metrics.DMAX or FitObjective.Metrics.DMEAN
@@ -99,7 +100,10 @@ class ObjectivesList:
             if the metric is not supported
 
         """
-        objective = FidObjective(roi=roi, metric=metric, limitValue=limitValue, weight=weight)
+        if isinstance(roi, ProbabilityMap):
+            objective = ProbabilisticFidObjective(roi=roi, metric=metric, limitValue=limitValue, weight=weight)
+        else:
+            objective = FidObjective(roi=roi, metric=metric, limitValue=limitValue, weight=weight)
         if metric == FidObjective.Metrics.DMIN.value or metric == FidObjective.Metrics.DMIN :
             objective.metric = FidObjective.Metrics.DMIN
         elif metric == FidObjective.Metrics.DMAX.value or metric == FidObjective.Metrics.DMAX :
@@ -108,7 +112,6 @@ class ObjectivesList:
             objective.metric = FidObjective.Metrics.DMEAN
         else:
             raise Exception("Error: objective metric " + str(metric) + " is not supported.")
-
 
         objective.kind = kind
         objective.robust = robust
@@ -196,6 +199,20 @@ class FidObjective:
         self.maskVec = np.flip(mask.imageArray, (0, 1))
         self.maskVec = np.ndarray.flatten(self.maskVec, 'F').astype('bool')
 
+class ProbabilisticFidObjective(FidObjective):
+    def __init__(self, roi=None, metric=None, limitValue=0, weight=1):
+        super().__init__(roi, metric, limitValue, weight)
+    
+    def _updateMaskVec(self, spacing:Sequence[float], gridSize:Sequence[int], origin:Sequence[float]):
+        mask = self.roi
+        if not (np.array_equal(mask.gridSize, gridSize) and np.allclose(mask.origin, origin, atol=0.01) and np.allclose(mask.spacing, spacing, atol=0.01)):
+            mask = resampler3D.resampleImage3D(self.roi, gridSize=gridSize, spacing=spacing, origin=origin)
+
+        self.maskVec = np.flip(mask.imageArray, (0, 1))
+        self.maskVec = np.ndarray.flatten(self.maskVec, 'F').astype('bool')
+        self.ProbMap = np.flip(mask.probabilityMap, (0, 1))
+        self.ProbMap = np.ndarray.flatten(self.ProbMap, 'F')
+        self.ProbMap = self.ProbMap[self.maskVec]
 
 class ExoticObjective:
     """

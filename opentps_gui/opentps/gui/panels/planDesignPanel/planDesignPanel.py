@@ -5,7 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QDoubleSpinBox, QListWidget, \
     QHBoxLayout, QMenu, QAction
 
-from opentps.core.data.plan._planDesign import PlanDesign
+from opentps.core.data.plan._rtPlanDesign import RTPlanDesign
 from opentps.core.data._patient import Patient
 from opentps.core.io import mcsquareIO
 from opentps.core.io.mcsquareIO import readBDL

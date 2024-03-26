@@ -5,7 +5,7 @@ import numpy as np
 from opentps.core.data.images._doseImage import DoseImage
 from opentps.core.data.images._roiMask import ROIMask
 from opentps.core.data.plan._planIonBeam import PlanIonBeam
-from opentps.core.data.plan._planDesign import PlanDesign
+from opentps.core.data.plan._rtPlanDesign import PlanDesign
 from opentps.core.data.plan._rtPlan import RTPlan
 from opentps.core.io import scannerReader, mcsquareIO
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig

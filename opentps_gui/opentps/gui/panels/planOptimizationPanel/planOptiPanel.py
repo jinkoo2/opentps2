@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QComboBox, QLabel, QPushButton
 
 from opentps.core.data.images import CTImage
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan._planDesign import PlanDesign
+from opentps.core.data.plan._rtPlanDesign import PlanDesign
 from opentps.core.data._patient import Patient
 from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
