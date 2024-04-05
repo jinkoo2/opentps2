@@ -7,6 +7,7 @@ from typing import Sequence
 from opentps.core.data.plan._planPhotonSegment import PlanPhotonSegment
 import copy
 
+__all__ = ['PhotonPlan']
 logger = logging.getLogger(__name__)
 
 class PhotonPlan(RTPlan):

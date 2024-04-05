@@ -9,7 +9,9 @@ from opentps.core.data.plan._planPhotonBeam import PlanPhotonBeam
 from opentps.core.data.plan._planPhotonSegment import PlanPhotonSegment
 import numpy as np
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan import PlanDesign, PlanDesignPhotons
+from opentps.core.data.plan import PhotonPlanDesign
+from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness as RobustnessPhotons
+from opentps.core.data.plan import ObjectivesList
 
 def create_sphere_in_array(array, radius, center):
     # Get array shape
@@ -43,6 +45,8 @@ phantom = CTImage(img,'Phantom',Origin, spacing_mm)
 # exportImageMHD(phantomOutputPath, phantom)
 
 ### Create Target Mask
+phantomMask = ROIMask('Body')
+phantomMask.imageArray = img > 0
 mask = 1 
 radius = 20
 img = np.zeros(size)
@@ -50,34 +54,34 @@ array = create_sphere_in_array(img, radius, center = phamtom_size//2)
 targetMask = ROIMask('target')
 targetMask.imageArray = array 
 
-planInit = PlanDesignPhotons()
-planInit.ct = ct
+
+planInit = PhotonPlanDesign()
+planInit.ct = phantom
 planInit.targetMask = targetMask
-planInit.gantryAngles = getGantryAngles(config)
+planInit.gantryAngles = np.linspace(0,360,10)
+planInit.beamNames = ["Beam{}".format(i) for i in range(len(planInit.gantryAngles))]
+planInit.calibration = ctCalibration
+planInit.xBeamletSpacing_mm = 5
+planInit.yBeamletSpacing_mm = 5
+planInit.robustness = RobustnessPhotons()
+planInit.robustness.setupSystematicError = [1.6] * 3
+planInit.robustness.setupRandomError = 0
+planInit.robustness.sseNumberOfSamples = 2
+planInit.isocenterPosition_mm = [0,0,0]
+plan = planInit.buildPlan() 
 
-plan = PhotonPlan()
-beam = PlanPhotonBeam()
-plan.SAD_mm = 1000
-plan.targetMask 
-beam.isocenterPosition_mm = [0,0,0]
-segment = PlanPhotonSegment()
-segment.xBeamletSpacing_mm = 5
-segment.yBeamletSpacing_mm = 5
-beamSize = 100 ## Size of a square beam in mm
-xRange = np.arange(-beamSize/2,beamSize/2,segment.xBeamletSpacing_mm) + segment.xBeamletSpacing_mm / 2
-yRAnge = np.arange(-beamSize/2,beamSize/2,segment.xBeamletSpacing_mm) + segment.yBeamletSpacing_mm / 2
-# segment.appendBeamlet(0, 0, 1)
 
-for x in xRange:
-    for y in yRAnge:
-        segment.appendBeamlet(x, y, 1)
-beam.appendBeamSegment(segment)
-plan.appendBeam(beam)
-
-ccc = CCCDoseCalculator(batchSize= 20)
+ccc = CCCDoseCalculator(batchSize= 15)
 ccc.ctCalibration = ctCalibration
-dose = ccc.calculateDose(phantom, plan, Density = True)
+plan.planDesign.beamlets = ccc.computeBeamlets(phantom, plan, Density = True)
+ccc.computeRobustScenarioBeamlets(phantom, plan, Density = True)
 
+plan.planDesign.objectives = ObjectivesList()
+plan.planDesign.objectives.setTarget('target', 70)
+plan.planDesign.objectives.addFidObjective(targetMask, 'DMax', 70, 10, robust = True)
+plan.planDesign.objectives.addFidObjective(targetMask, 'DMin', 70.5, 10, robust = True)
+plan.planDesign.objectives.addFidObjective(phantomMask, 'DMax', 0, 0.1, robust = False)
+    
 dose_file_nrrd = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', "PhantomSSD100cmSAD100cm_1mm_100x100.nrrd") 
-exportImageSitk(dose_file_nrrd, dose)
+exportImageSitk(dose_file_nrrd, 'DMax', 70, 10, robust = True)
 

@@ -17,11 +17,12 @@ from opentps.core.data._patientData import PatientData
 from opentps.core.data.plan._objectivesList import ObjectivesList
 from opentps.core.processing.planEvaluation.robustnessEvaluation import Robustness
 from opentps.core.processing.planOptimization.planInitializer import PlanInitializer
+from opentps.core.data.plan._rtPlanDesign import RTPlanDesign
 
 logger = logging.getLogger(__name__)
 
 
-class ProtonPlanDesign(PatientData):
+class IonPlanDesign(RTPlanDesign):
     """
     This class is used to store the plan design. It inherits from PatientData.
 
@@ -31,62 +32,31 @@ class ProtonPlanDesign(PatientData):
         spacing between spots in mm
     layerSpacing: float (default: 5.0)
         spacing between layers in mm
-    targetMargin: float (default: 5.0)
-        margin around the target in mm
     scoringVoxelSpacing: float or list of float
         spacing of the scoring grid in mm
-    targetMask: ROIMask
-        mask of the target
     proximalLayers: int (default: 1)
         number of proximal layers
     distalLayers: int (default: 1)
         number of distal layers
     layersToSpacingAlignment: bool (default: False)
         if True, the spacing between layers is aligned with the scoring grid
-    calibration: AbstractCTCalibration
-        calibration of the CT for stopping power conversion
-    ct: CTImage (default: None)
-        CT image
-    beamNames: list of str
-        list of beam names
-    gantryAngles: list of float
-        list of gantry angles
-    couchAngles: list of float
-        list of couch angles
     rangeShifters: list of RangeShifter
         list of range shifters
-    objectives: ObjectivesList
-        list of objectives
-    beamlets: list of Beamlet
-        list of beamlets
     beamletsLET: list of Beamlet
         list of beamlets with LET
-    robustness: Robustness
-        robustness evaluation
     """
     def __init__(self):
         super().__init__()
 
         self.spotSpacing = 5.0
         self.layerSpacing = 5.0
-        self.targetMargin = 5.0
         self._scoringVoxelSpacing = None
-        self.targetMask: ROIMask = None
         self.proximalLayers = 1
         self.distalLayers = 1
         self.layersToSpacingAlignment = False
-        self.calibration: AbstractCTCalibration = None
-        self.ct: CTImage = None
-        self.beamNames = []
-        self.gantryAngles = []
-        self.couchAngles = []
         self.rangeShifters: Sequence[RangeShifter] = []
 
-        self.objectives = ObjectivesList()
-        self.beamlets = []
         self.beamletsLET = []
-
-        self.robustness = Robustness()
 
     @property
     def scoringVoxelSpacing(self) -> Sequence[float]:
@@ -120,8 +90,8 @@ class ProtonPlanDesign(PatientData):
         """
         start = time.time()
         # Spot placement
-        from opentps.core.data.plan import RTPlan
-        plan = RTPlan("NewPlan")
+        from opentps.core.data.plan import IonPlan
+        plan = IonPlan("NewPlan")
         plan.SOPInstanceUID = pydicom.uid.generate_uid()
         plan.seriesInstanceUID = plan.SOPInstanceUID + ".1"
         plan.modality = "Ion therapy"
@@ -139,39 +109,6 @@ class ProtonPlanDesign(PatientData):
         logger.info("Number of spots: {}".format(plan.numberOfSpots))
 
         return plan
-
-    def defineTargetMaskAndPrescription(self):
-        """
-        Defines the target mask and the prescription
-        """
-        from opentps.core.data._roiContour import ROIContour
-
-        targetMask = None
-        for objective in self.objectives.fidObjList:
-            if objective.metric == objective.Metrics.DMIN:
-                roi = objective.roi
-
-                self.objectives.setTarget(objective.roiName, objective.limitValue)
-
-                if isinstance(roi, ROIContour):
-                    mask = roi.getBinaryMask(origin=self.ct.origin, gridSize=self.ct.gridSize,
-                                             spacing=self.ct.spacing)
-                elif isinstance(roi, ROIMask):
-                    mask = resampler3D.resampleImage3D(roi, origin=self.ct.origin,
-                                                       gridSize=self.ct.gridSize,
-                                                       spacing=self.ct.spacing)
-                else:
-                    raise Exception(roi.__class__.__name__ + ' is not a supported class for roi')
-
-                if targetMask is None:
-                    targetMask = mask
-                else:
-                    targetMask.imageArray = np.logical_or(targetMask.imageArray, mask.imageArray)
-
-        if targetMask is None:
-            raise Exception('Could not find a target volume in dose fidelity objectives')
-
-        self.targetMask = targetMask
 
     def createBeams(self, plan):
         """

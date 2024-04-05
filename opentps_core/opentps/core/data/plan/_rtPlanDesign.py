@@ -27,22 +27,10 @@ class RTPlanDesign(PatientData):
 
     Attributes
     ----------
-    spotSpacing: float (default: 5.0)
-        spacing between spots in mm
-    layerSpacing: float (default: 5.0)
-        spacing between layers in mm
     targetMargin: float (default: 5.0)
         margin around the target in mm
-    scoringVoxelSpacing: float or list of float
-        spacing of the scoring grid in mm
     targetMask: ROIMask
         mask of the target
-    proximalLayers: int (default: 1)
-        number of proximal layers
-    distalLayers: int (default: 1)
-        number of distal layers
-    layersToSpacingAlignment: bool (default: False)
-        if True, the spacing between layers is aligned with the scoring grid
     calibration: AbstractCTCalibration
         calibration of the CT for stopping power conversion
     ct: CTImage (default: None)
@@ -53,92 +41,28 @@ class RTPlanDesign(PatientData):
         list of gantry angles
     couchAngles: list of float
         list of couch angles
-    rangeShifters: list of RangeShifter
-        list of range shifters
     objectives: ObjectivesList
         list of objectives
     beamlets: list of Beamlet
         list of beamlets
-    beamletsLET: list of Beamlet
-        list of beamlets with LET
     robustness: Robustness
         robustness evaluation
     """
     def __init__(self):
         super().__init__()
 
-        self.spotSpacing = 5.0
-        self.layerSpacing = 5.0
         self.targetMargin = 5.0
-        self._scoringVoxelSpacing = None
         self.targetMask: ROIMask = None
-        self.proximalLayers = 1
-        self.distalLayers = 1
-        self.layersToSpacingAlignment = False
         self.calibration: AbstractCTCalibration = None
         self.ct: CTImage = None
         self.beamNames = []
         self.gantryAngles = []
         self.couchAngles = []
-        self.rangeShifters: Sequence[RangeShifter] = []
 
         self.objectives = ObjectivesList()
         self.beamlets = []
-        self.beamletsLET = []
 
         self.robustness = Robustness()
-
-    @property
-    def scoringVoxelSpacing(self) -> Sequence[float]:
-        if self._scoringVoxelSpacing is not None:
-            return self._scoringVoxelSpacing
-        else:
-            return self.ct.spacing
-
-    @scoringVoxelSpacing.setter
-    def scoringVoxelSpacing(self, spacing: Union[float, Sequence[float]]):
-        if np.isscalar(spacing):
-            self._scoringVoxelSpacing = np.array([spacing, spacing, spacing])
-        else:
-            self._scoringVoxelSpacing = np.array(spacing)
-
-    @property
-    def scoringGridSize(self):
-        if self._scoringVoxelSpacing is not None:
-            return np.floor(self.ct.gridSize*self.ct.spacing/self.scoringVoxelSpacing).astype(int)
-        else:
-            return self.ct.gridSize
-
-    def buildPlan(self):
-        """
-        Builds a plan from the plan design
-
-        Returns
-        --------
-        RTPlan
-            plan
-        """
-        start = time.time()
-        # Spot placement
-        from opentps.core.data.plan import RTPlan
-        plan = RTPlan("NewPlan")
-        plan.SOPInstanceUID = pydicom.uid.generate_uid()
-        plan.seriesInstanceUID = plan.SOPInstanceUID + ".1"
-        plan.modality = "Ion therapy"
-        plan.radiationType = "Proton"
-        plan.scanMode = "MODULATED"
-        plan.treatmentMachineName = "Unknown"
-        logger.info('Building plan ...')
-        self.createBeams(plan)
-        self.initializeBeams(plan)
-        plan.planDesign = self
-        for beam in plan.beams:
-            beam.reorderLayers('decreasing')
-
-        logger.info("New plan created in {} sec".format(time.time() - start))
-        logger.info("Number of spots: {}".format(plan.numberOfSpots))
-
-        return plan
 
     def defineTargetMaskAndPrescription(self):
         """
@@ -173,72 +97,24 @@ class RTPlanDesign(PatientData):
 
         self.targetMask = targetMask
 
-    def createBeams(self, plan):
+
+    def buildPlan(self):
+        """
+        Builds a plan from the plan design
+        """
+        pass
+
+    def createBeams(self):
         """
         Creates the beams of the plan
 
-        Parameters
-        ----------
-        plan: RTPlan
-            plan
         """
-        for beam in plan:
-            plan.removeBeam(beam)
+        pass
 
-        from opentps.core.data.plan import PlanIonBeam
-        for i, gantryAngle in enumerate(self.gantryAngles):
-            beam = PlanIonBeam()
-            beam.gantryAngle = gantryAngle
-            beam.couchAngle = self.couchAngles[i]
-            beam.isocenterPosition = self.targetMask.centerOfMass
-            beam.id = i
-            if self.beamNames:
-                beam.name = self.beamNames[i]
-            else:
-                beam.name = 'B' + str(i)
-            if self.rangeShifters and self.rangeShifters[i]:
-                beam.rangeShifter = self.rangeShifters[i]
-
-            plan.appendBeam(beam)
-
-    def initializeBeams(self, plan):
+    def initializeBeams(self):
         """
         Initializes the beams of the plan
-
-        Parameters
-        ----------
-        plan: RTPlan
-            plan
         """
-        initializer = PlanInitializer()
-        initializer.ctCalibration = self.calibration
-        initializer.ct = self.ct
-        initializer.plan = plan
-        initializer.targetMask = self.targetMask
-        initializer.placeSpots(self.spotSpacing, self.layerSpacing, self.targetMargin, self.layersToSpacingAlignment,
-                               self.proximalLayers, self.distalLayers)
+        pass
 
-
-    def setScoringParameters(self, scoringGridSize:Optional[Sequence[int]]=None, scoringSpacing:Optional[Sequence[float]]=None):
-        """
-        Sets the scoring parameters
-
-        Parameters
-        ----------
-        scoringGridSize: Sequence[int]
-            scoring grid size
-        scoringSpacing: Sequence[float]
-            scoring spacing
-        """
-        if scoringSpacing is None and scoringGridSize is not None:
-            self.scoringVoxelSpacing = self.ct.spacing*self.ct.gridSize/scoringGridSize
-        if scoringSpacing is not None and scoringGridSize is None:
-            self.scoringVoxelSpacing = scoringSpacing
-        if scoringSpacing is not None and scoringGridSize is not None:
-            raise Exception('Cannot set both scoring spacing and grid size at the same time.')
-        # scoringSpacing and scoringGridSize are None --> defaults to CT spacing and size
-
-
-        for objective in self.objectives.fidObjList:
-            objective._updateMaskVec(spacing=self.scoringVoxelSpacing, gridSize=self.scoringGridSize, origin=self.ct.origin)
             

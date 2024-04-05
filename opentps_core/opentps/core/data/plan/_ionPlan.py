@@ -3,6 +3,7 @@ import numpy as np
 import logging
 from typing import Sequence
 logger = logging.getLogger(__name__)
+__all__ = ['IonPlan']
 
 from opentps.core.data.plan import RTPlan
 from typing import TYPE_CHECKING
