@@ -78,6 +78,9 @@ class PhotonPlanDesign(RTPlanDesign):
         plan.radiationType = "Photon"
         plan.scanMode = "MODULATED"
         plan.treatmentMachineName = "Unknown"
+        if self.isocenterPosition_mm is None:
+            self.isocenterPosition_mm = self.targetMask.centerOfMass
+            
         logger.info('Building plan ...')
         self.createBeams(plan)
         self.initializeBeams(plan)
@@ -105,10 +108,7 @@ class PhotonPlanDesign(RTPlanDesign):
             beam = PlanPhotonBeam()
             beam.gantryAngle_degree = gantryAngle
             beam.couchAngle_degree = self.couchAngles[i]
-            if self.isocenterPosition_mm != None:
-                beam.isocenterPosition_mm = self.isocenterPosition_mm 
-            else:
-                beam.isocenterPosition_mm = self.targetMask.centerOfMass
+            beam.isocenterPosition_mm = self.isocenterPosition_mm 
             beam.id = i
             beam.xBeamletSpacing_mm = self.xBeamletSpacing_mm
             beam.yBeamletSpacing_mm = self.yBeamletSpacing_mm

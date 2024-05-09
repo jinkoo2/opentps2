@@ -92,6 +92,7 @@ class Robustness:
     class Modality(Enum):
         MINMAX = "MINMAX"
         PRO = "PRO"
+    
 
     def __init__(self):
         self.selectionStrategy = self.Strategies.DEFAULT

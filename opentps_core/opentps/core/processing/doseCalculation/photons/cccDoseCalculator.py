@@ -259,6 +259,10 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             self.ROFolder = 'Nominal'
             plan.planDesign.robustness.nominal.sb = self.computeBeamlets(self._ct, self._plan, roi)   
             plan.planDesign.beamlets = plan.planDesign.robustness.nominal.sb 
+        else:
+            plan.planDesign.robustness.nominal.sb = plan.planDesign.beamlets 
+            
+            
         for number, scenario in enumerate(scenarios):
             print('Calculating Scenario {}'.format(number))
             print(scenario)

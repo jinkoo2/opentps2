@@ -5,7 +5,7 @@ import math
 import numpy as np
 import scipy.sparse as sp
 
-from opentps.core.processing.planOptimization.objectives.doseFidelity import DoseFidelity, FullyProbabilisticDoseFidelity, DoseFidelityProbMap
+from opentps.core.processing.planOptimization.objectives.doseFidelity import DoseFidelity, FullyProbabilisticDoseFidelity
 
 try:
     import sparse_dot_mkl
@@ -14,11 +14,15 @@ except:
     use_MKL = 0
 
 from opentps.core.data.plan._rtPlan import RTPlan
+from opentps.core.data.plan._ionPlan import IonPlan
 from opentps.core.processing.planOptimization.solvers import sparcling, \
     beamletFree
 from opentps.core.processing.planOptimization.solvers import bfgs, localSearch
 from opentps.core.processing.planOptimization.solvers import fista, gradientDescent
 from opentps.core.processing.planOptimization import planPreprocessing
+from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness 
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +31,8 @@ class PlanOptimizer:
     def __init__(self, plan:RTPlan, **kwargs):
 
         self.solver = bfgs.ScipyOpt('L-BFGS-B')
-        planPreprocessing.extendPlanLayers(plan)
+        if isinstance(plan, IonPlan):
+            planPreprocessing.extendPlanLayers(plan)
         self.plan = plan
         self.opti_params = kwargs
         self.functions = []
@@ -95,10 +100,10 @@ class PlanOptimizer:
                         self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
                 # self.plan.planDesign.robustness.scenarios[s].setUnitaryBeamlets(beamletMatrix)
                 scenariosSPM.append(beamletMatrix)
-        if self.plan.planDesign.robustOptimizationStrategy == None or self.plan.planDesign.robustOptimizationStrategy == 'MinMax' or self.plan.planDesign.robustness == None:
-            objectiveFunction = DoseFidelityProbMap(nominalSPM, scenariosSPM, self.plan, self.xSquared)
-        elif self.plan.planDesign.robustOptimizationStrategy == 'Probabilistic':
-            objectiveFunction = FullyProbabilisticDoseFidelity(nominalSPM, scenariosSPM, self.plan.planDesign.objectives.fidObjList, self.plan.planDesign.robustness.pdfScenarios,self.xSquared)
+        if self.plan.planDesign.robustness == None or self.plan.planDesign.robustness.modality == Robustness.Modality.MINMAX or self.plan.planDesign.robustness == None:
+            objectiveFunction = DoseFidelity(self.plan, self.xSquared, True)
+        elif self.plan.planDesign.robustness.modality == Robustness.Modality.PRO:
+            objectiveFunction = FullyProbabilisticDoseFidelity(self.plan, self.xSquared)
         self.functions.append(objectiveFunction)
 
     def optimize(self):

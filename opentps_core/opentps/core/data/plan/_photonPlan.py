@@ -1,6 +1,6 @@
 import logging
 
-from opentps.core.data.plan import RTPlan
+from opentps.core.data.plan._rtPlan import RTPlan
 import numpy as np
 from opentps.core.data.plan._planPhotonBeam import PlanPhotonBeam
 from typing import Sequence

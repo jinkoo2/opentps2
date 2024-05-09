@@ -49,6 +49,7 @@ class RTPlan(PatientData):
         self.originalDicomDataset = []
 
         self.planDesign = None
+        self.SAD_mm = 1000
 
         super().__init__(name=name, patient=patient)
 

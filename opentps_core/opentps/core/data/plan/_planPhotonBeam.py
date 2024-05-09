@@ -236,3 +236,14 @@ class PlanPhotonBeam:
         # Remove empty layers
         self._beamSegments = [segment for segment in self._beamSegments if len(segment.beamletMUs) > 0]
         self.reorderControlPointNumber()
+
+    def createBeamSegment(self):
+        segment = PlanPhotonSegment()
+        segment.isocenterPosition_mm = self.isocenterPosition_mm
+        segment.couchAngle_degree = self.couchAngle_degree
+        segment.gantryAngle_degree = self.gantryAngle_degree
+        segment.seriesInstanceUID = self.seriesInstanceUID
+        segment.xBeamletSpacing_mm = self.xBeamletSpacing_mm
+        segment.yBeamletSpacing_mm = self.yBeamletSpacing_mm
+        self.appendBeamSegment(segment)
+        return segment

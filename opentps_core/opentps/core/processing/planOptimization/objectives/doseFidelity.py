@@ -154,6 +154,12 @@ class DoseFidelity(BaseFunc):
             else:
                 return fTot, -1  # returns id of the worst case scenario (-1 for nominal)
 
+
+        if self.xSquare:
+            weights = np.square(x).astype(np.float32)
+        else:
+            weights = x.astype(np.float32)
+                
         # Compute objectives for error scenarios
         for ScenarioBL in self.scenariosBL:
             fTotScenario = 0.0
@@ -213,6 +219,13 @@ class DoseFidelity(BaseFunc):
         # get worst case scenario
         if self.scenariosBL:
             fTot, worstCase = self.computeFidelityFunction(x, returnWorstCase=True)
+            # if worstCase != 0 and self.GPU_acceleration:
+            #     GPU_acceleration = False
+            # elif worstCase == 0 and self.GPU_acceleration:
+            #     GPU_acceleration = True
+            # else:
+            #     GPU_acceleration = False
+                
         else:
             worstCase = -1
         if self.xSquare:
@@ -237,10 +250,10 @@ class DoseFidelity(BaseFunc):
                 doseNominalBL = cp.sparse.csc_matrix.dot(self.beamlets_gpu, xDiag)
             else:
                 doseNominalBL = self.beamlets_gpu
-
+            scenario_gpu = cpx.scipy.sparse.csc_matrix(self.scenariosBL[worstCase].astype(np.float32))
             if worstCase != -1:
-                doseScenario = cp.sparse.csc_matrix.dot(self.scenariosBL[worstCase], weights)
-                doseScenarioBL = cp.sparse.csc_matrix.dot(self.scenariosBL[worstCase], xDiag)
+                doseScenario = cp.sparse.csc_matrix.dot(scenario_gpu, weights)
+                doseScenarioBL = cp.sparse.csc_matrix.dot(scenario_gpu, xDiag)
             dfTot = np.zeros((1, len(x)), dtype=np.float32)
         elif use_MKL == 1:
             doseNominal = sparse_dot_mkl.dot_product_mkl(self.beamlets, weights)
@@ -250,8 +263,8 @@ class DoseFidelity(BaseFunc):
                 doseNominalBL = self.beamlets
 
             if worstCase != -1:
-                doseScenario = sparse_dot_mkl.dot_product_mkl(self.scenariosBL[worstCase], weights)
-                doseScenarioBL = sparse_dot_mkl.dot_product_mkl(self.scenariosBL[worstCase], xDiag)
+                doseScenario = sparse_dot_mkl.dot_product_mkl(self.scenariosBL[worstCase], weights.get())
+                doseScenarioBL = sparse_dot_mkl.dot_product_mkl(self.scenariosBL[worstCase], xDiag.get())
             dfTot = np.zeros((1, len(x)), dtype=np.float32)
         else:
             doseNominal = sp.csc_matrix.dot(self.beamlets, weights)

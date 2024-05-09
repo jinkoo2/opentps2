@@ -5,12 +5,12 @@ from typing import Sequence
 logger = logging.getLogger(__name__)
 __all__ = ['IonPlan']
 
-from opentps.core.data.plan import RTPlan
 from typing import TYPE_CHECKING
+from opentps.core.data.plan._rtPlan import RTPlan
 
-if TYPE_CHECKING:
-    from opentps.core.data.plan._planIonBeam import PlanIonBeam
-    from opentps.core.data.plan._planIonLayer import PlanIonLayer
+# if TYPE_CHECKING:
+from opentps.core.data.plan._planIonBeam import PlanIonBeam
+from opentps.core.data.plan._planIonLayer import PlanIonLayer
 
 
 class IonPlan(RTPlan):

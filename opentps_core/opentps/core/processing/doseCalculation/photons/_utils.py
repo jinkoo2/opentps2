@@ -127,6 +127,9 @@ def shiftBeamlets(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_
         beamlet = sparseBeamlets[:, index]
         shiftTrunctated = CCCdoseEngineIO.convertTo1DcoordFortran(np.trunc(scenarioShiftCorrected_voxel), gridSize) 
         nonZeroIndexes = beamlet.nonzero()
+        if len(nonZeroIndexes[0]) == 0:
+            BeamletMatrix.append(beamlet)  
+            continue
         nonZeroValues = np.array(beamlet[nonZeroIndexes], dtype= np.float32)
         nonZeroIndexes = np.array(nonZeroIndexes[0] + shiftTrunctated, dtype= np.int32)
         NumberOfElements = np.int32(len(nonZeroValues[0]))

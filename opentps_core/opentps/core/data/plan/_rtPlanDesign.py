@@ -58,11 +58,34 @@ class RTPlanDesign(PatientData):
         self.beamNames = []
         self.gantryAngles = []
         self.couchAngles = []
+        self._scoringVoxelSpacing = None
 
         self.objectives = ObjectivesList()
-        self.beamlets = []
+        self.beamlets = None
 
         self.robustness = Robustness()
+
+
+    @property
+    def scoringVoxelSpacing(self) -> Sequence[float]:
+        if self._scoringVoxelSpacing is not None:
+            return self._scoringVoxelSpacing
+        else:
+            return self.ct.spacing
+
+    @scoringVoxelSpacing.setter
+    def scoringVoxelSpacing(self, spacing: Union[float, Sequence[float]]):
+        if np.isscalar(spacing):
+            self._scoringVoxelSpacing = np.array([spacing, spacing, spacing])
+        else:
+            self._scoringVoxelSpacing = np.array(spacing)
+
+    @property
+    def scoringGridSize(self):
+        if self._scoringVoxelSpacing is not None:
+            return np.floor(self.ct.gridSize*self.ct.spacing/self.scoringVoxelSpacing).astype(int)
+        else:
+            return self.ct.gridSize
 
     def defineTargetMaskAndPrescription(self):
         """
@@ -116,5 +139,27 @@ class RTPlanDesign(PatientData):
         Initializes the beams of the plan
         """
         pass
+    
+    def setScoringParameters(self, scoringGridSize:Optional[Sequence[int]]=None, scoringSpacing:Optional[Sequence[float]]=None):
+        """
+        Sets the scoring parameters
+
+        Parameters
+        ----------
+        scoringGridSize: Sequence[int]
+            scoring grid size
+        scoringSpacing: Sequence[float]
+            scoring spacing
+        """
+        if scoringSpacing is None and scoringGridSize is not None:
+            self.scoringVoxelSpacing = self.ct.spacing*self.ct.gridSize/scoringGridSize
+        if scoringSpacing is not None and scoringGridSize is None:
+            self.scoringVoxelSpacing = scoringSpacing
+        if scoringSpacing is not None and scoringGridSize is not None:
+            raise Exception('Cannot set both scoring spacing and grid size at the same time.')
+        # scoringSpacing and scoringGridSize are None --> defaults to CT spacing and size
+            
+        for objective in self.objectives.fidObjList:
+            objective._updateMaskVec(spacing=self.scoringVoxelSpacing, gridSize=self.scoringGridSize, origin=self.ct.origin)
 
             
