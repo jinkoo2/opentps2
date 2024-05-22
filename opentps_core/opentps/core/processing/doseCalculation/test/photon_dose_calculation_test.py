@@ -9,9 +9,11 @@ from opentps.core.data.images import ROIMask
 from opentps.core.data.plan import PhotonPlanDesign
 from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness as RobustnessPhotons
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.processing.planOptimization.opt import IMPTPlanOptimizer
+from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
 import pickle
 import glob
+import copy
+
 
 def create_sphere_in_array(array, radius, center):
     # Get array shape
@@ -125,8 +127,6 @@ planInit.robustness = RobustnessPhotons()
 planInit.robustness.setupSystematicError = [1.6] * 3
 planInit.robustness.setupRandomError = 0
 planInit.robustness.sseNumberOfSamples = 1
-# planInit.isocenterPosition_mm = [0,0,0]
-planInit.robustness.Modality = RobustnessPhotons.Modality.MINMAX
 plan = planInit.buildPlan() 
 
 DIM_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', 'SparseMatrices_MinMax')
@@ -137,10 +137,12 @@ if not os.path.isdir(DIM_path) or len(os.listdir(DIM_path)) == 0:
     # plan.planDesign.beamlets = loadBeamlets(os.path.join(os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', 'SparseMatrices_MinMax','SM_nominal.pkl'))))
     plan.planDesign.robustness.nominal.sb = plan.planDesign.beamlets
     # plan.planDesign.beamlets = ccc.computeBeamlets(phantom, plan)
-    ccc.computeRobustScenarioBeamlets(phantom, plan, computeNominal = False)
+    ccc.computeRobustScenarioBeamlets(phantom, plan, computeNominal = False, robustMode='Simulation')
     saveDIM(plan, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results'), 'MinMax', 'all')
 else:
     loadDIM(plan, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', 'SparseMatrices_MinMax'))
+
+doseInfluenceMatrix = copy.deepcopy(plan.planDesign.beamlets)
 
 plan.planDesign.objectives = ObjectivesList()
 plan.planDesign.objectives.setTarget('target', 70)
@@ -152,8 +154,10 @@ solver = IMPTPlanOptimizer(method = 'Scipy-LBFGS', plan=plan,
                             maxit = 200,
                             ftol = 1e-6,
                             gtol = 1e-6)
-w, dose, ps = solver.optimize()
+w, _, ps = solver.optimize()
 
+doseInfluenceMatrix.beamletWeights = plan.planDesign.beamlets.beamletWeights
+dose = doseInfluenceMatrix.toDoseImage()
 dose_file_nrrd = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', "dose.nrrd") 
 exportImageSitk(dose_file_nrrd, dose)
 

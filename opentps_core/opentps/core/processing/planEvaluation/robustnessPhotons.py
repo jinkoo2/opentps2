@@ -12,7 +12,6 @@ from opentps.core.data._sparseBeamlets import SparseBeamlets
 import copy
 from opentps.core.data._dvhBand import DVHBand
 from opentps.core.processing.imageProcessing import resampler3D
-from opentps.core.data.images import ProbabilityMap, cleanArrayWithThreshold
 
 from typing import TYPE_CHECKING
 
@@ -25,12 +24,11 @@ from opentps.core.data._dvh import DVH
 
 
 class RobustScenario:
-    def __init__(self, sb:SparseBeamlets = None, sse = None, sre = None, pdf = 0, dilation_mm = {}):
+    def __init__(self, sb:SparseBeamlets = None, sse = None, sre = None, dilation_mm = {}):
         self.sse = sse      # Setup Systematic Error
         self.sre = sre      # Setup Random Error
         self.sb = sb
         self.dilation_mm = dilation_mm
-        self.pdf = pdf
         self.dose = []
         self.dvh = []
         self.targetD95 = 0
@@ -91,8 +89,6 @@ class Robustness:
     
     class Modality(Enum):
         MINMAX = "MINMAX"
-        PRO = "PRO"
-    
 
     def __init__(self):
         self.selectionStrategy = self.Strategies.DEFAULT
@@ -129,15 +125,9 @@ class Robustness:
     def setNominal(self, sb:SparseBeamlets):
         self.nominal.sse = [0,0,0]
         self.nominal.sb = sb
-        self.nominal.pdf = self.pdf(self.nominal.sse)
-
-    def pdf(self, vector):
-        x,y,z = vector
-        var = np.array(self.setupSystematicError)**2
-        return np.exp(-1/2*(x**2 / var[0] + y**2 /var[1] + z**2 /var[2])) / np.sqrt((2*np.pi)**3 * np.prod(var))
 
     def addScenario(self, sb:SparseBeamlets, sse , sre):
-        scenario = RobustScenario(sb, sse , sre, self.pdf(sse))
+        scenario = RobustScenario(sb, sse , sre)
         self.scenarios.append(scenario)
     
     def generateRobustScenarios4Planning(self):
@@ -148,7 +138,7 @@ class Robustness:
                     for sign in [-1,1]:
                         array = np.zeros(3)
                         array[index] = sseScaled * sign * self.numberOfSigmas
-                        scenario = RobustScenario(sse = array, pdf = self.pdf(array))
+                        scenario = RobustScenario(sse = array)
                         self.scenarios.append(scenario)
 
 
@@ -171,10 +161,6 @@ class Robustness:
     @property
     def numScenarios(self): ### Should be only RO scenarios or nominal as well?
         return len(self.scenarios) 
-
-    @property
-    def pdfScenarios(self): 
-        return np.array([scenario.pdf for scenario in self])
 
     def load(self, path):
         with open(path, 'rb') as file:
