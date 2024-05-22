@@ -402,11 +402,11 @@ class FullyProbabilisticDoseFidelity(BaseFunc):
     def __init__(self, plan, xSquare=True, epsilon = 0.5):
         super(FullyProbabilisticDoseFidelity, self).__init__()
         self.list = plan.planDesign.objectives.fidObjList
-        scenarioPDF = self.plan.planDesign.robustness.pdfScenarios
+        scenarioPDF = plan.planDesign.robustness.pdfScenarios
         self.prob = scenarioPDF / np.sum(scenarioPDF)
         self.xSquare = xSquare
-        self.beamlets = self.plan.planDesign.beamlets.toSparseMatrix()
-        self.scenariosBL = [self.plan.planDesign.robustness.scenarios[s].toSparseMatrix() for s in range(len(self.plan.planDesign.robustness.scenarios))]
+        self.beamlets = plan.planDesign.beamlets.toSparseMatrix()
+        self.scenariosBL = [plan.planDesign.robustness.scenarios[s].toSparseMatrix() for s in range(len(plan.planDesign.robustness.scenarios))]
         self.epsilon = epsilon
 
 

@@ -100,7 +100,7 @@ class PlanOptimizer:
                         self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
                 # self.plan.planDesign.robustness.scenarios[s].setUnitaryBeamlets(beamletMatrix)
                 scenariosSPM.append(beamletMatrix)
-        if self.plan.planDesign.robustness == None or self.plan.planDesign.robustness.modality == Robustness.Modality.MINMAX or self.plan.planDesign.robustness == None:
+        if self.plan.planDesign.robustness == None or self.plan.planDesign.robustness.modality == Robustness.Modality.MINMAX:
             objectiveFunction = DoseFidelity(self.plan, self.xSquared, True)
         elif self.plan.planDesign.robustness.modality == Robustness.Modality.PRO:
             objectiveFunction = FullyProbabilisticDoseFidelity(self.plan, self.xSquared)
