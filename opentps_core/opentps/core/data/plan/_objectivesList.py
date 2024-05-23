@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
 from opentps.core.data.images._roiMask import ROIMask
 from opentps.core.processing.imageProcessing import resampler3D
-from opentps.core.data.images._probabilityMap import ProbabilityMap
 
 class ObjectivesList:
     """
@@ -100,10 +99,7 @@ class ObjectivesList:
             if the metric is not supported
 
         """
-        if isinstance(roi, ProbabilityMap):
-            objective = ProbabilisticFidObjective(roi=roi, metric=metric, limitValue=limitValue, weight=weight)
-        else:
-            objective = FidObjective(roi=roi, metric=metric, limitValue=limitValue, weight=weight)
+        objective = FidObjective(roi=roi, metric=metric, limitValue=limitValue, weight=weight)
         if metric == FidObjective.Metrics.DMIN.value or metric == FidObjective.Metrics.DMIN :
             objective.metric = FidObjective.Metrics.DMIN
         elif metric == FidObjective.Metrics.DMAX.value or metric == FidObjective.Metrics.DMAX :

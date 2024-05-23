@@ -4,7 +4,7 @@ import math
 import numpy as np
 import scipy.sparse as sp
 
-from opentps.core.processing.planOptimization.objectives.doseFidelity import DoseFidelity, FullyProbabilisticDoseFidelity
+from opentps.core.processing.planOptimization.objectives.doseFidelity import DoseFidelity
 
 try:
     import sparse_dot_mkl
@@ -21,11 +21,13 @@ except:
     cupy_available = False
 
 from opentps.core.data.plan._rtPlan import RTPlan
+from opentps.core.data.plan._ionPlan import IonPlan
 from opentps.core.processing.planOptimization.solvers import sparcling, \
     beamletFree
 from opentps.core.processing.planOptimization.solvers import bfgs, localSearch
 from opentps.core.processing.planOptimization.solvers import fista, gradientDescent
 from opentps.core.processing.planOptimization import planPreprocessing
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +57,9 @@ class PlanOptimizer:
     def __init__(self, plan:RTPlan, **kwargs):
 
         self.solver = bfgs.ScipyOpt('L-BFGS-B')
-        planPreprocessing.extendPlanLayers(plan)
+        
+        if isinstance(plan, IonPlan):
+            planPreprocessing.extendPlanLayers(plan)
         self.plan = plan
         self.opti_params = kwargs
         self.functions = []
@@ -151,10 +155,7 @@ class PlanOptimizer:
                         self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
                 self.plan.planDesign.robustness.scenarios[s].setUnitaryBeamlets(beamletMatrix)
 
-        if self.plan.planDesign.robustness == None or self.plan.planDesign.robustness.modality == 'MinMax':
-            objectiveFunction = DoseFidelity(self.plan, self.xSquared, self.GPU_acceleration)
-        elif self.plan.planDesign.robustness.modality == 'Probabilistic':
-            objectiveFunction = FullyProbabilisticDoseFidelity(self.plan, self.xSquared)
+        objectiveFunction = DoseFidelity(self.plan, self.xSquared, self.GPU_acceleration)
             
         self.functions.append(objectiveFunction)
 
@@ -462,3 +463,34 @@ class ARCPTPlanOptimizer(PlanOptimizer):
         else:
             logger.error(
                 'Method {} is not implemented. Pick among ["FISTA","LS","MIP","SPArcling"]'.format(self.method))
+
+class IMRTPlanOptimizer(PlanOptimizer):
+    def __init__(self, method, plan:RTPlan, **kwargs):
+        self.plan = plan
+        self.opti_params = kwargs
+        self.functions = []
+        self._xSquared = True
+        self.method = method
+
+        if method == 'Scipy-BFGS':
+            self.solver = bfgs.ScipyOpt('BFGS', **kwargs)
+        elif method == 'Scipy-LBFGS':
+            self.solver = bfgs.ScipyOpt('L-BFGS-B', **kwargs)
+        elif method == 'Gradient':
+            self.solver = gradientDescent.GradientDescent(**kwargs)
+        elif method == 'BFGS':
+            self.solver = bfgs.BFGS(**kwargs)
+        elif method == "LBFGS":
+            self.solver = bfgs.LBFGS(**kwargs)
+        elif method == "FISTA":
+            self.solver = fista.FISTA(**kwargs)
+        elif method == "LP":
+            from opentps.core.processing.planOptimization.solvers import lp
+            self.xSquared = False
+            self.solver = lp.LP(self.plan, **kwargs)
+        else:
+            logger.error(
+                'Method {} is not implemented. Pick among ["Scipy-LBFGS", "Gradient", "BFGS", "FISTA"]'.format(
+                    self.method))
+    def getConvergenceData(self):
+        return super().getConvergenceData(self.method)
