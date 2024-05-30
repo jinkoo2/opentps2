@@ -26,7 +26,7 @@ from opentps.core.data.images import Image3D
 from opentps.core.data.images import ROIMask
 from opentps.core.data.MCsquare import BDL
 from opentps.core.data.plan import RTPlan
-from opentps.core.data.plan._rtPlanDesign import PlanDesign
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import ROIContour
 
 import opentps.core.io.mcsquareIO as mcsquareIO
@@ -357,7 +357,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         self._plan.simplify(threshold=None) # make sure no spot duplicates
 
         if not self._plan.planDesign: # external plan
-            planDesign = PlanDesign()
+            planDesign = IonPlanDesign()
             planDesign.ct = ct
             planDesign.targetMask = roi
             planDesign.scoringVoxelSpacing = self.scoringVoxelSpacing
