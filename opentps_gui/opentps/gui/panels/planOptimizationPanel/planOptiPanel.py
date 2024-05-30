@@ -124,7 +124,7 @@ class PlanOptiPanel(QWidget):
 
         self._planStructureLabel = QLabel('Plan design:')
         self.layout.addWidget(self._planStructureLabel)
-        self._planStructureComboBox = PatientDataComboBox(patientDataType=PlanDesign, patient=self._patient,
+        self._planStructureComboBox = PatientDataComboBox(patientDataType=IonPlanDesign, patient=self._patient,
                                                           parent=self)
         self._planStructureComboBox.selectedDataEvent.connect(self._handlePlanStructure)
         self.layout.addWidget(self._planStructureComboBox)
