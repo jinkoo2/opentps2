@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 import logging
+import copy
 from typing import Sequence
 logger = logging.getLogger(__name__)
 __all__ = ['IonPlan']
@@ -159,7 +160,7 @@ class IonPlan(RTPlan):
     def numberOfSpots(self) -> int:
         return np.sum(np.array([beam.numberOfSpots for beam in self._beams]))
 
-def simplify(self, threshold: float = 0.0):
+    def simplify(self, threshold: float = 0.0):
         """
         Simplify the plan by removing duplicate beams and simplifying each beam
 
@@ -176,7 +177,7 @@ def simplify(self, threshold: float = 0.0):
         self._beams = [beam for beam in self._beams if len(beam._layers) > 0]
 
 
-def reorderPlan(self, order_layers="decreasing", order_spots="scanAlgo"):
+    def reorderPlan(self, order_layers="decreasing", order_spots="scanAlgo"):
         """
         Reorder the plan by reordering each beam
 
@@ -198,11 +199,11 @@ def reorderPlan(self, order_layers="decreasing", order_spots="scanAlgo"):
                         layer.reorderSpots(order_spots)
 
 
-def copy(self):
+    def copy(self):
         return copy.deepcopy(self)  # recursive copy
 
 
-def _fusionDuplicates(self):
+    def _fusionDuplicates(self):
         if len(self) > 1:
                 # if same gantry angle and couch angle
                 unique_angles = [(self._beams[0].gantryAngle, self._beams[0].couchAngle)]
@@ -226,7 +227,7 @@ def _fusionDuplicates(self):
                                 ind += 1
 
 
-def appendSpot(self, beam: PlanIonBeam, layer: PlanIonLayer, spot_index: int):
+    def appendSpot(self, beam: PlanIonBeam, layer: PlanIonLayer, spot_index: int):
         """
         Assign a particular spot (beam, layer, spot_index) to plan
 
@@ -265,7 +266,7 @@ def appendSpot(self, beam: PlanIonBeam, layer: PlanIonLayer, spot_index: int):
                                                                 layer._mu[spot_index], t, d)
 
 
-def appendLayer(self, beam: PlanIonBeam, layer: PlanIonLayer):
+    def appendLayer(self, beam: PlanIonBeam, layer: PlanIonLayer):
         """
         Assign a particular layer (beam, layer) to plan
 
@@ -295,7 +296,7 @@ def appendLayer(self, beam: PlanIonBeam, layer: PlanIonLayer):
         self._layers.append(layer)
 
 
-def createEmptyPlanWithSameMetaData(self):
+    def createEmptyPlanWithSameMetaData(self):
         """
         Create an empty plan with the same metadata as the current plan
         """
