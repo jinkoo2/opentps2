@@ -76,7 +76,7 @@ def run():
         plan = loadRTPlan(plan_file)
         logger.info('Plan loaded')
     else:
-        planInit = PlanDesign()
+        planInit = IonPlanDesign()
         planInit.ct = ct
         planInit.targetMask = roi
         planInit.gantryAngles = gantryAngles
