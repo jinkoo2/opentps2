@@ -42,8 +42,8 @@ class IonPlan(RTPlan):
         numberOfSpots: int
             Number of spots in the plan.
     """
-    def __init__(self):
-        super(IonPlan, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(IonPlan, self).__init__(*args, **kwargs)
         self._planType = 'ion'
         self.deliveredProtons = None
 
