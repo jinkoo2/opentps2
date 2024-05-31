@@ -308,7 +308,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         def testLen(self):
                 from opentps.core.data.plan import PlanIonBeam, PlanIonLayer
 
-                plan = RTPlan()
+                plan = IonPlan()
                 beam = PlanIonBeam()
                 layer = PlanIonLayer(nominalEnergy=100.)
                 layer.appendSpot(0, 0, 1)
@@ -324,7 +324,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         def testLenWithTimings(self):
                 from opentps.core.data.plan import PlanIonBeam, PlanIonLayer
 
-                plan = RTPlan()
+                plan = IonPlan()
                 beam = PlanIonBeam()
                 layer = PlanIonLayer(nominalEnergy=100.)
                 layer.appendSpot(0, 0, 1, 0.5)
@@ -340,7 +340,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         def testReorderPlan(self):
                 from opentps.core.data.plan import PlanIonBeam, PlanIonLayer
 
-                plan = RTPlan()
+                plan = IonPlan()
                 beam = PlanIonBeam()
                 layer = PlanIonLayer(nominalEnergy=100.)
                 x = [0, 2, 1, 3]
@@ -375,7 +375,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         def testFusionDuplicates(self):
                 from opentps.core.data.plan import PlanIonBeam, PlanIonLayer
 
-                plan = RTPlan()
+                plan = IonPlan()
                 beam1 = PlanIonBeam()
                 beam1.gantryAngle = 0
                 beam1.couchAngle = 0
@@ -415,7 +415,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         def testSimplify(self):
                 from opentps.core.data.plan import PlanIonBeam, PlanIonLayer
 
-                plan = RTPlan()
+                plan = IonPlan()
                 beam1 = PlanIonBeam()
                 beam1.gantryAngle = 0
                 beam1.couchAngle = 0
