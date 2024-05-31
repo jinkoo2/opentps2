@@ -25,7 +25,7 @@ from opentps.core.data.images import LETImage
 from opentps.core.data.images import Image3D
 from opentps.core.data.images import ROIMask
 from opentps.core.data.MCsquare import BDL
-from opentps.core.data.plan import RTPlan
+from opentps.core.data.plan import IonPlan
 from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import ROIContour
 
@@ -49,7 +49,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         CT calibration (Optional)
     _ct : Image3D
         the CT image of the patient (Optional)
-    _plan : RTPlan
+    _plan : IonPlan
         Treatment plan (Optional)
     _roi : ROIMask
         ROI mask
@@ -90,7 +90,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         self._ctCalibration: Optional[AbstractCTCalibration] = None
         self._ct: Optional[Image3D] = None
-        self._plan: Optional[RTPlan] = None
+        self._plan: Optional[IonPlan] = None
         self._roi = None
         self._config = None
         self._mcsquareCTCalibration = None
@@ -224,7 +224,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
             self._subprocess.kill()
             self._subprocess = None
 
-    def computeDose(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[ROIContour]] = None) -> DoseImage:
+    def computeDose(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[ROIContour]] = None) -> DoseImage:
         """
         Compute dose distribution in the patient using MCsquare
 
@@ -232,7 +232,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[ROIContour]], optional
             ROI contours, by default None
@@ -256,7 +256,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         mhdDose = self._importDose(plan)
         return mhdDose
 
-    def computeDoseAndLET(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[ROIContour]] = None) -> Tuple[DoseImage, LETImage]:
+    def computeDoseAndLET(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[ROIContour]] = None) -> Tuple[DoseImage, LETImage]:
         """
         Compute dose and LET distribution in the patient using MCsquare
 
@@ -264,7 +264,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[ROIContour]], optional
             ROI contours, by default None
@@ -279,7 +279,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         let = self._importLET()
         return dose, let
 
-    def computeRobustScenario(self, ct: CTImage, plan: RTPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> Robustness:
+    def computeRobustScenario(self, ct: CTImage, plan: IonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> Robustness:
         """
         Compute robustness scenario using MCsquare
 
@@ -287,7 +287,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : [Sequence[Union[ROIContour, ROIMask]]]
             ROI contours or masks
@@ -330,7 +330,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return scenarios
 
-    def computeBeamlets(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
+    def computeBeamlets(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
         """
         Compute beamlets using MCsquare
 
@@ -338,7 +338,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
             ROI contours or masks, by default None
@@ -404,7 +404,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         beamletDose.doseGridSize = self.scoringGridSize
         return beamletDose
 
-    def computeBeamletsAndLET(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> Tuple[SparseBeamlets, SparseBeamlets]:
+    def computeBeamletsAndLET(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> Tuple[SparseBeamlets, SparseBeamlets]:
         """
         Compute beamlets and LET using MCsquare
 
@@ -412,7 +412,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
             ROI contours or masks, by default None
@@ -431,7 +431,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return beamletDose, beamletLET
 
-    def computeRobustScenarioBeamlets(self, ct:CTImage, plan:RTPlan, \
+    def computeRobustScenarioBeamlets(self, ct:CTImage, plan:IonPlan, \
                                       roi:Optional[Sequence[Union[ROIContour, ROIMask]]]=None, storePath:Optional[str] = None) \
             -> Tuple[SparseBeamlets, Sequence[SparseBeamlets]]:
         """
@@ -441,7 +441,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
             ROI contours or masks, by default None
@@ -474,7 +474,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return nominal, scenarios
 
-    def optimizeBeamletFree(self, ct: CTImage, plan: RTPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> DoseImage:
+    def optimizeBeamletFree(self, ct: CTImage, plan: IonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> DoseImage:
         """
         Optimize weights using beamlet free optimization
 
@@ -482,7 +482,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : [Sequence[Union[ROIContour, ROIMask]]]
             ROI contours or masks
@@ -576,13 +576,13 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
                 raise Exception('MCsquare subprocess killed by caller.')
             self._subprocess = None
 
-    def _importDose(self, plan:RTPlan = None) -> DoseImage:
+    def _importDose(self, plan:IonPlan = None) -> DoseImage:
         """
         Import dose from MCsquare simulation
 
         Parameters
         ----------
-        plan : RTPlan (optional)
+        plan : IonPlan (optional)
             RT plan (default is None)
         """
         dose = mcsquareIO.readDose(self._doseFilePath)
