@@ -3,8 +3,6 @@ import logging
 import numpy as np
 from matplotlib import pyplot as plt
 import sys
-import datetime
-import pydicom
 sys.path.append('..')
 
 from opentps.core.io.dicomIO import writeRTPlan, writeDicomCT, writeRTDose, writeRTStruct
@@ -104,7 +102,7 @@ def run(output_path=""):
         planDesign.setScoringParameters(scoringSpacing=[2, 2, 2], adapt_gridSize_to_new_spacing=True)
 
         plan = planDesign.buildPlan()  # Spot placement
-        plan.rtPlanName = "Simple_Patient"
+        plan.name = "Simple_Patient"
 
         beamlets = mc2.computeBeamlets(ct, plan, roi=[roi])
         plan.planDesign.beamlets = beamlets
@@ -183,7 +181,6 @@ def run(output_path=""):
     ax2.set_xlabel('Iterations')
     ax2.set_xlim(0, convData['nIter'])
     ax[2].grid(True)
-
     plt.show()
 
 

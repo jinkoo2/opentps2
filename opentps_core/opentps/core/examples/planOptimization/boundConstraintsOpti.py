@@ -1,4 +1,3 @@
-import math
 import os
 import logging
 import numpy as np
@@ -41,11 +40,9 @@ def run(output_path=""):
     patient.name = 'Patient'
 
     ctSize = 150
-
     ct = CTImage()
     ct.name = 'CT'
     ct.patient = patient
-
 
     huAir = -1024.
     huWater = ctCalibration.convertRSP2HU(1.)
@@ -94,7 +91,7 @@ def run(output_path=""):
         planInit.setScoringParameters(scoringSpacing=[2, 2, 2], adapt_gridSize_to_new_spacing=True)
 
         plan = planInit.buildPlan()  # Spot placement
-        plan.PlanName = "NewPlan"
+        plan.name = "NewPlan"
 
         beamlets = mc2.computeBeamlets(ct, plan, roi=[roi])
         plan.planDesign.beamlets = beamlets
@@ -150,8 +147,7 @@ def run(output_path=""):
     ax[1].set_ylabel("Volume (%)")
     plt.grid(True)
     plt.legend()
-
     plt.show()
-run()
+
 if __name__ == "__main__":
     run()

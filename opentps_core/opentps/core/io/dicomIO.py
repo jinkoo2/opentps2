@@ -1306,10 +1306,10 @@ def readDicomPlan(dcmFile) -> RTPlan:
         plan.studyID = dcm.StudyID if hasattr(dcm, 'StudyID') else ""
         plan.seriesNumber = dcm.SeriesNumber if hasattr(dcm, 'SeriesNumber') else "1"
         plan.frameOfReferenceUID = dcm.FrameOfReferenceUID if hasattr(dcm, 'FrameOfReferenceUID') else pydicom.uid.generate_uid()
-        plan.rtPlanLabel = dcm.RTPlanLabel if hasattr(dcm, 'RTPlanLabel') else "Unkonwn"
-        plan.rtPlanName = dcm.RTPlanName if hasattr(dcm, 'RTPlanName') else ""
-        plan.rtPlanDate = dcm.RTPlanDate if hasattr(dcm, 'RTPlanDate') else dt.strftime('%Y%m%d')
-        plan.rtPlanTime = dcm.RTPlanTime if hasattr(dcm, 'RTPlanTime') else dt.strftime('%H%M%S.%f')
+        plan.planLabel = dcm.RTPlanLabel if hasattr(dcm, 'RTPlanLabel') else "Unkonwn"
+        plan.name = dcm.RTPlanName if hasattr(dcm, 'RTPlanName') else ""
+        plan.planDate = dcm.RTPlanDate if hasattr(dcm, 'RTPlanDate') else dt.strftime('%Y%m%d')
+        plan.planTime = dcm.RTPlanTime if hasattr(dcm, 'RTPlanTime') else dt.strftime('%H%M%S.%f')
         plan.treatmentProtocols = dcm.TreatmentProtocols if hasattr(dcm, 'TreatmentProtocols') else ""
         plan.planIntent = dcm.PlanIntent if hasattr(dcm, 'PlanIntent') else ""
         plan.rtPlanGeometry = dcm.RTPlanGeometry if hasattr(dcm, 'RTPlanGeometry') else "PATIENT"
@@ -1400,9 +1400,9 @@ def writeRTPlan(plan: RTPlan, outputFolder:str, outputFilename:str=None, struct:
     dcm_file.FrameOfReferenceUID = plan.frameOfReferenceUID if hasattr(plan, 'frameOfReferenceUID') else pydicom.uid.generate_uid()
     dcm_file.RTPlanLabel = plan.rtPlanLabel if hasattr(plan, 'rtPlanLabel') else ""
     dcm_file.RTPlanGeometry = plan.rtPlanGeometry if hasattr(plan, 'rtPlanGeometry') else "PATIENT"
-    dcm_file.RTPlanName = plan.rtPlanName if hasattr(plan, 'rtPlanName') else ""
-    dcm_file.RTPlanDate = plan.rtPlanDate if hasattr(plan, 'rtPlanDate') else dt.strftime('%Y%m%d')
-    dcm_file.RTPlanTime = plan.rtPlanTime if hasattr(plan, 'rtPlanTime') else dt.strftime('%H%M%S.%f')
+    dcm_file.RTPlanName = plan.rtPlanName if hasattr(plan, 'name') else ""
+    dcm_file.RTPlanDate = plan.rtPlanDate if hasattr(plan, 'planDate') else dt.strftime('%Y%m%d')
+    dcm_file.RTPlanTime = plan.rtPlanTime if hasattr(plan, 'planTime') else dt.strftime('%H%M%S.%f')
     if hasattr(plan, 'treatmentProtocols'):
         dcm_file.TreatmentProtocols = plan.treatmentProtocols
     if hasattr(plan, 'planIntent'):
