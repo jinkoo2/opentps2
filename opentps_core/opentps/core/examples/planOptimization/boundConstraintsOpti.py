@@ -86,7 +86,7 @@ def run():
         planInit.spotSpacing = 5.0
         planInit.layerSpacing = 5.0
         planInit.targetMargin = 5.0
-        planInit.scoringVoxelSpacing = [2, 2, 2]
+        planInit.setScoringParameters(scoringSpacing=[2, 2, 2], adapt_gridSize_to_new_spacing=True)
 
         plan = planInit.buildPlan()  # Spot placement
         plan.PlanName = "NewPlan"
@@ -105,7 +105,7 @@ def run():
 
     solver = BoundConstraintsOptimizer(method='Scipy-LBFGS', plan=plan, maxit=50, bounds=(0.2, 50))
     # Optimize treatment plan
-    w, doseImage, ps = solver.optimize()
+    doseImage, ps = solver.optimize()
 
     # Save plan with updated spot weights
     # saveRTPlan(plan, plan_file)

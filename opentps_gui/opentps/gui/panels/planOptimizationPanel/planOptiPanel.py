@@ -72,7 +72,8 @@ class mcsquareCalculationWindow(QDialog):
 
         doseCalculator.beamModel = beamModel
         if self._doseComputationPanel._doseSpacingLabel.isChecked():
-            self._doseComputationPanel.selectedPlan.planDesign.scoringVoxelSpacing = self._doseComputationPanel._doseSpacingSpin.value()
+            self._doseComputationPanel.selectedPlan.planDesign.setScoringParameters(scoringSpacing=self._doseComputationPanel._doseSpacingSpin.value(), adapt_gridSize_to_new_spacing=True)
+            # self._doseComputationPanel.selectedPlan.planDesign.scoringVoxelSpacing = self._doseComputationPanel._doseSpacingSpin.value()
         doseCalculator.nbPrimaries = self._doseComputationPanel._numProtons.value()
         doseCalculator.statUncertainty = self._doseComputationPanel._statUncertainty.value()
         doseCalculator.ctCalibration = calibration
@@ -311,7 +312,7 @@ class PlanOptiPanel(QWidget):
             else:
                 solver = IMPTPlanOptimizer(method=method, plan=self._plan, maxit=self._optiConfig['maxIter'])
             # Optimize treatment plan
-            _, doseImage, _ = solver.optimize()
+            doseImage, _ = solver.optimize()
             doseImage.patient = self._mcsquareWindow._doseComputationPanel.selectedCT.patient
 
 

@@ -23,6 +23,12 @@ class MCsquareMolecule(MCsquareMaterial):
         super().__init__(density=density, electronDensity=electronDensity, name=name, number=number, sp=sp, radiationLength=radiationLength)
         self.MCsquareElements = MCsquareElements
         self.weights = weights
+    
+    @classmethod
+    def fromMCsquareElement(cls, element:MCsquareElement, matNb=0):
+        return cls(density=element.density, electronDensity=element.electronDensity, name='Aluminium_material', number=matNb,
+                             sp=element.sp, radiationLength=element.radiationLength,
+                             MCsquareElements=[element], weights=[100.])
 
     def __str__(self):
         return self.mcsquareFormatted()
@@ -72,8 +78,9 @@ class MCsquareMolecule(MCsquareMaterial):
         s += 'Nuclear_Data 		Mixture ' + str(len(self.weights)) + ' # mixture with ' + str(len(self.weights)) + ' components\n'
         s += '# 	Label 	Name 		fraction by mass (in %)\n'
 
+        materialNamesOrderedForPrinting_case = [mat.casefold() for mat in materialNamesOrderedForPrinting]
         for i, element in enumerate(self.MCsquareElements):
-            nb = materialNamesOrderedForPrinting.index(element.name) + 1
+            nb = materialNamesOrderedForPrinting_case.index(element.name.casefold()) + 1
             s += 'Mixture_Component ' + str(nb) + ' ' + element.name + ' ' + str(self.weights[i]) + '\n'
 
         return s

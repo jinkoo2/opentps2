@@ -100,6 +100,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         self._scoringVoxelSpacing = None
         self._scoringGridSize = None
         self._scoringOrigin = None
+        self._adapt_gridSize_to_new_spacing=False
         self._simulationDirectory = ProgramSettings().simulationFolder
         self._simulationFolderName = 'MCsquare_simulation'
 
@@ -168,15 +169,15 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
     @property
     def scoringVoxelSpacing(self) -> Sequence[float]:
-        if self._plan:
-            if self._plan.planDesign:
-                self._scoringVoxelSpacing = self._plan.planDesign.scoringVoxelSpacing
-                return self._scoringVoxelSpacing
-
         if self._scoringVoxelSpacing is not None:
             return self._scoringVoxelSpacing
+        
+        if self._plan:
+            if self._plan.planDesign:
+                return self._plan.planDesign.scoringVoxelSpacing
 
-        return self._ct.spacing
+        if self._ct:
+            return self._ct.spacing
 
     @scoringVoxelSpacing.setter
     def scoringVoxelSpacing(self, spacing: Union[float, Sequence[float]]):
@@ -189,11 +190,11 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
     def scoringGridSize(self):
         if self._scoringGridSize is not None:
             return self._scoringGridSize
-        if self.independentScoringGrid:
-            # Adapt gridSize to scoringVoxelSpacing
-            return [int(math.floor(i / j * k)) for i, j, k in
-                    zip(self._ct.gridSize, self.scoringVoxelSpacing, self._ct.spacing)]
-        return self._ct.gridSize
+        if self._plan:
+            if self._plan.planDesign:
+                return self._plan.planDesign.scoringGridSize
+        if self._ct:
+            return self._ct.gridSize
     
     @scoringGridSize.setter
     def scoringGridSize(self, gridSize):
@@ -202,13 +203,57 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
     @property
     def scoringOrigin(self):
         if self._scoringOrigin is not None:
-            return self._scoringOrigin
-        else:
-            return self._ct.origin
+            return self._scoringOrigin             
+        if self._plan:
+            if self._plan.planDesign:
+                return self._plan.planDesign.scoringOrigin
+        if self._ct:
+                return self._ct.origin
         
     @scoringOrigin.setter
     def scoringOrigin(self, origin):
-        self._scoringOrigin = list(origin)
+        self._scoringOrigin = origin
+
+    @property
+    def ct(self):
+        return self._ct
+    
+    @ct.setter
+    def ct(self, ctImage):
+        self._ct = ctImage
+        if self._adapt_gridSize_to_new_spacing and self._scoringVoxelSpacing is not None:
+            self.setScoringParameters(scoringSpacing=self._scoringVoxelSpacing, adapt_gridSize_to_new_spacing=True)
+
+    def setScoringParameters(self, scoringGridSize:Optional[Sequence[int]]=None, scoringSpacing:Optional[Sequence[float]]=None,
+                                scoringOrigin:Optional[Sequence[int]]=None, adapt_gridSize_to_new_spacing=False):
+        """
+        Sets the scoring parameters
+
+        Parameters
+        ----------
+        scoringGridSize: Sequence[int]
+            scoring grid size
+        scoringSpacing: Sequence[float]
+            scoring spacing
+        scoringOrigin: Sequence[float]
+            scoring origin
+        adapt_gridSize_to_new_spacing: bool
+            If True, automatically adapt the gridSize to the new spacing
+        """
+        if adapt_gridSize_to_new_spacing and scoringGridSize is not None:
+            raise ValueError('Cannot adapt gridSize to new spacing if scoringGridSize provided.')
+        
+        if scoringSpacing is not None: self.scoringVoxelSpacing = scoringSpacing
+        if scoringGridSize is not None: self.scoringGridSize = scoringGridSize
+        if scoringOrigin is not None: self.scoringOrigin = scoringOrigin
+        
+        if adapt_gridSize_to_new_spacing and self._scoringVoxelSpacing is not None:
+            self._adapt_gridSize_to_new_spacing = True
+            if self._ct:
+                newGridSize = np.floor(self._ct.gridSize*self._ct.spacing/self._scoringVoxelSpacing).astype(int)
+                print(f"Adapting scoring gridSize to scoring spacing. Scoring gridSize = {newGridSize} while CT original gridSize is {self._ct.gridSize}")
+                self.scoringGridSize = np.floor(self._ct.gridSize*self._ct.spacing/self._scoringVoxelSpacing).astype(int)
+                self._adapt_gridSize_to_new_spacing = False
 
     @property
     def simulationDirectory(self) -> str:
@@ -244,7 +289,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         """
         logger.info("Prepare MCsquare Dose calculation")
-        self._ct = ct
+        self.ct = ct
         self._plan = plan
         self._roi = roi
         self._config = self._doseComputationConfig
@@ -300,7 +345,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         logger.info("Prepare MCsquare Robust Dose calculation")
         scenarios = plan.planDesign.robustness
 
-        self._ct = ct
+        self.ct = ct
         self._plan = plan
         self._roi = roi
         # Generate MCsquare configuration file
@@ -341,7 +386,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         plan : IonPlan
             RT plan
         roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
-            ROI contours or masks, by default None
+            ROI contours or masks on which beamlets will be cropped at import, by default None
 
         Returns
         -------
@@ -349,7 +394,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
             Beamlets dose with same grid size and spacing as the CT image
         """
         logger.info("Prepare MCsquare Beamlet calculation")
-        self._ct = ct
+        self.ct = ct
         self._plan = copy.deepcopy(plan)
         self._plan.spotMUs = np.ones(self._plan.spotMUs.shape)
         self._roi = roi
@@ -373,8 +418,6 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         else:
             self._startMCsquare()
             beamletDose = self._importBeamlets()
-
-        beamletDose.beamletWeights = np.array(plan.spotMUs)
 
         return beamletDose
 
@@ -444,7 +487,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         plan : IonPlan
             RT plan
         roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
-            ROI contours or masks, by default None
+            ROI contours or masks on which beamlets will be cropped at import, by default None
         storePath : Optional[str], optional
             Path to store the beamlets, by default None
 
@@ -492,7 +535,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         DoseImage:doseImage
             Optimized dose
         """
-        self._ct = ct
+        self.ct = ct
         self._plan = plan
         self._plan.spotMUs = np.ones(self._plan.spotMUs.shape)
         # Generate MCsquare configuration file
