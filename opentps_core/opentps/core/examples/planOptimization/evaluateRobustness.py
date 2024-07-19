@@ -1,12 +1,13 @@
 
 import os
 import datetime
+import logging
 
 import numpy as np
 from matplotlib import pyplot as plt
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import Patient
 from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
@@ -15,10 +16,16 @@ from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCa
 from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.planEvaluation.robustnessEvaluation import Robustness
 
+logger = logging.getLogger(__name__)
 
-def run():
-    output_path = os.getcwd()
-
+def run(output_path=""):
+    if(output_path != ""):
+        output_path = output_path
+    else:
+        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+    logger.info('Files will be stored in {}'.format(output_path))
     # Generic example: box of water with squared target
 
     ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)

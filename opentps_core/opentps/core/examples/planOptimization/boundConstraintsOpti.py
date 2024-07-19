@@ -1,4 +1,3 @@
-import math
 import os
 import logging
 import numpy as np
@@ -10,7 +9,7 @@ sys.path.append('..')
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
 from opentps.core.data.plan import FidObjective
@@ -25,8 +24,13 @@ from opentps.core.processing.planOptimization.planOptimization import BoundConst
 logger = logging.getLogger(__name__)
 
 # Generic example: box of water with squared target
-def run():
-    output_path = os.getcwd()
+def run(output_path=""):
+    if(output_path != ""):
+        output_path = output_path
+    else:
+        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
 
     ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)
@@ -36,11 +40,9 @@ def run():
     patient.name = 'Patient'
 
     ctSize = 150
-
     ct = CTImage()
     ct.name = 'CT'
     ct.patient = patient
-
 
     huAir = -1024.
     huWater = ctCalibration.convertRSP2HU(1.)
@@ -76,7 +78,7 @@ def run():
         plan = loadRTPlan(plan_file)
         logger.info('Plan loaded')
     else:
-        planInit = PlanDesign()
+        planInit = IonPlanDesign()
         planInit.ct = ct
         planInit.targetMask = roi
         planInit.gantryAngles = gantryAngles
@@ -86,10 +88,10 @@ def run():
         planInit.spotSpacing = 5.0
         planInit.layerSpacing = 5.0
         planInit.targetMargin = 5.0
-        planInit.scoringVoxelSpacing = [2, 2, 2]
+        planInit.setScoringParameters(scoringSpacing=[2, 2, 2], adapt_gridSize_to_new_spacing=True)
 
         plan = planInit.buildPlan()  # Spot placement
-        plan.PlanName = "NewPlan"
+        plan.name = "NewPlan"
 
         beamlets = mc2.computeBeamlets(ct, plan, roi=[roi])
         plan.planDesign.beamlets = beamlets
@@ -105,7 +107,7 @@ def run():
 
     solver = BoundConstraintsOptimizer(method='Scipy-LBFGS', plan=plan, maxit=50, bounds=(0.2, 50))
     # Optimize treatment plan
-    w, doseImage, ps = solver.optimize()
+    doseImage, ps = solver.optimize()
 
     # Save plan with updated spot weights
     # saveRTPlan(plan, plan_file)
@@ -145,8 +147,7 @@ def run():
     ax[1].set_ylabel("Volume (%)")
     plt.grid(True)
     plt.legend()
-
     plt.show()
-run()
+
 if __name__ == "__main__":
     run()

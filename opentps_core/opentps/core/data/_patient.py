@@ -19,7 +19,7 @@ from opentps.core import Event
 class Patient:
     """
     A class Patient contains patient information and patient data.
-    Patient data can be images, RTStructs, RTPlans, PlanDesigns, Dynamic3DSequences, Dynamic3DModels, and ROIMasks.
+    Patient data can be images, RTStructs, RTPlans, RTPlanDesigns, Dynamic3DSequences, Dynamic3DModels, and ROIMasks.
 
     Attributes
     ----------
@@ -42,7 +42,7 @@ class Patient:
     rtPlans : list
         list of RTPlans
     planDesigns : list
-        list of PlanDesigns
+        list of RTPlanDesigns
     dynamic3DSequences : list
         list of Dynamic3DSequences
     dynamic3DModels : list
@@ -76,8 +76,8 @@ class Patient:
         self.rtStructRemovedSignal = self.TypeConditionalEvent.fromEvent(self.patientDataRemovedSignal, RTStruct)
         self.planAddedSignal = self.TypeConditionalEvent.fromEvent(self.patientDataAddedSignal, RTPlan)
         self.planRemovedSignal = self.TypeConditionalEvent.fromEvent(self.patientDataRemovedSignal, RTPlan)
-        self.planStructureAddedSignal = self.TypeConditionalEvent.fromEvent(self.patientDataAddedSignal, PlanDesign)
-        self.planStructureRemovedSignal = self.TypeConditionalEvent.fromEvent(self.patientDataRemovedSignal, PlanDesign)
+        self.planStructureAddedSignal = self.TypeConditionalEvent.fromEvent(self.patientDataAddedSignal, RTPlanDesign)
+        self.planStructureRemovedSignal = self.TypeConditionalEvent.fromEvent(self.patientDataRemovedSignal, RTPlanDesign)
         self.dyn3DSeqAddedSignal = self.TypeConditionalEvent.fromEvent(self.patientDataAddedSignal, Dynamic3DSequence)
         self.dyn3DSeqRemovedSignal = self.TypeConditionalEvent.fromEvent(self.patientDataRemovedSignal, Dynamic3DSequence)
         self.dyn3DModAddedSignal = self.TypeConditionalEvent.fromEvent(self.patientDataAddedSignal, Dynamic3DModel)

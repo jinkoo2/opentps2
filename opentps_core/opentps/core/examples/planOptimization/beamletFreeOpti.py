@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
 from opentps.core.data.plan import FidObjective
@@ -57,7 +57,7 @@ def run():
     couchAngles = [0.]
 
     # Generate new plan
-    planDesign = PlanDesign()
+    planDesign = IonPlanDesign()
     planDesign.ct = ct
     planDesign.targetMask = roi
     planDesign.gantryAngles = gantryAngles

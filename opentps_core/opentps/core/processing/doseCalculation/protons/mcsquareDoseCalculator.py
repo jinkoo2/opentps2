@@ -25,8 +25,8 @@ from opentps.core.data.images import LETImage
 from opentps.core.data.images import Image3D
 from opentps.core.data.images import ROIMask
 from opentps.core.data.MCsquare import BDL
-from opentps.core.data.plan import RTPlan
-from opentps.core.data.plan._rtPlanDesign import PlanDesign
+from opentps.core.data.plan import IonPlan
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import ROIContour
 
 import opentps.core.io.mcsquareIO as mcsquareIO
@@ -49,7 +49,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         CT calibration (Optional)
     _ct : Image3D
         the CT image of the patient (Optional)
-    _plan : RTPlan
+    _plan : IonPlan
         Treatment plan (Optional)
     _roi : ROIMask
         ROI mask
@@ -90,7 +90,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         self._ctCalibration: Optional[AbstractCTCalibration] = None
         self._ct: Optional[Image3D] = None
-        self._plan: Optional[RTPlan] = None
+        self._plan: Optional[IonPlan] = None
         self._roi = None
         self._config = None
         self._mcsquareCTCalibration = None
@@ -100,6 +100,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         self._scoringVoxelSpacing = None
         self._scoringGridSize = None
         self._scoringOrigin = None
+        self._adapt_gridSize_to_new_spacing=False
         self._simulationDirectory = ProgramSettings().simulationFolder
         self._simulationFolderName = 'MCsquare_simulation'
 
@@ -168,15 +169,15 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
     @property
     def scoringVoxelSpacing(self) -> Sequence[float]:
-        if self._plan:
-            if self._plan.planDesign:
-                self._scoringVoxelSpacing = self._plan.planDesign.scoringVoxelSpacing
-                return self._scoringVoxelSpacing
-
         if self._scoringVoxelSpacing is not None:
             return self._scoringVoxelSpacing
+        
+        if self._plan:
+            if self._plan.planDesign:
+                return self._plan.planDesign.scoringVoxelSpacing
 
-        return self._ct.spacing
+        if self._ct:
+            return self._ct.spacing
 
     @scoringVoxelSpacing.setter
     def scoringVoxelSpacing(self, spacing: Union[float, Sequence[float]]):
@@ -189,11 +190,11 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
     def scoringGridSize(self):
         if self._scoringGridSize is not None:
             return self._scoringGridSize
-        if self.independentScoringGrid:
-            # Adapt gridSize to scoringVoxelSpacing
-            return [int(math.floor(i / j * k)) for i, j, k in
-                    zip(self._ct.gridSize, self.scoringVoxelSpacing, self._ct.spacing)]
-        return self._ct.gridSize
+        if self._plan:
+            if self._plan.planDesign:
+                return self._plan.planDesign.scoringGridSize
+        if self._ct:
+            return self._ct.gridSize
     
     @scoringGridSize.setter
     def scoringGridSize(self, gridSize):
@@ -202,13 +203,57 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
     @property
     def scoringOrigin(self):
         if self._scoringOrigin is not None:
-            return self._scoringOrigin
-        else:
-            return self._ct.origin
+            return self._scoringOrigin             
+        if self._plan:
+            if self._plan.planDesign:
+                return self._plan.planDesign.scoringOrigin
+        if self._ct:
+                return self._ct.origin
         
     @scoringOrigin.setter
     def scoringOrigin(self, origin):
-        self._scoringOrigin = list(origin)
+        self._scoringOrigin = origin
+
+    @property
+    def ct(self):
+        return self._ct
+    
+    @ct.setter
+    def ct(self, ctImage):
+        self._ct = ctImage
+        if self._adapt_gridSize_to_new_spacing and self._scoringVoxelSpacing is not None:
+            self.setScoringParameters(scoringSpacing=self._scoringVoxelSpacing, adapt_gridSize_to_new_spacing=True)
+
+    def setScoringParameters(self, scoringGridSize:Optional[Sequence[int]]=None, scoringSpacing:Optional[Sequence[float]]=None,
+                                scoringOrigin:Optional[Sequence[int]]=None, adapt_gridSize_to_new_spacing=False):
+        """
+        Sets the scoring parameters
+
+        Parameters
+        ----------
+        scoringGridSize: Sequence[int]
+            scoring grid size
+        scoringSpacing: Sequence[float]
+            scoring spacing
+        scoringOrigin: Sequence[float]
+            scoring origin
+        adapt_gridSize_to_new_spacing: bool
+            If True, automatically adapt the gridSize to the new spacing
+        """
+        if adapt_gridSize_to_new_spacing and scoringGridSize is not None:
+            raise ValueError('Cannot adapt gridSize to new spacing if scoringGridSize provided.')
+        
+        if scoringSpacing is not None: self.scoringVoxelSpacing = scoringSpacing
+        if scoringGridSize is not None: self.scoringGridSize = scoringGridSize
+        if scoringOrigin is not None: self.scoringOrigin = scoringOrigin
+        
+        if adapt_gridSize_to_new_spacing and self._scoringVoxelSpacing is not None:
+            self._adapt_gridSize_to_new_spacing = True
+            if self._ct:
+                newGridSize = np.floor(self._ct.gridSize*self._ct.spacing/self._scoringVoxelSpacing).astype(int)
+                print(f"Adapting scoring gridSize to scoring spacing. Scoring gridSize = {newGridSize} while CT original gridSize is {self._ct.gridSize}")
+                self.scoringGridSize = np.floor(self._ct.gridSize*self._ct.spacing/self._scoringVoxelSpacing).astype(int)
+                self._adapt_gridSize_to_new_spacing = False
 
     @property
     def simulationDirectory(self) -> str:
@@ -224,7 +269,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
             self._subprocess.kill()
             self._subprocess = None
 
-    def computeDose(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[ROIContour]] = None) -> DoseImage:
+    def computeDose(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[ROIContour]] = None) -> DoseImage:
         """
         Compute dose distribution in the patient using MCsquare
 
@@ -232,7 +277,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[ROIContour]], optional
             ROI contours, by default None
@@ -244,7 +289,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         """
         logger.info("Prepare MCsquare Dose calculation")
-        self._ct = ct
+        self.ct = ct
         self._plan = plan
         self._roi = roi
         self._config = self._doseComputationConfig
@@ -256,7 +301,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         mhdDose = self._importDose(plan)
         return mhdDose
 
-    def computeDoseAndLET(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[ROIContour]] = None) -> Tuple[DoseImage, LETImage]:
+    def computeDoseAndLET(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[ROIContour]] = None) -> Tuple[DoseImage, LETImage]:
         """
         Compute dose and LET distribution in the patient using MCsquare
 
@@ -264,7 +309,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[ROIContour]], optional
             ROI contours, by default None
@@ -279,7 +324,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         let = self._importLET()
         return dose, let
 
-    def computeRobustScenario(self, ct: CTImage, plan: RTPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> Robustness:
+    def computeRobustScenario(self, ct: CTImage, plan: IonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> Robustness:
         """
         Compute robustness scenario using MCsquare
 
@@ -287,7 +332,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : [Sequence[Union[ROIContour, ROIMask]]]
             ROI contours or masks
@@ -300,7 +345,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         logger.info("Prepare MCsquare Robust Dose calculation")
         scenarios = plan.planDesign.robustness
 
-        self._ct = ct
+        self.ct = ct
         self._plan = plan
         self._roi = roi
         # Generate MCsquare configuration file
@@ -330,7 +375,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return scenarios
 
-    def computeBeamlets(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
+    def computeBeamlets(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
         """
         Compute beamlets using MCsquare
 
@@ -338,10 +383,10 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
-            ROI contours or masks, by default None
+            ROI contours or masks on which beamlets will be cropped at import, by default None
 
         Returns
         -------
@@ -349,7 +394,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
             Beamlets dose with same grid size and spacing as the CT image
         """
         logger.info("Prepare MCsquare Beamlet calculation")
-        self._ct = ct
+        self.ct = ct
         self._plan = copy.deepcopy(plan)
         self._plan.spotMUs = np.ones(self._plan.spotMUs.shape)
         self._roi = roi
@@ -357,7 +402,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         self._plan.simplify(threshold=None) # make sure no spot duplicates
 
         if not self._plan.planDesign: # external plan
-            planDesign = PlanDesign()
+            planDesign = IonPlanDesign()
             planDesign.ct = ct
             planDesign.targetMask = roi
             planDesign.scoringVoxelSpacing = self.scoringVoxelSpacing
@@ -373,8 +418,6 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         else:
             self._startMCsquare()
             beamletDose = self._importBeamlets()
-
-        beamletDose.beamletWeights = np.array(plan.spotMUs)
 
         return beamletDose
 
@@ -404,7 +447,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         beamletDose.doseGridSize = self.scoringGridSize
         return beamletDose
 
-    def computeBeamletsAndLET(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> Tuple[SparseBeamlets, SparseBeamlets]:
+    def computeBeamletsAndLET(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> Tuple[SparseBeamlets, SparseBeamlets]:
         """
         Compute beamlets and LET using MCsquare
 
@@ -412,7 +455,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
             ROI contours or masks, by default None
@@ -431,7 +474,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return beamletDose, beamletLET
 
-    def computeRobustScenarioBeamlets(self, ct:CTImage, plan:RTPlan, \
+    def computeRobustScenarioBeamlets(self, ct:CTImage, plan:IonPlan, \
                                       roi:Optional[Sequence[Union[ROIContour, ROIMask]]]=None, storePath:Optional[str] = None) \
             -> Tuple[SparseBeamlets, Sequence[SparseBeamlets]]:
         """
@@ -441,10 +484,10 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
-            ROI contours or masks, by default None
+            ROI contours or masks on which beamlets will be cropped at import, by default None
         storePath : Optional[str], optional
             Path to store the beamlets, by default None
 
@@ -474,7 +517,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return nominal, scenarios
 
-    def optimizeBeamletFree(self, ct: CTImage, plan: RTPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> DoseImage:
+    def optimizeBeamletFree(self, ct: CTImage, plan: IonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> DoseImage:
         """
         Optimize weights using beamlet free optimization
 
@@ -482,7 +525,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : [Sequence[Union[ROIContour, ROIMask]]]
             ROI contours or masks
@@ -492,7 +535,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         DoseImage:doseImage
             Optimized dose
         """
-        self._ct = ct
+        self.ct = ct
         self._plan = plan
         self._plan.spotMUs = np.ones(self._plan.spotMUs.shape)
         # Generate MCsquare configuration file
@@ -576,13 +619,13 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
                 raise Exception('MCsquare subprocess killed by caller.')
             self._subprocess = None
 
-    def _importDose(self, plan:RTPlan = None) -> DoseImage:
+    def _importDose(self, plan:IonPlan = None) -> DoseImage:
         """
         Import dose from MCsquare simulation
 
         Parameters
         ----------
-        plan : RTPlan (optional)
+        plan : IonPlan (optional)
             RT plan (default is None)
         """
         dose = mcsquareIO.readDose(self._doseFilePath)

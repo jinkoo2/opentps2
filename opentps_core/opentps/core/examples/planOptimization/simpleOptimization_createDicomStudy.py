@@ -12,7 +12,7 @@ from opentps.core.processing.planOptimization.tools import evaluateClinical
 from opentps.core.data.images import CTImage, DoseImage
 from opentps.core.data.images import ROIMask
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
 from opentps.core.data import RTStruct
@@ -32,7 +32,9 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.getcwd()
+        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
         
     logger.info('Files will be stored in {}'.format(output_path))
 
@@ -67,8 +69,7 @@ def run(output_path=""):
     data = huAir * np.ones((ctSize, ctSize, ctSize))
     data[:, 50:, :] = huWater
     ct.imageArray = data
-    dcm_CT_file = os.path.join(output_path, "CTImage_WaterPhantom_cropped_resampled_optimized")
-    writeDicomCT(ct, dcm_CT_file)
+    writeDicomCT(ct, output_path)
 
     # Struct
     roi = ROIMask()
@@ -106,7 +107,7 @@ def run(output_path=""):
         plan = loadRTPlan(plan_file)
         logger.info('Plan loaded')
     else:
-        planDesign = PlanDesign()
+        planDesign = IonPlanDesign()
         planDesign.ct = ct
         planDesign.targetMask = roi
         planDesign.gantryAngles = gantryAngles
@@ -116,7 +117,7 @@ def run(output_path=""):
         planDesign.spotSpacing = 5.0
         planDesign.layerSpacing = 5.0
         planDesign.targetMargin = 5.0
-        planDesign.scoringVoxelSpacing = [2, 2, 2]
+        planDesign.setScoringParameters(scoringSpacing=[2, 2, 2], adapt_gridSize_to_new_spacing=True)
 
         plan = planDesign.buildPlan()  # Spot placement
         plan.rtPlanName = "Simple_Patient"
@@ -141,15 +142,14 @@ def run(output_path=""):
     
     solver = IMPTPlanOptimizer(method='Scipy-LBFGS', plan=plan, maxit=1000)
     # Optimize treatment plan
-    w, doseImage, ps = solver.optimize()
+    doseImage, ps = solver.optimize()
 
     # Save plan with updated spot weights in serialized format (OpenTPS format)
     plan_file_optimized = os.path.join(output_path, "Plan_WaterPhantom_cropped_resampled_optimized.tps")
     saveRTPlan(plan, plan_file_optimized)
     # Save plan with updated spot weights in dicom format
     plan.patient = patient
-    dcm_Plan_file = os.path.join(output_path, "Plan_WaterPhantom_cropped_resampled_optimized.dcm")
-    writeRTPlan(plan, dcm_Plan_file)
+    writeRTPlan(plan, output_path)
     
     # MCsquare simulation
     # mc2.nbPrimaries = 1e7
@@ -164,6 +164,20 @@ def run(output_path=""):
     clinObj = {'ROI': clinROI, 'Metric': clinMetric, 'Limit': clinLimit}
     print('Clinical evaluation')
     evaluateClinical(doseImage, [roi], clinObj)
+    
+    # Don't delete it
+    doseImage.referencePlan = plan
+    doseImage.referenceCT = ct
+    doseImage.patient = patient
+    doseImage.studyInstanceUID = studyInstanceUID
+    doseImage.frameOfReferenceUID = frameOfReferenceUID 
+    doseImage.sopClassUID = '1.2.840.10008.5.1.4.1.1.481.2'
+    doseImage.mediaStorageSOPClassUID = '1.2.840.10008.5.1.4.1.1.481.2'
+    doseImage.sopInstanceUID = pydicom.uid.generate_uid()
+    doseImage.studyTime = dt.strftime('%H%M%S.%f')
+    doseImage.studyDate = dt.strftime('%Y%m%d')
+    
+    writeRTDose(doseImage, output_path)
 
     # center of mass
     roi = resampleImage3DOnImage3D(roi, ct)
@@ -176,20 +190,6 @@ def run(output_path=""):
     img_mask = contourTargetMask.imageArray[:, :, Z_coord].transpose(1, 0)
     img_dose = resampleImage3DOnImage3D(doseImage, ct)
     img_dose = img_dose.imageArray[:, :, Z_coord].transpose(1, 0)
-    di = DoseImage(imageArray=img_dose, seriesInstanceUID=doseSeriesInstanceUID, referencePlan=plan, referenceCT=ct, patient=patient)
-    
-    # Don't delete it
-    di.studyInstanceUID = studyInstanceUID
-    di.referencedRTPlanSequence = None
-    di.frameOfReferenceUID = frameOfReferenceUID 
-    di.sopClassUID = '1.2.840.10008.5.1.4.1.1.481.2'
-    di.mediaStorageSOPClassUID = '1.2.840.10008.5.1.4.1.1.481.2'
-    di.sopInstanceUID = pydicom.uid.generate_uid()
-    di.studyTime = dt.strftime('%H%M%S.%f')
-    di.studyDate = dt.strftime('%Y%m%d')
-    
-    dcm_dose_file = os.path.join(output_path, "Dose_WaterPhantom_cropped_resampled_optimized.dcm")
-    writeRTDose(di, dcm_dose_file)
 
     # Display dose
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))

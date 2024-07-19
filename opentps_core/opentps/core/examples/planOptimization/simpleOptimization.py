@@ -3,8 +3,6 @@ import logging
 import numpy as np
 from matplotlib import pyplot as plt
 import sys
-import datetime
-import pydicom
 sys.path.append('..')
 
 from opentps.core.io.dicomIO import writeRTPlan, writeDicomCT, writeRTDose, writeRTStruct
@@ -12,7 +10,7 @@ from opentps.core.processing.planOptimization.tools import evaluateClinical
 from opentps.core.data.images import CTImage, DoseImage
 from opentps.core.data.images import ROIMask
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
 from opentps.core.data import RTStruct
@@ -32,7 +30,9 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.getcwd()
+        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
         
     logger.info('Files will be stored in {}'.format(output_path))
 
@@ -53,8 +53,7 @@ def run(output_path=""):
     data = huAir * np.ones((ctSize, ctSize, ctSize))
     data[:, 50:, :] = huWater
     ct.imageArray = data
-    dcm_CT_file = os.path.join(output_path, "CTImage_WaterPhantom_cropped_resampled_optimized")
-    writeDicomCT(ct, dcm_CT_file)
+    writeDicomCT(ct, output_path)
 
     # Struct
     roi = ROIMask()
@@ -90,7 +89,7 @@ def run(output_path=""):
         plan = loadRTPlan(plan_file)
         logger.info('Plan loaded')
     else:
-        planDesign = PlanDesign()
+        planDesign = IonPlanDesign()
         planDesign.ct = ct
         planDesign.targetMask = roi
         planDesign.gantryAngles = gantryAngles
@@ -100,10 +99,10 @@ def run(output_path=""):
         planDesign.spotSpacing = 5.0
         planDesign.layerSpacing = 5.0
         planDesign.targetMargin = 5.0
-        planDesign.scoringVoxelSpacing = [2, 2, 2]
+        planDesign.setScoringParameters(scoringSpacing=[2, 2, 2], adapt_gridSize_to_new_spacing=True)
 
         plan = planDesign.buildPlan()  # Spot placement
-        plan.rtPlanName = "Simple_Patient"
+        plan.name = "Simple_Patient"
 
         beamlets = mc2.computeBeamlets(ct, plan, roi=[roi])
         plan.planDesign.beamlets = beamlets
@@ -117,17 +116,23 @@ def run(output_path=""):
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 20.0, 1.0)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 20.5, 1.0)
     
+    plan.numberOfFractionsPlanned = 30
+
     solver = IMPTPlanOptimizer(method='Scipy-LBFGS', plan=plan, maxit=1000)
     # Optimize treatment plan
-    w, doseImage, ps = solver.optimize()
+    doseImage, ps = solver.optimize()
+    # User input filename
+    # writeRTDose(doseImage, output_path, outputFilename="BeamletTotalDose")
+    # or default name
+    writeRTDose(doseImage, output_path)
 
     # Save plan with updated spot weights in serialized format (OpenTPS format)
     plan_file_optimized = os.path.join(output_path, "Plan_WaterPhantom_cropped_resampled_optimized.tps")
     saveRTPlan(plan, plan_file_optimized)
     # Save plan with updated spot weights in dicom format
     plan.patient = patient
-    dcm_Plan_file = os.path.join(output_path, "Plan_WaterPhantom_cropped_resampled_optimized.dcm")
-    writeRTPlan(plan, dcm_Plan_file)
+    # writeRTPlan(plan, output_path, outputFilename = plan.name )
+    writeRTPlan(plan, output_path )
 
     # Compute DVH on resampled contour
     target_DVH = DVH(roi, doseImage)
@@ -150,10 +155,6 @@ def run(output_path=""):
     img_mask = contourTargetMask.imageArray[:, :, Z_coord].transpose(1, 0)
     img_dose = resampleImage3DOnImage3D(doseImage, ct)
     img_dose = img_dose.imageArray[:, :, Z_coord].transpose(1, 0)
-    di = DoseImage(imageArray=img_dose, referencePlan=plan, referenceCT=ct, patient=patient)
-    
-    dcm_dose_file = os.path.join(output_path, "Dose_WaterPhantom_cropped_resampled_optimized.dcm")
-    writeRTDose(di, dcm_dose_file)
 
     # Display dose
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))
@@ -170,8 +171,9 @@ def run(output_path=""):
     ax[1].legend()
 
     convData = solver.getConvergenceData()
-    ax[2].plot(np.arange(0, convData['time'], convData['time'] / convData['nIter']), convData['func_0'], 'bo-', lw=2,
-               label='Fidelity')
+    x_data = np.linspace(0, convData['time'], len(convData['func_0']))
+    y_data = convData['func_0']
+    ax[2].plot(x_data, y_data , 'bo-', lw=2, label='Fidelity')
     ax[2].set_xlabel('Time (s)')
     ax[2].set_ylabel('Cost')
     ax[2].set_yscale('symlog')
@@ -179,7 +181,6 @@ def run(output_path=""):
     ax2.set_xlabel('Iterations')
     ax2.set_xlim(0, convData['nIter'])
     ax[2].grid(True)
-
     plt.show()
 
 

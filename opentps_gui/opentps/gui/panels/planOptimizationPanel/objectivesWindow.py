@@ -7,7 +7,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QMainWindow, QAction, QFileDialog, QToolBar, QCheckBox
 
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data.plan._objectivesList import FidObjective, ObjectivesList
 from opentps.core.data._patient import Patient
 from opentps.core import Event
@@ -50,11 +50,11 @@ class ObjectivesWindow(QMainWindow):
         self._roitTable.patient = p
 
     @property
-    def planDesign(self) -> PlanDesign:
+    def planDesign(self) -> IonPlanDesign:
         return self._roitTable.planDesign
 
     @planDesign.setter
-    def planDesign(self, pd: PlanDesign):
+    def planDesign(self, pd: IonPlanDesign):
         self._roitTable.planDesign = pd
 
     def getObjectiveTerms(self) -> Sequence[FidObjective]:
@@ -119,11 +119,11 @@ class ROITable(QTableWidget):
         super().closeEvent(QCloseEvent)
 
     @property
-    def planDesign(self) -> PlanDesign:
+    def planDesign(self) -> IonPlanDesign:
         return self._planDesign
 
     @planDesign.setter
-    def planDesign(self, pd:PlanDesign):
+    def planDesign(self, pd:IonPlanDesign):
         if self._planDesign is None:
             robustnessChanged = True
         else:

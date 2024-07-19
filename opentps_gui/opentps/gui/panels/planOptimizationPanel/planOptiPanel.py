@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QComboBox, QLabel, QPushButton
 
 from opentps.core.data.images import CTImage
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan._rtPlanDesign import PlanDesign
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data._patient import Patient
 from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
@@ -72,7 +72,8 @@ class mcsquareCalculationWindow(QDialog):
 
         doseCalculator.beamModel = beamModel
         if self._doseComputationPanel._doseSpacingLabel.isChecked():
-            self._doseComputationPanel.selectedPlan.planDesign.scoringVoxelSpacing = self._doseComputationPanel._doseSpacingSpin.value()
+            self._doseComputationPanel.selectedPlan.planDesign.setScoringParameters(scoringSpacing=self._doseComputationPanel._doseSpacingSpin.value(), adapt_gridSize_to_new_spacing=True)
+            # self._doseComputationPanel.selectedPlan.planDesign.scoringVoxelSpacing = self._doseComputationPanel._doseSpacingSpin.value()
         doseCalculator.nbPrimaries = self._doseComputationPanel._numProtons.value()
         doseCalculator.statUncertainty = self._doseComputationPanel._statUncertainty.value()
         doseCalculator.ctCalibration = calibration
@@ -124,7 +125,7 @@ class PlanOptiPanel(QWidget):
 
         self._planStructureLabel = QLabel('Plan design:')
         self.layout.addWidget(self._planStructureLabel)
-        self._planStructureComboBox = PatientDataComboBox(patientDataType=PlanDesign, patient=self._patient,
+        self._planStructureComboBox = PatientDataComboBox(patientDataType=IonPlanDesign, patient=self._patient,
                                                           parent=self)
         self._planStructureComboBox.selectedDataEvent.connect(self._handlePlanStructure)
         self.layout.addWidget(self._planStructureComboBox)
@@ -311,7 +312,7 @@ class PlanOptiPanel(QWidget):
             else:
                 solver = IMPTPlanOptimizer(method=method, plan=self._plan, maxit=self._optiConfig['maxIter'])
             # Optimize treatment plan
-            _, doseImage, _ = solver.optimize()
+            doseImage, _ = solver.optimize()
             doseImage.patient = self._mcsquareWindow._doseComputationPanel.selectedCT.patient
 
 

@@ -8,7 +8,7 @@ sys.path.append('..')
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
 from opentps.core.data.plan import FidObjective
@@ -23,10 +23,14 @@ from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOp
 logger = logging.getLogger(__name__)
 
 # Generic example: box of water with squared target
-def run():
-    output_path = os.getcwd()
+def run(output_path=""):
+    if(output_path != ""):
+        output_path = output_path
+    else:
+        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
-
 
     ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)
     bdl = mcsquareIO.readBDL(DoseCalculationConfig().bdlFile)
@@ -77,7 +81,7 @@ def run():
         plan = loadRTPlan(plan_file)
         logger.info('Plan loaded')
     else:
-        planDesign = PlanDesign()
+        planDesign = IonPlanDesign()
         planDesign.ct = ct
         planDesign.targetMask = roi
         planDesign.gantryAngles = gantryAngles
@@ -118,7 +122,7 @@ def run():
 
     solver = IMPTPlanOptimizer(method='Scipy-LBFGS', plan=plan, maxit=50)
     # Optimize treatment plan
-    w, doseImage, ps = solver.optimize()
+    doseImage, ps = solver.optimize()
 
     # MCsquare simulation
     # mc2.nbPrimaries = 1e6
