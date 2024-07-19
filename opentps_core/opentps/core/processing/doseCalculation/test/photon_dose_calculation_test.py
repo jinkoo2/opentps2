@@ -137,7 +137,7 @@ if not os.path.isdir(DIM_path) or len(os.listdir(DIM_path)) == 0:
     # plan.planDesign.beamlets = loadBeamlets(os.path.join(os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', 'SparseMatrices_MinMax','SM_nominal.pkl'))))
     plan.planDesign.robustness.nominal.sb = plan.planDesign.beamlets
     # plan.planDesign.beamlets = ccc.computeBeamlets(phantom, plan)
-    ccc.computeRobustScenarioBeamlets(phantom, plan, computeNominal = False, robustMode='Simulation')
+    ccc.computeRobustScenarioBeamlets(phantom, plan, computeNominal = False)
     saveDIM(plan, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results'), 'MinMax', 'all')
 else:
     loadDIM(plan, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', 'SparseMatrices_MinMax'))

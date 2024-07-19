@@ -12,7 +12,9 @@ import scipy.sparse as sp
 from scipy.sparse import csc_matrix
 from opentps.core.data.images import DoseImage
 from opentps.core.data.plan._photonPlan import PhotonPlan
-
+import ctypes
+import os
+import psutil
 
 def getConvolveNonZeroElements(kernel_size, nonZeroIndexes, image_size):
     nonZeroIndexes_convolved = []
@@ -176,11 +178,125 @@ def shiftBeamlets(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_
 
                 nonZeroValuesShiftedExtendedArray = np.append(nonZeroValuesShiftedExtendedArray,nonZeroValuesShifted * weight)
                 nonZeroIndexesShiftedExtendedArray = np.append(nonZeroIndexesShiftedExtendedArray,nonZeroIndexesShifted)
+                spp = sp.csc_matrix((nonZeroValuesShiftedExtendedArray, (nonZeroIndexesShiftedExtendedArray, np.zeros(nonZeroIndexesShiftedExtendedArray.size))), shape=(nbOfVoxelInImage, 1),dtype=np.float32)
+                # print('Here')
+                # printaux(spp.nonzero()[0], spp[spp.nonzero()][0])
             beamlet = sp.csc_matrix((nonZeroValuesShiftedExtendedArray, (nonZeroIndexesShiftedExtendedArray, np.zeros(nonZeroIndexesShiftedExtendedArray.size))), shape=(nbOfVoxelInImage, 1),dtype=np.float32)    
         else:
             beamlet = sp.csc_matrix((nonZeroValues[0], (nonZeroIndexes, np.zeros(nonZeroIndexes.size))), shape=(nbOfVoxelInImage, 1),dtype=np.float32)      
         BeamletMatrix.append(beamlet)  
     return sp.hstack(BeamletMatrix)
+
+def printaux(indexes, values):
+    values = np.ravel(values)
+    for index, value in zip(indexes, values):
+        print(f"{index:<10} {value:<10}")
+
+def find_change_indices(arr):
+    arr = np.array(arr)
+    # Create a boolean array where changes occur
+    changes = arr[1:] != arr[:-1]
+    # Use np.where to find the indices where changes occur, add 1 because we compare with the previous element
+    change_indices = np.where(changes)[0] + 1
+    return change_indices.tolist()
+
+def shiftBeamlets1(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
+    lib = ctypes.cdll.LoadLibrary('/home/luciano/Codes/newOpenTPS/opentps/opentps_core/opentps/core/processing/doseCalculation/photons/shiftBeamlets.so')
+    
+    # Define the argument types and return types for the C++ function
+    lib.shiftBeamlets.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float32, ndim=1, flags='C_CONTIGUOUS'),
+        np.ctypeslib.ndpointer(dtype=np.float32, ndim=1, flags='C_CONTIGUOUS'),
+        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+        ctypes.c_float,
+        ctypes.c_int,
+        ctypes.c_int
+    ]
+    numThreads = os.cpu_count()
+    scenarioShift_voxel[2]*=-1 ### To have the setup error in LPS. Check because some signs problem
+    scenarioShift_voxel[1]*=-1 ### To have the setup error in LPS. Check because some signs problem
+    nbOfBeamlets = sparseBeamlets.shape[1]
+    nbOfVoxelInImage = sparseBeamlets.shape[0]
+    assert(len(beamletAngles_rad), nbOfBeamlets)
+    gridSize = np.array(gridSize, dtype=np.int32)
+    BeamletMatrix = []
+    
+    nonZeroIndexes = sparseBeamlets.nonzero()
+    nonZeroValues = np.array(sparseBeamlets[nonZeroIndexes], dtype= np.float32)[0]
+    nonZeroIndexes_beamlet = np.array(nonZeroIndexes[0], dtype= np.int32)
+    indexes_beamlet = np.array(nonZeroIndexes[1], dtype= np.int32)
+    arg = np.argsort(indexes_beamlet)
+    
+    indexes_beamlet = indexes_beamlet[arg]
+    nonZeroIndexes_beamlet = nonZeroIndexes_beamlet[arg]
+    nonZeroValues = nonZeroValues[arg]
+    indexes = [0] + find_change_indices(indexes_beamlet)
+    
+    lib.shiftBeamlets(nonZeroValues, nonZeroValuesShifted, nonZeroIndexes, nonZeroIndexesShifted, Shift_voxel, shiftValue, NumberOfElements, numThreads)   
+        
+    return sp.hstack(BeamletMatrix)
+
+
+def shiftBeamlets2(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
+    lib = ctypes.cdll.LoadLibrary('/home/luciano/Codes/newOpenTPS/opentps/opentps_core/opentps/core/processing/doseCalculation/photons/shiftBeamlets.so')
+    
+    # Define the argument types and return types for the C++ function
+    lib.shiftBeamlets.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float32, ndim=1, flags='C_CONTIGUOUS'),
+        np.ctypeslib.ndpointer(dtype=np.float32, ndim=1, flags='C_CONTIGUOUS'),
+        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+        np.ctypeslib.ndpointer(dtype=np.float32, ndim=1, flags='C_CONTIGUOUS'),
+        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+        np.ctypeslib.ndpointer(dtype=np.float32, ndim=1, flags='C_CONTIGUOUS'),
+        ctypes.c_int,
+        ctypes.c_int
+    ]
+    numThreads = psutil.cpu_count()
+    scenarioShift_voxel[2]*=-1 ### To have the setup error in LPS. Check because some signs problem
+    scenarioShift_voxel[1]*=-1 ### To have the setup error in LPS. Check because some signs problem
+    nbOfBeamlets = sparseBeamlets.shape[1]
+    nbOfVoxelInImage = sparseBeamlets.shape[0]
+    assert(len(beamletAngles_rad), nbOfBeamlets)
+    gridSize = np.array(gridSize, dtype=np.int32)
+    BeamletMatrix = []
+    
+    length = sparseBeamlets.shape[0]
+    nonZeroIndexes = sparseBeamlets.nonzero()
+    nonZeroValues = np.array(sparseBeamlets[nonZeroIndexes], dtype= np.float32)[0]
+    nonZeroIndexes_beamlet = np.array(nonZeroIndexes[0], dtype= np.int32)
+    indexes_beamlet = np.array(nonZeroIndexes[1], dtype= np.int32)
+    arg = np.argsort(indexes_beamlet)
+    
+    indexes_beamlet = indexes_beamlet[arg]
+    nonZeroIndexes_beamlet = nonZeroIndexes_beamlet[arg]
+    nonZeroValues = nonZeroValues[arg]
+    indexesChangeBeamlet = [0] + find_change_indices(indexes_beamlet) + [len(indexes_beamlet)]
+    NumberOfElements = len(nonZeroValues)
+    nonZeroValues = np.array(nonZeroValues, dtype=np.float32)
+    nonZeroIndexes_beamlet = np.array(nonZeroIndexes_beamlet, dtype=np.int32)
+    indexesChangeBeamlet = np.array(indexesChangeBeamlet, dtype=np.int32)
+    scenarioShift_voxel = np.array(scenarioShift_voxel, dtype=np.float32)
+    
+    nonZeroValuesShifted = np.zeros(NumberOfElements * 2 * 3).astype(np.float32)
+    nonZeroIndexesShifted = np.zeros(NumberOfElements * 2 * 3).astype(np.int32)
+    beamletAngles_rad = np.array(beamletAngles_rad, dtype=np.float32)
+    nOfBeamlets = len(beamletAngles_rad)
+    lib.shiftBeamlets(nonZeroValues, nonZeroValuesShifted, nonZeroIndexes_beamlet, nonZeroIndexesShifted, indexesChangeBeamlet, scenarioShift_voxel, gridSize, beamletAngles_rad, nOfBeamlets, numThreads)
+    
+    for i in range(nOfBeamlets):
+        start = indexesChangeBeamlet[i]
+        end = indexesChangeBeamlet[i+1]
+        indexes = nonZeroIndexesShifted[start*2*3:end*2*3]
+        values = nonZeroValuesShifted[start*2*3:end*2*3]
+        indexes = indexes[indexes.nonzero()]
+        values = values[values.nonzero()]
+        BeamletMatrix.append(sp.csc_matrix((values, (indexes, np.zeros(len(indexes)))), shape=(length,1), dtype=np.float32))
+        
+    return sp.hstack(BeamletMatrix, format='csc')
 
 def convolveSparseMatrix(sparse, sigma_voxels, image_size):
     len = sparse.shape[0]
