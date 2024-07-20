@@ -154,10 +154,10 @@ solver = IMPTPlanOptimizer(method = 'Scipy-LBFGS', plan=plan,
                             maxit = 200,
                             ftol = 1e-6,
                             gtol = 1e-6)
-w, _, ps = solver.optimize()
+totalDose, cost = solver.optimize()
 
-doseInfluenceMatrix.beamletWeights = plan.planDesign.beamlets.beamletWeights
-dose = doseInfluenceMatrix.toDoseImage()
+# doseInfluenceMatrix.beamletWeights = plan.planDesign.beamlets.beamletWeights
+# dose = doseInfluenceMatrix.toDoseImage()
 dose_file_nrrd = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', "dose.nrrd") 
-exportImageSitk(dose_file_nrrd, dose)
+exportImageSitk(dose_file_nrrd, totalDose)
 

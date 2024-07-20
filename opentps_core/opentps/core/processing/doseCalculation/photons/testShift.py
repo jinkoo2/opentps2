@@ -19,8 +19,11 @@ def loadData(file_path, cls):
 angles = [0]*int(3821/3) + [np.pi/2]*int(3821/3)
 angles+= [np.pi/4]*(3821-len(angles))
 file = loadBeamlets('/home/luciano/ResearchData/DataSets/ICRU-Prostate/output/ProbabilisticProstate/SparseMatrices_Simulation/SM_nominal.pkl')
+# file._sparseBeamlets = file._sparseBeamlets[:,:100]
 shift = [1.4, -1.2 , -2.3]
 t0 = time.time()
+# angles = np.random.rand(file._sparseBeamlets.shape[1]) * np.pi
+angles[0] = 0
 BeamletMatrix_1 = shiftBeamlets2(file._sparseBeamlets, file.doseGridSize, shift, angles) ### 
 # shift = [1.4, -1.2 , -2.3]
 # BeamletMatrix = shiftBeamlets(file._sparseBeamlets, file.doseGridSize, shift, angles) ### 

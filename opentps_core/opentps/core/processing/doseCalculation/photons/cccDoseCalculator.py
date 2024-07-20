@@ -21,7 +21,7 @@ from opentps.core.data import ROIContour
 from opentps.core.data.plan._photonPlan import PhotonPlan
 import opentps.core.io.CCCdoseEngineIO as CCCdoseEngineIO
 from scipy import interpolate
-from opentps.core.processing.doseCalculation.photons._utils import shiftBeamlets,correctShift 
+from opentps.core.processing.doseCalculation.photons._utils import shiftBeamlets,shiftBeamletscpp 
 import time
 # from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness
 
@@ -205,8 +205,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
     def fromHU2Densities(self, ct : CTImage, overRidingList = None):
         Density = self._ctCalibration._PiecewiseHU2Density__densities
         HU = self._ctCalibration._PiecewiseHU2Density__hu
-        linear = interpolate.interp1d(HU, Density, fill_value='extrapolate')
-        ct.imageArray = linear(ct.imageArray)
+        ct.imageArray = np.interp(ct.imageArray, HU, Density)
         if overRidingList is not None:
             for overRidingDict in overRidingList:
                 ct.imageArray[overRidingDict['Mask'].imageArray.astype(bool) == True] = overRidingDict['Value']
@@ -289,7 +288,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             nbOfBeamlets = nominal._sparseBeamlets.shape[1]
             assert(nbOfBeamlets==len(self._plan.beamlets))
 
-            BeamletMatrix = shiftBeamlets(nominal._sparseBeamlets, nominal.doseGridSize, scenarioShift_voxel, self._plan.beamletsAngle_rad) ### Implement the convolutions in case of sre in GPU look at shiftBeamlets
+            BeamletMatrix = shiftBeamletscpp(nominal._sparseBeamlets, nominal.doseGridSize, scenarioShift_voxel, self._plan.beamletsAngle_rad) ### Implement the convolutions in case of sre in GPU look at shiftBeamlets
             beamletsScenario = SparseBeamlets()
             beamletsScenario.setUnitaryBeamlets(BeamletMatrix)
             beamletsScenario.doseOrigin = nominal.doseOrigin

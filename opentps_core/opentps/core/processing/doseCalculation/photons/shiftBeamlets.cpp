@@ -4,18 +4,19 @@
 #include <algorithm>
 #include <thread>
 #include <cmath> 
+#include <chrono>
 
 extern "C" {
 
 // Function prototypes
-float getElement(const std::vector<int>& index, int target, const std::vector<float>& sparse);
+float getElement(const int *index, int target,const float *sparse, int start, int end);
 float linearInterpolation(float x, float xi0, float xi1, float xi2, float yi0, float yi1, float yi2);
 int sign(float x);
 void shiftSparse(const float* sparse, float* imageShifted, const int* index, const int* shift, float shiftValue, int indexNumberOfElements, float weight, int beamletStart, int start, int end);
 void parallelShiftSparse(const float* sparse, float* imageShifted, const int* index, const int* shift, float shiftValue, int beamletStart, int indexNumberOfElements, float weight, int numThreads);
 void printNonZeroElements(const float* arr, int size);
 std::pair<std::vector<int>, std::vector<float>> getNonZeroElements(const float* arr, int size) ;
-int getNumberOfNoneZeros(std::array<double, 3> arr);
+int getNumberOfNoneZeros(std::array<double, 3>& arr);
 float FLOAT_TOLERANCE = 1e-7;
 
 std::array<double, 3> elementWiseRest(const std::array<double, 3>& arr2, const std::array<int, 3>& arr1) {
@@ -117,6 +118,7 @@ void shiftBeamlets(const float* nonZeroValues, float* nonZeroValuesShifted, cons
         // std::cout<<i<<std::endl;
         if (elementWiseSum(shiftSmallVoxel)!=0){
             int j = 0;
+            // auto start = std::chrono::high_resolution_clock::now();
             for (double& shift : shiftSmallVoxel){
                 if (shift != 0){
                     float weight = std::abs(shift) / shiftSmallVoxelAbsSum;
@@ -135,6 +137,9 @@ void shiftBeamlets(const float* nonZeroValues, float* nonZeroValuesShifted, cons
                     j+=1;
                 }   
             }
+            // auto end = std::chrono::high_resolution_clock::now();
+            // std::chrono::duration<double> duration = end - start;
+            // std::cout << "Execution time: " << duration.count() << " seconds" << std::endl;
         }
         pushToSparseMatrix(imageShifted, gridSize[0]*gridSize[1]*gridSize[2], nonZeroValuesShifted, nonZeroIndexesShifted, beamletStart, 3);
         delete[] imageShifted;
@@ -166,12 +171,12 @@ void shiftSparse(const float* sparse, float* imageShifted, const int* index, con
     for (int i = start; i < end; ++i) {
         if (shiftValue != 0.0) {
             int index0 = index[i] + shift[1];
-            float value0 = getElement(std::vector<int>(index + beamletStart, index + beamletStart + indexNumberOfElements), index0, std::vector<float>(sparse + beamletStart, sparse + beamletStart + indexNumberOfElements));
+            float value0 = getElement(index, index0, sparse, beamletStart, beamletStart + indexNumberOfElements); // Pasa estas variables en el input de la funcion
 
             float value1 = sparse[i];
 
             int index2 = index[i] + shift[2];
-            float value2 = getElement(std::vector<int>(index + beamletStart, index + beamletStart + indexNumberOfElements), index2, std::vector<float>(sparse + beamletStart, sparse + beamletStart + indexNumberOfElements)); // Pasa estas variables en el input de la funcion
+            float value2 = getElement(index, index2, sparse, beamletStart, beamletStart + indexNumberOfElements); // Pasa estas variables en el input de la funcion
 
             int indexShifted0  = index[i] + shift[0];
             int indexShifted1  = indexShifted0 + shift[2];
@@ -193,17 +198,15 @@ void shiftSparse(const float* sparse, float* imageShifted, const int* index, con
 }
 
 // Implementation of getElement
-float getElement(const std::vector<int>& index, int target, const std::vector<float>& sparse) {
-    int left = 0;
-    int right = index.size() - 1;
-    while (left <= right) {
-        int mid = left + (right - left) / 2;
+float getElement(const int *index, int target, const float *sparse, int start, int end) {
+    while (start <= end) {
+        int mid = start + (end - start) / 2;
         if (index[mid] == target) {
             return sparse[mid];
         } else if (index[mid] < target) {
-            left = mid + 1;
+            start = mid + 1;
         } else {
-            right = mid - 1;
+            end = mid - 1;
         }
     }
     return 0; // Element not found
@@ -240,7 +243,7 @@ void printNonZeroElements(const float* arr, int size) {
     }
 }
 
-int getNumberOfNoneZeros(std::array<double, 3> arr) {
+int getNumberOfNoneZeros(std::array<double, 3>& arr) {
     int count = 0;
     for (int i = 0; i < arr.size(); ++i) {
         if (arr[i] > FLOAT_TOLERANCE) {

@@ -22,6 +22,8 @@ except:
 
 from opentps.core.data.plan._rtPlan import RTPlan
 from opentps.core.data.plan._ionPlan import IonPlan
+from opentps.core.data.plan._photonPlan import PhotonPlan
+
 from opentps.core.processing.planOptimization.solvers import sparcling, \
     beamletFree
 from opentps.core.processing.planOptimization.solvers import bfgs, localSearch
@@ -108,7 +110,7 @@ class PlanOptimizer:
             The weights.
         """
         # Total Dose calculation
-        totalDose = self.computeDose().imageArray
+        totalDose = self.computeDose().imageArray ### Isn't it easier to do the following line? This crash with the new definition of Treatment plan for photons. Shall we remove spotMUs from the proton plan? just use MUs?
         maxDose = np.max(totalDose)
         try:
             x0 = self.opti_params['init_weights']
@@ -169,7 +171,11 @@ class PlanOptimizer:
         assert self.plan.planDesign.beamlets._sparseBeamlets is not None
 
         beamlets = self.plan.planDesign.beamlets
-        weights = np.array(self.plan.spotMUs, dtype=np.float32)
+        if isinstance(self.plan, IonPlan):
+            weights = np.array(self.plan.spotMUs, dtype=np.float32)
+        elif isinstance(self.plan, PhotonPlan):
+            weights = np.array(self.plan.beamletMUs, dtype=np.float32)
+            
         if use_MKL == 1:
             totalDose = sparse_dot_mkl.dot_product_mkl(beamlets._sparseBeamlets, weights) * self.plan.numberOfFractionsPlanned
         else:
