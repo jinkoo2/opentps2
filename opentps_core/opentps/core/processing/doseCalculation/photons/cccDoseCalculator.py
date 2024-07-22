@@ -21,7 +21,10 @@ from opentps.core.data import ROIContour
 from opentps.core.data.plan._photonPlan import PhotonPlan
 import opentps.core.io.CCCdoseEngineIO as CCCdoseEngineIO
 from scipy import interpolate
-from opentps.core.processing.doseCalculation.photons._utils import shiftBeamlets,shiftBeamletscpp 
+try:
+    from opentps.core.processing.doseCalculation.photons._utils import shiftBeamlets
+except ImportError:
+    from opentps.core.processing.doseCalculation.photons._utils import shiftBeamletscpp 
 import time
 # from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness
 

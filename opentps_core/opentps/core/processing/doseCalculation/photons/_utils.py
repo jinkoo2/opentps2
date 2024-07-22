@@ -2,11 +2,16 @@ import numpy as np
 import opentps.core.io.CCCdoseEngineIO as CCCdoseEngineIO
 import scipy.sparse as sp
 from scipy import ndimage
-import pycuda.autoinit
-import pycuda.gpuarray as gpuarray
-from pycuda.compiler import SourceModule
-from pycuda.autoinit import context
-import pycuda.driver as cuda
+import logging
+logger = logging.getLogger(__name__)
+try:
+    import pycuda.autoinit
+    import pycuda.gpuarray as gpuarray
+    from pycuda.compiler import SourceModule
+    from pycuda.autoinit import context
+    import pycuda.driver as cuda
+except ModuleNotFoundError:
+    logger.warning("No GPU found. Switch to C++ implementation instead")
 from scipy.ndimage import shift, gaussian_filter
 import scipy.sparse as sp
 from scipy.sparse import csc_matrix
@@ -33,7 +38,7 @@ def convolveVoxel(sparse,index,kernel, image_size):
                 index_shifted = index + CCCdoseEngineIO.convertTo1DcoordFortran([i - kernel_size//2, j - kernel_size//2, k - kernel_size//2], image_size)
                 convolution += sparse[index_shifted,0] * kernel[i,j,k]
     return convolution
-
+'''
 mod=SourceModule("""
 #include <stdio.h>
 #include <stdlib.h>
@@ -237,7 +242,7 @@ def shiftBeamlets1(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles
     # lib.shiftBeamlets(nonZeroValues, nonZeroValuesShifted, nonZeroIndexes, nonZeroIndexesShifted, Shift_voxel, shiftValue, NumberOfElements, numThreads)   
         
     return sp.hstack(BeamletMatrix)
-
+'''
 
 def shiftBeamletscpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
     lib = ctypes.cdll.LoadLibrary('/home/luciano/Codes/newOpenTPS/opentps/opentps_core/opentps/core/processing/doseCalculation/photons/shiftBeamlets.so')
