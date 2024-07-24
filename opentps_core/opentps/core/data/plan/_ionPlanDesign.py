@@ -1,5 +1,5 @@
 
-__all__ = ['RTPlanDesign']
+__all__ = ['IonPlanDesign']
 
 import logging
 import time

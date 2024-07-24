@@ -29,6 +29,7 @@ opentps_core/opentps/core/Processing/DoseCalculation/MCsquare/BDL/UMCG_P1_v2_Ran
 *.nrrd
 *nii.gz
 configureEnv.sh
+*.dcm
 *.csv
 *.tif
 *.pkl

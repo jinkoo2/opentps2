@@ -51,6 +51,7 @@ class RTPlan(PatientData):
         self.planDesign = None
         self.SAD_mm = 1000
 
+
         super().__init__(name=name, patient=patient)
 
     def __getitem__(self, beamNb) -> PlanIonBeam:

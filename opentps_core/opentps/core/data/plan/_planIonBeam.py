@@ -64,6 +64,7 @@ class PlanIonBeam:
         self.id = 0
         self.rangeShifter: Optional[RangeShifter] = None
         self.seriesInstanceUID = ""
+        self.approxSpotsPeakPosList = None
 
     def __getitem__(self, layerNb) -> PlanIonLayer:
         """
@@ -187,10 +188,13 @@ class PlanIonBeam:
     def spotIrradiationDurations(self, t: Sequence[float]):
         t = np.array(t)
 
+        if len(t) != self.numberOfSpots:
+            raise ValueError(f'Cannot set spot durations of size {len(t)} to size {self.numberOfSpots}')
+
         ind = 0
         for layer in self._layers:
-            layer.spotIrradiationDurations = t[ind:ind + len(layer.spotIrradiationDurations)]
-            ind += len(layer.spotIrradiationDurations)
+            layer.spotIrradiationDurations = t[ind:ind + layer.numberOfSpots]
+            ind += layer.numberOfSpots
 
     @property
     def spotXY(self) -> np.ndarray:
