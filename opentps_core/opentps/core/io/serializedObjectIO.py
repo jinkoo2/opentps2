@@ -8,6 +8,8 @@ import os
 import logging
 import matplotlib.pyplot as plt
 
+from opentps.core.data.plan._ionPlan import IonPlan
+from opentps.core.data.plan._photonPlan import PhotonPlan
 from opentps.core.data.plan._rtPlan import RTPlan
 from opentps.core.data.dynamicData._dynamic3DModel import Dynamic3DModel
 from opentps.core.data.dynamicData._dynamic3DSequence import Dynamic3DSequence
@@ -174,7 +176,7 @@ def saveRTPlan(plan, file_path):
         pickle.dump(plan.__dict__, fid)
 
 
-def loadRTPlan(file_path):
+def loadRTPlan(file_path, radiationType="Proton"):
     """
     Load a RTPlan object from a file
 
@@ -190,8 +192,13 @@ def loadRTPlan(file_path):
     """
     with open(file_path, 'rb') as fid:
         tmp = pickle.load(fid)
-
-    plan = RTPlan()
+    
+    if radiationType.upper() == "PROTON":
+        plan = IonPlan()
+    elif radiationType.upper == "PHOTON":
+        plan = PhotonPlan()
+    else:
+        raise NotImplementedError("Radiation type {} is not yet supported".format(radiationType))
     plan.__dict__.update(tmp)
     return plan
 

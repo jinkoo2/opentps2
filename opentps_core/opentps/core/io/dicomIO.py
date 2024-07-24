@@ -1400,7 +1400,7 @@ def writeRTPlan(plan: RTPlan, outputFolder:str, outputFilename:str=None, struct:
     dcm_file.FrameOfReferenceUID = plan.frameOfReferenceUID if hasattr(plan, 'frameOfReferenceUID') else pydicom.uid.generate_uid()
     dcm_file.RTPlanLabel = plan.rtPlanLabel if hasattr(plan, 'rtPlanLabel') else ""
     dcm_file.RTPlanGeometry = plan.rtPlanGeometry if hasattr(plan, 'rtPlanGeometry') else "PATIENT"
-    dcm_file.RTPlanName = plan.rtPlanName if hasattr(plan, 'name') else ""
+    dcm_file.RTPlanName = plan.rtPlanName if hasattr(plan, 'rtPlanName') else plan.name
     dcm_file.RTPlanDate = plan.rtPlanDate if hasattr(plan, 'planDate') else dt.strftime('%Y%m%d')
     dcm_file.RTPlanTime = plan.rtPlanTime if hasattr(plan, 'planTime') else dt.strftime('%H%M%S.%f')
     if hasattr(plan, 'treatmentProtocols'):

@@ -65,7 +65,7 @@ class IonPlanDesign(RTPlanDesign):
 
         Returns
         --------
-        RTPlan
+        IonPlan
             plan
         """
         start = time.time()
