@@ -15,7 +15,7 @@ from opentps.core.data.plan import PhotonPlan
 from opentps.core.processing.imageProcessing import resampler3D
 from opentps.core.data._patientData import PatientData
 from opentps.core.data.plan._objectivesList import ObjectivesList
-from opentps.core.processing.planEvaluation.robustnessEvaluation import Robustness
+from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
 from opentps.core.processing.planOptimization.planInitializer import PlanInitializer
 from opentps.core.data.plan._rtPlanDesign import RTPlanDesign
 from opentps.core.processing.planOptimization.planInitializer_Photons import PhotonPlanInitializer

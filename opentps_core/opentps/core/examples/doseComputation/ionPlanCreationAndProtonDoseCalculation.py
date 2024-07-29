@@ -9,7 +9,7 @@ from opentps.core.processing.planOptimization.tools import evaluateClinical
 sys.path.append('..')
 import numpy as np
 
-from opentps.core.data.plan._rtPlan import RTPlan
+from opentps.core.data.plan import IonPlan
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import loadRTPlan, saveRTPlan
 from opentps.core.io.dicomIO import readDicomDose, readDicomPlan
@@ -41,7 +41,7 @@ def run(output_path=""):
     logger.info('Files will be stored in {}'.format(output_path))
 
     # Create plan from scratch
-    plan = RTPlan()
+    plan = IonPlan()
     plan.appendBeam(PlanIonBeam())
     plan.appendBeam(PlanIonBeam())
     plan.beams[1].gantryAngle = 120.
