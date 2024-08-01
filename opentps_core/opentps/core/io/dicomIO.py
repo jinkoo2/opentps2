@@ -17,6 +17,11 @@ from opentps.core.data.images._doseImage import DoseImage
 from opentps.core.data._rtStruct import RTStruct
 from opentps.core.data._roiContour import ROIContour
 from opentps.core.data.images._vectorField3D import VectorField3D
+from opentps.core.data.plan import PhotonPlan
+from opentps.core.data.plan._planPhotonBeam import PlanPhotonBeam
+import pydicom
+from pydicom.dataset import Dataset, FileDataset
+
 
 logger = logging.getLogger(__name__)
 
@@ -1944,3 +1949,250 @@ def readDicomVectorField(dcmFile):
     field.patient = patient
 
     return field
+
+
+def readDicomPhotonRTPlan(dcmFile) -> PhotonPlan:
+    print('Reading RT file:',dcmFile)
+    dcm = pydicom.dcmread(dcmFile)
+
+    # collect patient information
+    if hasattr(dcm, 'PatientID'):
+        brth = dcm.PatientBirthDate if hasattr(dcm, 'PatientBirthDate') else None
+        sex = dcm.PatientSex if hasattr(dcm, 'PatientSex') else None
+
+        patient = Patient(id=dcm.PatientID, name=str(dcm.PatientName), birthDate=brth,
+                      sex=sex)
+    else:
+        patient = Patient()
+
+    if (hasattr(dcm, 'SeriesDescription') and dcm.SeriesDescription != ""):
+        name = dcm.SeriesDescription
+    else:
+        name = dcm.SeriesInstanceUID
+
+    plan = PhotonPlan(name=name)
+    plan.patient = patient
+
+    # plan.OriginalDicomDataset = dcm
+
+    # Photon plan
+    if dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.481.5":
+        plan.modality = "Radiotherapy"
+        if dcm.BeamSequence[0].RadiationType == "PHOTON": ### Filter also by modality, this TPS doesnt support wedges
+            plan.radiationType = "Photon"
+        else:
+            print("ERROR: Radiation type " + dcm.BeamSequence[0].RadiationType + " not supported")
+            plan.radiationType = dcm.BeamSequence[0].RadiationType
+            return
+    # Ion plan
+    elif dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.481.8":
+        print("ERROR: Use readDicomRT function for Ions treatment plans")
+        plan.modality = "Ion therapy"
+        return
+    
+    else:
+        print("ERROR: Unknown SOPClassUID " + dcm.SOPClassUID + " for file " + plan.DcmFile)
+        plan.modality = "Unknown"
+        return
+
+    # Start parsing PBS plan
+    plan.SOPInstanceUID = dcm.SOPInstanceUID
+    plan.numberOfFractionsPlanned = int(dcm.FractionGroupSequence[0].NumberOfFractionsPlanned)
+    plan.SAD_mm = float(dcm.BeamSequence[0].SourceAxisDistance)
+    if (hasattr(dcm.BeamSequence[0], 'TreatmentMachineName')):
+        plan.treatmentMachineName = dcm.BeamSequence[0].TreatmentMachineName
+    else:
+        plan.treatmentMachineName = ""
+    numberOfBeams = len(dcm.BeamSequence)
+    # print(numberOfBeams,'beams where detected.')
+    for k, dcm_beam in enumerate(dcm.BeamSequence):
+        if dcm_beam.TreatmentDeliveryType != "TREATMENT":
+            continue
+        # print('Loading the beam number {}.'.format(k + 1))
+        first_beamSegment = dcm_beam.ControlPointSequence[0]
+        beam = PlanPhotonBeam()
+        beam.id = dcm_beam.BeamNumber
+        beam.seriesInstanceUID = plan.seriesInstanceUID
+        beam.name = dcm_beam.BeamName
+        beam.beamType = dcm_beam.BeamType
+        beam.isocenterPosition_mm = [float(first_beamSegment.IsocenterPosition[0]), float(first_beamSegment.IsocenterPosition[1]),
+                                  float(first_beamSegment.IsocenterPosition[2])] ## LPS
+        beam.gantryAngle_degree = float(first_beamSegment.GantryAngle) * -1 + 360 ### This is done to match the coordinate system used in OpenTPS
+        beam.couchAngle_degree = float(first_beamSegment.PatientSupportAngle) * -1 + 360### This is done to match the coordinate system used in OpenTPS
+
+        finalCumulativeMetersetWeight = float(dcm_beam.FinalCumulativeMetersetWeight)
+
+        # find corresponding beam in FractionGroupSequence (beam order may be different from IonBeamSequence)
+        ReferencedBeam_id = next((x for x, val in enumerate(dcm.FractionGroupSequence[0].ReferencedBeamSequence) if
+                                  val.ReferencedBeamNumber == dcm_beam.BeamNumber), -1)
+        if ReferencedBeam_id == -1:
+            print("ERROR: Beam number " + dcm_beam.BeamNumber + " not found in FractionGroupSequence.")
+            print("This beam is therefore discarded.")
+            continue
+        else:
+            beamMeterset = float(dcm.FractionGroupSequence[0].ReferencedBeamSequence[ReferencedBeam_id].BeamMeterset)
+
+        beam.scalingFactor = beamMeterset / finalCumulativeMetersetWeight 
+
+        for limitingDevice in dcm_beam.BeamLimitingDeviceSequence:
+            if limitingDevice.RTBeamLimitingDeviceType == 'MLCX':
+                xmlcBoundaries = np.array(limitingDevice.LeafPositionBoundaries)
+                beam.numberOfLeafs = len(xmlcBoundaries) - 1
+            if limitingDevice.RTBeamLimitingDeviceType == 'MLCY':
+                ymlcBoundaries = np.array(limitingDevice.LeafPositionBoundaries)
+                ymlcXcoord = (ymlcBoundaries[:-1] + ymlcBoundaries[1:])/2.0
+                beam.numberOfLeafs = len(ymlcXcoord)
+
+        numberOfSegments = len(dcm_beam.ControlPointSequence) - 1 
+        # print(numberOfSegments,'beam segments where detected.')
+        for i, dcm_beamSegment in enumerate(dcm_beam.ControlPointSequence):
+            if i == numberOfSegments: ### Doesn't deliver dose?
+                continue
+            # print('\tLoading the beam segment number {}/{}.'.format(i+1,numberOfSegments))
+
+            if (plan.scanMode == "MODULATED"):
+                beamSegment = beam.createBeamSegment()
+
+                if dcm_beamSegment.get('PatientSupportAngle') != None: couchAngle = float(dcm_beamSegment.PatientSupportAngle) * -1 ### This is done to match the coordinate system used in OpenTPS
+                if dcm_beamSegment.get('GantryAngle') != None: gantryAngle = float(dcm_beamSegment.GantryAngle) * -1 + 360### This is done to match the coordinate system used in OpenTPS
+                if dcm_beamSegment.get('BeamLimitingDeviceAngle') != None: beamLimitingDeviceAngle = float(dcm_beamSegment.BeamLimitingDeviceAngle)
+
+                beamSegment.couchAngle_degree = couchAngle 
+                beamSegment.gantryAngle_degree = gantryAngle
+                beamSegment.beamLimitingDeviceAngle_degree = beamLimitingDeviceAngle
+                # beamSegment.seriesInstanceUID = plan.seriesInstanceUID
+                beamSegment.controlPointIndex = dcm_beamSegment.ControlPointIndex
+                
+                for limitingDevice in dcm_beamSegment.BeamLimitingDevicePositionSequence:
+                    type = limitingDevice.RTBeamLimitingDeviceType
+                    if type == 'ASYMX':
+                        beamSegment.x_jaw_mm = limitingDevice.LeafJawPositions
+                    elif type == 'ASYMY':
+                        beamSegment.y_jaw_mm = limitingDevice.LeafJawPositions
+                    elif type == 'MLCX':
+                        positions = np.array(limitingDevice.LeafJawPositions)
+                        beamSegment.Xmlc_mm = np.column_stack((xmlcBoundaries[:-1], xmlcBoundaries[1:], positions[:beam.numberOfLeafs], positions[beam.numberOfLeafs:]))
+                    elif type == 'MLCY':
+                        beamSegment.Ymlc_mm = limitingDevice.LeafJawPositions
+                    else:
+                        print('No proper beam limiting device was found')
+
+                beamSegment.mu = beam.scalingFactor * (dcm_beam.ControlPointSequence[i+1].CumulativeMetersetWeight - dcm_beam.ControlPointSequence[i].CumulativeMetersetWeight)
+                # beamSegment.convertSegmentsIntoBeamlets()
+            else:
+                print('The code was tested for only Modulated scan mode')
+                continue
+        plan.appendBeam(beam)
+        
+    print(plan)
+    # print('All the beams were loaded successfully!')
+    return plan
+
+
+def writeDicomPhotonRTPlan(rt_plan: PhotonPlan, output_file: str):
+    # Create the File Meta Information
+    file_meta = Dataset()
+    file_meta.MediaStorageSOPClassUID = pydicom.uid.RTPlanStorage
+    file_meta.MediaStorageSOPInstanceUID = rt_plan.SOPInstanceUID or pydicom.uid.generate_uid()
+    file_meta.ImplementationClassUID = pydicom.uid.PYDICOM_IMPLEMENTATION_UID
+
+    # Create the main dataset
+    ds = FileDataset(output_file, {}, file_meta=file_meta, preamble=b"\0" * 128)
+    ds.SOPClassUID = file_meta.MediaStorageSOPClassUID
+    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
+    ds.Modality = 'RTPLAN'
+    ds.SeriesInstanceUID = rt_plan.seriesInstanceUID or pydicom.uid.generate_uid()
+    ds.RTPlanName = rt_plan.rtPlanName
+    ds.RTPlanLabel = rt_plan.rtPlanName
+
+    # Add patient information
+    patient = rt_plan._patient
+    if patient:
+        ds.PatientName = patient._name
+        ds.PatientID = patient.seriesInstanceUID
+        ds.PatientBirthDate = getattr(patient, 'birthDate', '')
+        ds.PatientSex = getattr(patient, 'sex', '')
+
+    # Add the general RT Plan information
+    ds.RTPlanDate = datetime.datetime.now().strftime('%Y%m%d')
+    ds.RTPlanTime = datetime.datetime.now().strftime('%H%M%S')
+    ds.FrameOfReferenceUID = rt_plan.seriesInstanceUID or pydicom.uid.generate_uid()
+    ds.PositionReferenceIndicator = ''
+
+    # Add Fraction Group Sequence
+    fraction_group_sequence = []
+    fraction_group = Dataset()
+    fraction_group.FractionGroupNumber = 1
+    fraction_group.NumberOfFractionsPlanned = rt_plan._numberOfFractionsPlanned
+    fraction_group.ReferencedBeamSequence = []
+    
+    for beam in rt_plan._beams:
+        referenced_beam = Dataset()
+        referenced_beam.ReferencedBeamNumber = beam.id
+        referenced_beam.BeamMeterset = beam.scalingFactor
+        fraction_group.ReferencedBeamSequence.append(referenced_beam)
+
+    fraction_group_sequence.append(fraction_group)
+    ds.FractionGroupSequence = fraction_group_sequence
+
+    # Add Beam Sequence
+    beam_sequence = []
+    for beam in rt_plan._beams:
+        dcm_beam = Dataset()
+        dcm_beam.BeamNumber = beam.id
+        dcm_beam.BeamName = beam.name
+        dcm_beam.TreatmentMachineName = rt_plan.treatmentMachineName
+        dcm_beam.PrimaryDosimeterUnit = "MU"
+        dcm_beam.SourceAxisDistance = rt_plan.SAD_mm
+        dcm_beam.RadiationType = "PHOTON"
+        dcm_beam.BeamType = beam.beamType
+        dcm_beam.TreatmentDeliveryType = "TREATMENT"
+        
+        control_point_sequence = []
+        for segment in beam.segments:
+            control_point = Dataset()
+            control_point.ControlPointIndex = segment.controlPointIndex
+            control_point.GantryAngle = segment.gantryAngle_degree
+            control_point.PatientSupportAngle = segment.couchAngle_degree
+            control_point.BeamLimitingDeviceAngle = segment.beamLimitingDeviceAngle_degree
+
+            # Add Beam Limiting Device Positions
+            beam_limiting_device_sequence = []
+            if segment.x_jaw_mm:
+                x_jaw = Dataset()
+                x_jaw.RTBeamLimitingDeviceType = 'ASYMX'
+                x_jaw.LeafJawPositions = segment.x_jaw_mm
+                beam_limiting_device_sequence.append(x_jaw)
+
+            if segment.y_jaw_mm:
+                y_jaw = Dataset()
+                y_jaw.RTBeamLimitingDeviceType = 'ASYMY'
+                y_jaw.LeafJawPositions = segment.y_jaw_mm
+                beam_limiting_device_sequence.append(y_jaw)
+
+            if segment.Xmlc_mm is not None:
+                mlc = Dataset()
+                mlc.RTBeamLimitingDeviceType = 'MLCX'
+                mlc.LeafJawPositions = segment.Xmlc_mm.flatten().tolist()
+                beam_limiting_device_sequence.append(mlc)
+
+            control_point.BeamLimitingDevicePositionSequence = beam_limiting_device_sequence
+            control_point_sequence.append(control_point)
+
+        dcm_beam.ControlPointSequence = control_point_sequence
+        beam_sequence.append(dcm_beam)
+
+    ds.BeamSequence = beam_sequence
+
+    # Set the file meta information version
+    ds.is_little_endian = True
+    ds.is_implicit_VR = True
+
+    # Set the Content Date/Time
+    dt = datetime.datetimenow()
+    ds.ContentDate = dt.strftime('%Y%m%d')
+    ds.ContentTime = dt.strftime('%H%M%S')
+
+    # Save the file
+    ds.save_as(output_file)
+    print(f"RT Plan DICOM file saved to {output_file}")

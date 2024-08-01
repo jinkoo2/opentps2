@@ -179,4 +179,4 @@ def run(output_path=""):
     plt.show()
 
 if __name__ == "__main__":
-    run(os.path.join(Path(os.getcwd()).parent.absolute(), 'opentps', 'testData','Phantom'))
+    run(os.path.join(Path(os.getcwd()).parent.absolute(), 'opentps', 'testData','Phantom','Protons'))

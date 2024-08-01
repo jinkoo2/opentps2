@@ -18,7 +18,7 @@ class PlanPhotonBeam:
         self._beamSegments: Sequence[PlanPhotonSegment] = []
 
         self.name = ""
-        self.isocenterPosition_mm = []
+        self.isocenterPosition_mm = [0,0,0]
         self.gantryAngle_degree = 0.0
         self.couchAngle_degree = 0.0
         self.id = 0

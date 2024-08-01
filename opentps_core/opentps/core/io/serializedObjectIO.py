@@ -14,6 +14,7 @@ from opentps.core.data.dynamicData._dynamic3DSequence import Dynamic3DSequence
 from opentps.core.data.images._ctImage import CTImage
 from opentps.core.data.images._vectorField3D import VectorField3D
 from opentps.core.data._patient import Patient
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 
 
 
@@ -164,7 +165,7 @@ def saveRTPlan(plan, file_path):
     if plan.planDesign:
         if plan.planDesign.beamlets:
             plan.planDesign.beamlets.unload()
-        if plan.planDesign.beamletsLET:
+        if isinstance(plan.planDesign, IonPlanDesign) and plan.planDesign.beamletsLET:
             plan.planDesign.beamletsLET.unload()
 
         for scenario in plan.planDesign.robustness.scenarios:
