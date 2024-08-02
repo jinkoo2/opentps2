@@ -202,7 +202,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         return beamletDose
 
     def _importDose(self):
-        beamletDose = CCCdoseEngineIO.calculateDose(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._plan.beamletMUs)
+        beamletDose = CCCdoseEngineIO.computeDose(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._plan.beamletMUs)
         return beamletDose
 
     def fromHU2Densities(self, ct : CTImage, overRidingList = None):
@@ -309,7 +309,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         if not folder.is_dir():
             os.mkdir(folder)
 
-    def calculateDose(self, ct: CTImage, plan: PhotonPlan, overRidingDict: Optional[Sequence[Union[ROIContour, ROIMask]]] = None, Density = False) -> SparseBeamlets:
+    def computeDose(self, ct: CTImage, plan: PhotonPlan, overRidingDict: Optional[Sequence[Union[ROIContour, ROIMask]]] = None, Density = False) -> SparseBeamlets:
         logger.info("Prepare MCsquare Beamlet calculation")
         self._ct = ct
         self._plan = plan
