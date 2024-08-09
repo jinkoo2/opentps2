@@ -154,7 +154,7 @@ def loadSerializedObject(filePath):
 
 
 
-def saveRTPlan(plan, file_path):
+def saveRTPlan(plan, file_path, unloadBeamlets=True):
     """
     Save the RTPlan object in a file
 
@@ -165,7 +165,7 @@ def saveRTPlan(plan, file_path):
     file_path : str
         The path of the file where to save the RTPlan object
     """
-    if plan.planDesign:
+    if plan.planDesign and unloadBeamlets:
         if plan.planDesign.beamlets:
             plan.planDesign.beamlets.unload()
         if isinstance(plan.planDesign, IonPlanDesign) and plan.planDesign.beamletsLET:
@@ -197,7 +197,7 @@ def loadRTPlan(file_path, radiationType="Proton"):
     
     if radiationType.upper() == "PROTON":
         plan = IonPlan()
-    elif radiationType.upper == "PHOTON":
+    elif radiationType.upper() == "PHOTON":
         plan = PhotonPlan()
     else:
         raise NotImplementedError("Radiation type {} is not yet supported".format(radiationType))

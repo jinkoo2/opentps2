@@ -19,6 +19,19 @@ from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCa
 from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D
 from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
+from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
+from opentps.core.processing.doseCalculation.photons.cccDoseCalculator import CCCDoseCalculator
+from opentps.core.data.plan import PhotonPlanDesign
+import copy
+from scipy.sparse import csc_matrix
+from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness as RobustnessPhotons
+from opentps.core.io.dicomIO import writeRTDose
+def calculateDoseArray(beamlets,weights, numberOfFractionsPlanned):
+    doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
+    totalDose = np.reshape(doseArray, beamlets._gridSize, order='F')
+    totalDose = np.flip(totalDose, 0)
+    totalDose = np.flip(totalDose, 1)
+    return totalDose
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +40,7 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        output_path = os.path.join(os.getcwd(), 'Photon_Robust_Output_Example')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
@@ -43,9 +56,9 @@ def run(output_path=""):
     ct = CTImage()
     ct.name = 'CT'
     ct.patient = patient
-
+    
     huAir = -1024.
-    huWater = ctCalibration.convertRSP2HU(1.)
+    huWater = 0
     data = huAir * np.ones((ctSize, ctSize, ctSize))
     data[:, 50:, :] = huWater
     ct.imageArray = data
@@ -59,42 +72,40 @@ def run(output_path=""):
     roi.imageArray = data
 
     # Design plan
-    beamNames = ["Beam1"]
-    gantryAngles = [0.]
-    couchAngles = [0.]
+    beamNames = ["Beam1", "Beam2"]
+    gantryAngles = [0., 90.]
+    couchAngles = [0.,0]
 
     # Create output folder
     if not os.path.isdir(output_path):
         os.mkdir(output_path)
 
-    # Configure MCsquare
-    mc2 = MCsquareDoseCalculator()
-    mc2.beamModel = bdl
-    mc2.nbPrimaries = 5e4
-    mc2.ctCalibration = ctCalibration
+    ## Dose computation from plan
+    ccc = CCCDoseCalculator(batchSize= 30)
+    ccc.ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)
 
 
     # Load / Generate new plan
     plan_file = os.path.join(output_path, "RobustPlan_notCropped.tps")
 
     if os.path.isfile(plan_file):
-        plan = loadRTPlan(plan_file)
+        plan = loadRTPlan(plan_file, 'photon')
         logger.info('Plan loaded')
     else:
-        planDesign = IonPlanDesign()
+        planDesign = PhotonPlanDesign()
         planDesign.ct = ct
         planDesign.targetMask = roi
         planDesign.gantryAngles = gantryAngles
         planDesign.beamNames = beamNames
         planDesign.couchAngles = couchAngles
         planDesign.calibration = ctCalibration
+        planDesign.xBeamletSpacing_mm = 5
+        planDesign.yBeamletSpacing_mm = 5
         # Robustness settings
-        planDesign.robustness.setupSystematicError = [5.0, 5.0, 5.0]  # mm
-        planDesign.robustness.setupRandomError = [0.0, 0.0, 0.0]  # mm (sigma)
-        planDesign.robustness.rangeSystematicError = 0.0  # %
-
-        # Regular scenario sampling
-        planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.REDUCED_SET
+        planDesign.robustness = RobustnessPhotons()
+        planDesign.robustness.setupSystematicError = [1.6] * 3
+        planDesign.robustness.setupRandomError = 0
+        planDesign.robustness.sseNumberOfSamples = 1
 
         # All scenarios (includes diagonals on sphere)
         # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.ALL
@@ -103,24 +114,16 @@ def run(output_path=""):
         # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.RANDOM
         # planDesign.robustness.numScenarios = 5 # specify how many random scenarios to simulate, default = 100
 
-        planDesign.spotSpacing = 7.0
-        planDesign.layerSpacing = 6.0
-        planDesign.targetMargin = max(planDesign.spotSpacing, planDesign.layerSpacing) + max(planDesign.robustness.setupSystematicError)
+        planDesign.targetMargin = max(planDesign.robustness.setupSystematicError)
 
         plan = planDesign.buildPlan()  # Spot placement
         plan.PlanName = "RobustPlan"
 
-        nominal, scenarios = mc2.computeRobustScenarioBeamlets(ct, plan, roi=[roi], storePath=output_path)
-        plan.planDesign.beamlets = nominal
-        plan.planDesign.robustness.scenarios = scenarios
-        plan.planDesign.robustness.numScenarios = len(scenarios)
-
-        #saveRTPlan(plan, plan_file)
+        ccc.computeRobustScenarioBeamlets(ct, plan, robustMode='Simulation')
+        
 
 
-
-    beamletMatrix = plan.planDesign.beamlets.toSparseMatrix()
-    saveRTPlan(plan, plan_file)
+    saveRTPlan(plan, plan_file, unloadBeamlets=False)
     plan.planDesign.objectives = ObjectivesList()
     plan.planDesign.objectives.setTarget(roi.name, 20.0)
     # scoringGridSize = [int(math.floor(i / j * k)) for i, j, k in zip(ct.gridSize, scoringSpacing, ct.spacing)]
@@ -131,8 +134,14 @@ def run(output_path=""):
 
     solver = IMPTPlanOptimizer(method='Scipy-LBFGS', plan=plan, maxit=50)
     # Optimize treatment plan
+    doseInfluenceMatrix = copy.deepcopy(plan.planDesign.beamlets)
     doseImage, ps = solver.optimize()
 
+    doseImage.imageArray  = calculateDoseArray(doseInfluenceMatrix, plan.beamletMUs, plan.numberOfFractionsPlanned)
+    # User input filename
+    # writeRTDose(doseImage, output_path, outputFilename="BeamletTotalDose")
+    # or default name
+    writeRTDose(doseImage, output_path)
     # MCsquare simulation
     # mc2.nbPrimaries = 1e6
     # doseImage = mc2.computeDose(ct, plan)
@@ -168,8 +177,8 @@ def run(output_path=""):
     ax[1].set_ylabel("Volume (%)")
     plt.grid(True)
     plt.legend()
-
-    plt.show()
+    plt.savefig(os.path.join(output_path, 'dose.png'))
+    # plt.show()
 
 if __name__ == "__main__":
     run()

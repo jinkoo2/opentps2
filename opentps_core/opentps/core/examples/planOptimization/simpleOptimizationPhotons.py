@@ -24,8 +24,15 @@ from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DO
 from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
 from opentps.core.processing.doseCalculation.photons.cccDoseCalculator import CCCDoseCalculator
 from opentps.core.data.plan import PhotonPlanDesign
+import copy
+from scipy.sparse import csc_matrix
 
-
+def calculateDoseArray(beamlets,weights, numberOfFractionsPlanned):
+    doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
+    totalDose = np.reshape(doseArray, beamlets._gridSize, order='F')
+    totalDose = np.flip(totalDose, 0)
+    totalDose = np.flip(totalDose, 1)
+    return totalDose
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +41,7 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        output_path = os.path.join(os.getcwd(), 'Photon_Output_Example')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
         
@@ -50,17 +57,19 @@ def run(output_path=""):
     ct = CTImage()
     ct.name = 'CT'
     ct.patient = patient
-    ct.origin = -ctSize/2 * ct.spacing
+    # ct.origin = -ctSize/2 * ct.spacing
     
-    data = np.zeros((ctSize, ctSize, ctSize))
-    data[:, 50:, :] = 1
+    huAir = -1024.
+    huWater = 0
+    data = huAir * np.ones((ctSize, ctSize, ctSize))
+    data[:, 50:, :] = huWater
     ct.imageArray = data
     writeDicomCT(ct, output_path)
 
     # Struct
     roi = ROIMask()
     roi.patient = patient
-    roi.origin = -ctSize/2 * ct.spacing
+    # roi.origin = -ctSize/2 * ct.spacing
     roi.name = 'TV'
     roi.color = (255, 0, 0)  # red
     data = np.zeros((ctSize, ctSize, ctSize)).astype(bool)
@@ -73,9 +82,9 @@ def run(output_path=""):
     # writeRTStruct(struct, os.path.join(output_path, "struct.dcm"))
 
     # Design plan
-    beamNames = ["Beam1"]
-    gantryAngles = [0.]
-    couchAngles = [0.]
+    beamNames = ["Beam1", "Beam2"]
+    gantryAngles = [0., 90.]
+    couchAngles = [0.,0]
 
     # method 1 : create or load existing plan (no workflow)
 
@@ -86,8 +95,8 @@ def run(output_path=""):
     # Load / Generate new plan
     plan_file = os.path.join(output_path, "PhotonPlan_WaterPhantom_cropped_resampled.tps")
 
-    if os.path.isfile(plan_file) and False: ### Remove the False to load the plan
-        plan = loadRTPlan(plan_file)
+    if os.path.isfile(plan_file): ### Remove the False to load the plan
+        plan = loadRTPlan(plan_file, radiationType='photon')
         logger.info('Plan loaded')
     else:
         planDesign = PhotonPlanDesign()
@@ -103,6 +112,8 @@ def run(output_path=""):
         plan = planDesign.buildPlan() 
 
         beamlets = ccc.computeBeamlets(ct, plan) 
+        doseInfluenceMatrix = copy.deepcopy(beamlets)
+        
         plan.planDesign.beamlets = beamlets
         beamlets.storeOnFS(os.path.join(output_path, "BeamletMatrix_" + plan.seriesInstanceUID + ".blm"))
         # Save plan with initial spot weights in serialized format (OpenTPS format)
@@ -111,14 +122,15 @@ def run(output_path=""):
     plan.planDesign.objectives = ObjectivesList()
     plan.planDesign.objectives.setTarget(roi.name, 20.0)
     plan.planDesign.objectives.fidObjList = []
-    plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 400.0, 1.0)
-    plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 400.5, 1.0)
+    plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 20.0, 1.0)
+    plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 20.5, 1.0)
     
     plan.numberOfFractionsPlanned = 30
 
     solver = IMPTPlanOptimizer(method='Scipy-LBFGS', plan=plan, maxit=1000)
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
+    doseImage.imageArray  = calculateDoseArray(doseInfluenceMatrix, plan.beamletMUs, plan.numberOfFractionsPlanned)
     # User input filename
     # writeRTDose(doseImage, output_path, outputFilename="BeamletTotalDose")
     # or default name

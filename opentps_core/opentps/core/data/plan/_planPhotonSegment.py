@@ -204,7 +204,7 @@ class PlanPhotonSegment:
             raise ValueError(
                 f'The size of the mu array {len(mu)} does not fit the size of the beamlets {len(self)} for the beam {self.id}')
         for i, beamlet in enumerate(self._beamlets):
-            beamlet.mu = mu[i]
+            beamlet._mu = mu[i]
         self.isPure()
 
     @property

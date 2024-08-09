@@ -9,7 +9,7 @@ from opentps.core.processing.planOptimization.tools import evaluateClinical
 sys.path.append('..')
 import numpy as np
 
-from opentps.core.data.plan import IonPlan
+from opentps.core.data.plan import IonPlan, RTPlan
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import loadRTPlan, saveRTPlan
 from opentps.core.io.dicomIO import readDicomDose, readDicomPlan
