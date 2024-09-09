@@ -250,7 +250,7 @@ class PlanOptimizer:
         except:
             pass
 
-        weights = result['sol']
+        self.weights = result['sol']
         crit = result['crit']
         self.niter = result['niter']
         self.time = result['time']
@@ -261,7 +261,7 @@ class PlanOptimizer:
 
         logger.info(
             ' {} terminated in {} Iter, x = {}, f(x) = {}, time elapsed {}, time per iter {}'
-                .format(self.solver.__class__.__name__, self.niter, weights, self.cost, self.time, self.time / self.niter))
+                .format(self.solver.__class__.__name__, self.niter, self.weights, self.cost, self.time, self.time / self.niter))
 
         # unload scenario beamlets
         for s in range(len(self.plan.planDesign.robustness.scenarios)):
@@ -270,23 +270,29 @@ class PlanOptimizer:
         # total dose
         logger.info("Total dose calculation ...")
         if self.xSquared:
-            MUs = np.square(weights).astype(np.float32) / self.plan.numberOfFractionsPlanned
+            MUs = np.square(self.weights).astype(np.float32) / self.plan.numberOfFractionsPlanned
         else:
-            MUs = weights.astype(np.float32) / self.plan.numberOfFractionsPlanned
-        
+            MUs = self.weights.astype(np.float32) / self.plan.numberOfFractionsPlanned
+        if isinstance(self.plan,IonPlan):
+            self.plan.spotMUs = MUs
+        elif isinstance(self.plan,PhotonPlan): 
+            self.plan.beamletMUs = MUs
         MU_before_simplify = MUs.copy()
         self.plan.simplify(threshold=self.thresholdSpotRemoval) # remove spots below self.thresholdSpotRemoval
-        if self.plan.planDesign.beamlets.shape[1] != len(MUs):
-            # Beamlet matrix has not removed zero weight column
-            ind_to_keep = MU_before_simplify > self.thresholdSpotRemoval
-            assert np.sum(ind_to_keep) == len(MUs)
-            self.plan.planDesign.beamlets.setUnitaryBeamlets(self.plan.planDesign.beamlets._sparseBeamlets[:, ind_to_keep])
+        
+        if isinstance(self.plan,IonPlan):
+            if self.plan.planDesign.beamlets.shape[1] != len(self.plan.spotMUs):
+                # Beamlet matrix has not removed zero weight column
+                ind_to_keep = MU_before_simplify > self.thresholdSpotRemoval
+                assert np.sum(ind_to_keep) == len(self.plan.spotMUs)
+                self.plan.planDesign.beamlets.setUnitaryBeamlets(self.plan.planDesign.beamlets._sparseBeamlets[:, ind_to_keep])
+        elif isinstance(self.plan,PhotonPlan): 
+            if self.plan.planDesign.beamlets.shape[1] != len(self.plan.beamletMUs):
+                # Beamlet matrix has not removed zero weight column
+                ind_to_keep = MU_before_simplify > self.thresholdSpotRemoval
+                assert np.sum(ind_to_keep) == len(self.plan.beamletMUs)
+                self.plan.planDesign.beamlets.setUnitaryBeamlets(self.plan.planDesign.beamlets._sparseBeamlets[:, ind_to_keep])
 
-        if isinstance(self.plan, IonPlan):
-            self.plan.spotMUs = MUs
-        elif isinstance(self.plan, PhotonPlan):
-            self.plan.beamletMUs = MUs
-            
         totalDose = self.computeDose()
         logger.info('Optimization done.')
 

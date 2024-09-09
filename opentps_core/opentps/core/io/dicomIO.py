@@ -9,6 +9,7 @@ from opentps.core.data import Patient
 from opentps.core.data.plan._rangeShifter import RangeShifter
 
 from opentps.core.data.plan._rtPlan import RTPlan
+from opentps.core.data.plan._ionPlan import IonPlan
 from opentps.core.data.plan._planIonBeam import PlanIonBeam
 from opentps.core.data.plan._planIonLayer import PlanIonLayer
 from opentps.core.data.images._ctImage import CTImage
@@ -1104,7 +1105,8 @@ def readDicomPlan(dcmFile) -> RTPlan:
     else:
         name = dcm.SeriesInstanceUID
 
-    plan = RTPlan(name=name, patient = patient)
+    #TODO: support photon dicom plan import 
+    plan = IonPlan(name=name, patient = patient)
     plan.patient = patient
     
     # Photon plan

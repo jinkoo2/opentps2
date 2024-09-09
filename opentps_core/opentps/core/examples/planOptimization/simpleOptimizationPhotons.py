@@ -64,7 +64,7 @@ def run(output_path=""):
     data = huAir * np.ones((ctSize, ctSize, ctSize))
     data[:, 50:, :] = huWater
     ct.imageArray = data
-    writeDicomCT(ct, output_path)
+    #writeDicomCT(ct, output_path)
 
     # Struct
     roi = ROIMask()
@@ -130,7 +130,7 @@ def run(output_path=""):
     solver = IMPTPlanOptimizer(method='Scipy-LBFGS', plan=plan, maxit=1000)
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
-    doseImage.imageArray  = calculateDoseArray(doseInfluenceMatrix, plan.beamletMUs, plan.numberOfFractionsPlanned)
+    doseImage.imageArray  = calculateDoseArray(plan.planDesign.beamlets, plan.beamletMUs, plan.numberOfFractionsPlanned)
     # User input filename
     # writeRTDose(doseImage, output_path, outputFilename="BeamletTotalDose")
     # or default name
