@@ -381,8 +381,8 @@ class IMPTPlanOptimizer(PlanOptimizer):
         - 'FISTA'
         - 'LP'
     """
-    def __init__(self, method, plan:RTPlan, **kwargs):
-        super().__init__(plan, **kwargs)
+    def __init__(self, method, plan:RTPlan,acceleration:str=None, **kwargs):
+        super().__init__(plan,acceleration, **kwargs)
         self.method = method
         if "Scipy" in self.method:
             algo = self.method.split('_')[1]
