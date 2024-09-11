@@ -72,14 +72,15 @@ class PlanOptimizer:
         # beamlet matrix
         self.GPU_acceleration = False
         self.MKL_acceleration = False
-        if acceleration == 'GPU':
-            self.use_GPU_acceleration()
-        elif acceleration[:3] == 'MKL':
-            if len(acceleration) > 3:
-                n_threads = int(acceleration[4:])
-            else:
-                n_threads = None
-            self.use_MKL_acceleration(n_threads=n_threads)
+        if acceleration is not None:
+            if acceleration == 'GPU':
+                self.use_GPU_acceleration()
+            elif acceleration[:3] == 'MKL':
+                if len(acceleration) > 3:
+                    n_threads = int(acceleration[4:])
+                else:
+                    n_threads = None
+                self.use_MKL_acceleration(n_threads=n_threads)
 
 
     @property
