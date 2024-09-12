@@ -106,7 +106,7 @@ class DoseFidelity(BaseFunc):
         if self.GPU_acceleration:
             doseTotal = cp.sparse.csc_matrix.dot(self.beamlets_gpu, weights)
         elif self.MKL_acceleration:
-            doseTotal = sparse_dot_mkl.dot_product_mkl(self.beamlets, weights)
+            doseTotal = sparse_dot_mkl.dot_product_mkl(self.beamlets, weights,cast=True)
         else:
             doseTotal = sp.csc_matrix.dot(self.beamlets, weights)
         for objective in self.list:
@@ -219,7 +219,7 @@ class DoseFidelity(BaseFunc):
             fTotScenario = 0.0
 
             if self.MKL_acceleration:
-                doseTotal = sparse_dot_mkl.dot_product_mkl(ScenarioBL, weights)
+                doseTotal = sparse_dot_mkl.dot_product_mkl(ScenarioBL, weights,cast=True)
             else:
                 doseTotal = sp.csc_matrix.dot(ScenarioBL, weights)
 
@@ -331,15 +331,15 @@ class DoseFidelity(BaseFunc):
                 doseScenarioBL = cp.sparse.csc_matrix.dot(self.scenariosBL[worstCase], xDiag)
             dfTot = np.zeros((1, len(x)), dtype=np.float32)
         elif self.MKL_acceleration:
-            doseNominal = sparse_dot_mkl.dot_product_mkl(self.beamlets, weights)
+            doseNominal = sparse_dot_mkl.dot_product_mkl(self.beamlets, weights,cast=True)
             if self.xSquare:
-                doseNominalBL = sparse_dot_mkl.dot_product_mkl(self.beamlets, xDiag)
+                doseNominalBL = sparse_dot_mkl.dot_product_mkl(self.beamlets, xDiag,cast=True)
             else:
                 doseNominalBL = self.beamlets
 
             if worstCase != -1:
-                doseScenario = sparse_dot_mkl.dot_product_mkl(self.scenariosBL[worstCase], weights)
-                doseScenarioBL = sparse_dot_mkl.dot_product_mkl(self.scenariosBL[worstCase], xDiag)
+                doseScenario = sparse_dot_mkl.dot_product_mkl(self.scenariosBL[worstCase], weights,cast=True)
+                doseScenarioBL = sparse_dot_mkl.dot_product_mkl(self.scenariosBL[worstCase], xDiag,cast=True)
             dfTot = np.zeros((1, len(x)), dtype=np.float32)
         else:
             doseNominal = sp.csc_matrix.dot(self.beamlets, weights)
@@ -376,7 +376,7 @@ class DoseFidelity(BaseFunc):
                     dfTot += objective.weight * (cpx.scipy.sparse.csr_matrix.mean(df, axis=0)).get()
                 elif self.MKL_acceleration:
                     f = sp.diags(f.astype(np.float32), format='csc')
-                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :])
+                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :],cast=True)
                     dfTot += objective.weight * sp.csr_matrix.mean(df, axis=0)
                 else:
                     df = sp.csr_matrix.multiply(doseBL[:, objective.maskVec], f)
@@ -423,7 +423,7 @@ class DoseFidelity(BaseFunc):
                     dfTot += objective.weight * (cpx.scipy.sparse.csr_matrix.mean(df, axis=0)).get()
                 elif self.MKL_acceleration:
                     f = sp.diags(f.astype(np.float32), format='csc')
-                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :])
+                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :],cast=True)
                     dfTot += objective.weight * sp.csr_matrix.mean(df, axis=0)
                 else:
                     df = sp.csr_matrix.multiply(doseBL[:, objective.maskVec], f)
@@ -444,7 +444,7 @@ class DoseFidelity(BaseFunc):
                     dfTot += objective.weight * (cpx.scipy.sparse.csr_matrix.mean(df, axis=0)).get()
                 elif self.MKL_acceleration:
                     f = sp.diags(f.astype(np.float32), format='csc')
-                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :])
+                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :],cast=True)
                     dfTot += objective.weight * sp.csr_matrix.mean(df, axis=0)
                 else:
                     df = sp.csr_matrix.multiply(doseBL[:, objective.maskVec], f)
@@ -465,7 +465,7 @@ class DoseFidelity(BaseFunc):
                     dfTot += objective.weight * (cpx.scipy.sparse.csr_matrix.mean(df, axis=0)).get()
                 elif self.MKL_acceleration:
                     f = sp.diags(f.astype(np.float32), format='csc')
-                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :])
+                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :],cast=True)
                     dfTot += objective.weight * sp.csr_matrix.mean(df, axis=0)
                 else:
                     df = sp.csr_matrix.multiply(doseBL[:, objective.maskVec], f)
@@ -489,7 +489,7 @@ class DoseFidelity(BaseFunc):
                     dfTot += objective.weight * (cpx.scipy.sparse.csr_matrix.mean(df, axis=0)).get()
                 elif self.MKL_acceleration:
                     f = sp.diags(f.astype(np.float32), format='csc')
-                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :])
+                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :],cast=True)
                     dfTot += objective.weight * sp.csr_matrix.mean(df, axis=0)
                 else:
                     df = sp.csr_matrix.multiply(doseBL[:, objective.maskVec], f)
@@ -511,7 +511,7 @@ class DoseFidelity(BaseFunc):
                     dfTot += objective.weight * (cpx.scipy.sparse.csr_matrix.mean(df, axis=0)).get()
                 elif self.MKL_acceleration:
                     f = sp.diags(f.astype(np.float32), format='csc')
-                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :])
+                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :],cast=True)
                     dfTot += objective.weight * sp.csr_matrix.mean(df, axis=0)
                 else:
                     df = sp.csr_matrix.multiply(doseBL[:, objective.maskVec], f)
@@ -535,7 +535,7 @@ class DoseFidelity(BaseFunc):
                     dfTot += objective.weight * (cpx.scipy.sparse.csr_matrix.mean(df, axis=0)).get()
                 elif self.MKL_acceleration:
                     f = sp.diags(f.astype(np.float32), format='csc')
-                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :])
+                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :],cast=True)
                     dfTot += objective.weight * sp.csr_matrix.mean(df, axis=0)
                 else:
                     df = sp.csr_matrix.multiply(doseBL[:, objective.maskVec], f)
@@ -559,7 +559,7 @@ class DoseFidelity(BaseFunc):
                     dfTot += objective.weight * (cpx.scipy.sparse.csr_matrix.mean(df, axis=0)).get()
                 elif self.MKL_acceleration:
                     f = sp.diags(f.astype(np.float32), format='csc')
-                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :])
+                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :],cast=True)
                     dfTot += objective.weight * sp.csr_matrix.mean(df, axis=0)
                 else:
                     df = sp.csr_matrix.multiply(doseBL[:, objective.maskVec], f)
@@ -583,7 +583,7 @@ class DoseFidelity(BaseFunc):
                     dfTot += objective.weight * (cpx.scipy.sparse.csr_matrix.mean(df, axis=0)).get()
                 elif self.MKL_acceleration:
                     f = sp.diags(f.astype(np.float32), format='csc')
-                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :])
+                    df = sparse_dot_mkl.dot_product_mkl(f, doseBL[objective.maskVec, :],cast=True)
                     dfTot += objective.weight * sp.csr_matrix.mean(df, axis=0)
                 else:
                     df = sp.csr_matrix.multiply(doseBL[:, objective.maskVec], f)

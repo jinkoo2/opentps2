@@ -208,7 +208,7 @@ class PlanOptimizer:
         if self.MKL_acceleration :
             logger.info("Using MKL to create sparse beamlet matrix")
             beamletMatrix = sparse_dot_mkl.dot_product_mkl(
-                sp.diags(roiObjectives.astype(np.float32), format='csc'), self.plan.planDesign.beamlets.toSparseMatrix())
+                sp.diags(roiObjectives.astype(np.float32), format='csc'), self.plan.planDesign.beamlets.toSparseMatrix(),cast=True)
         else:
             beamletMatrix = sp.csc_matrix.dot(sp.diags(roiObjectives.astype(np.float32), format='csc'),
                                               self.plan.planDesign.beamlets.toSparseMatrix())
@@ -221,7 +221,7 @@ class PlanOptimizer:
                     print("Using MKL to create sparse beamlet matrix")
                     beamletMatrix = sparse_dot_mkl.dot_product_mkl(
                         sp.diags(roiRobustObjectives.astype(np.float32), format='csc'),
-                        self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
+                        self.plan.planDesign.robustness.scenarios[s].toSparseMatrix(),cast=True)
                 else:
                     beamletMatrix = sp.csc_matrix.dot(
                         sp.diags(roiRobustObjectives.astype(np.float32), format='csc'),
@@ -239,7 +239,7 @@ class PlanOptimizer:
         beamlets = self.plan.planDesign.beamlets
         weights = np.array(self.plan.spotMUs, dtype=np.float32)
         if self.MKL_acceleration:
-            totalDose = sparse_dot_mkl.dot_product_mkl(beamlets._sparseBeamlets, weights) * self.plan.numberOfFractionsPlanned
+            totalDose = sparse_dot_mkl.dot_product_mkl(beamlets._sparseBeamlets, weights,cast=True) * self.plan.numberOfFractionsPlanned
         else:
             totalDose = csc_matrix.dot(beamlets._sparseBeamlets, weights) * self.plan.numberOfFractionsPlanned
 
