@@ -207,7 +207,10 @@ class PlanOptimizer:
             bounds = None
 
         # Optimization
-        result = self.solver.solve(self.functions, x0, bounds=bounds)
+        if bounds is not None:
+            result = self.solver.solve(self.functions, x0, bounds=bounds)
+        else:
+            result = self.solver.solve(self.functions, x0)
 
         if self.GPU_acceleration:
             self.functions[0].unload_blGPU()
