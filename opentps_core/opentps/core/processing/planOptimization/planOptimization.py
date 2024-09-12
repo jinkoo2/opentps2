@@ -58,6 +58,8 @@ class PlanOptimizer:
         - 'GPU' : use the GPU for the optimization.
         - 'MKL' : use the MKL library for the optimization with the maximum number of threads available.
         - 'MKL-n' : use the MKL library for the optimization with n threads.
+        - 'MKL-n-DEBUG' : use the MKL library for the optimization with n threads and the debug mode.
+        - 'MKL-DEBUG' : use the MKL library for the optimization with the debug mode.
 
     """
     def __init__(self, plan:RTPlan,acceleration:str=None, **kwargs):
@@ -76,11 +78,20 @@ class PlanOptimizer:
             if acceleration == 'GPU':
                 self.use_GPU_acceleration()
             elif acceleration[:3] == 'MKL':
-                if len(acceleration) > 3:
-                    n_threads = int(acceleration[4:])
+                if acceleration == 'MKL':
+                    self.use_MKL_acceleration()
                 else:
-                    n_threads = None
-                self.use_MKL_acceleration(n_threads=n_threads)
+                    args = acceleration.split('-')
+                    if args[1].isdigit():
+                        n_threads = int(args[1])
+                        if len(args) > 2:
+                            debug = args[2] == 'DEBUG'
+                            self.use_MKL_acceleration(n_threads, debug=debug)
+                        self.use_MKL_acceleration(n_threads)
+                    elif args[1] == 'DEBUG':
+                        self.use_MKL_acceleration(debug=True)
+            else:
+                logger.warning('Unknown acceleration method. No acceleration will be used')
 
 
     @property
@@ -135,6 +146,7 @@ class PlanOptimizer:
 
         if sdm_available:
             if debug:
+                logger.info('MKL acceleration activated with debug mode')
                 sparse_dot_mkl.set_debug_mode(True)
             if n_threads is not None:
                 sparse_dot_mkl.mkl_set_num_threads(n_threads)
@@ -436,8 +448,8 @@ class BoundConstraintsOptimizer(PlanOptimizer):
     dict
         The optimization parameters for the SciPy L-BFGS-B method.
     """
-    def __init__(self, plan: RTPlan, method='Scipy_L-BFGS-B', bounds=(0.02, 250), **kwargs):
-        super().__init__(plan, **kwargs)
+    def __init__(self, plan: RTPlan,acceleration:str=None, method='Scipy_L-BFGS-B', bounds=(0.02, 250), **kwargs):
+        super().__init__(plan,acceleration, **kwargs)
         self.bounds = bounds
         if method == 'Scipy_L-BFGS-B':
             self.method = method
