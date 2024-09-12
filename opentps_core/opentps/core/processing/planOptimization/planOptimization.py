@@ -325,6 +325,11 @@ class IMPTPlanOptimizer(PlanOptimizer):
         - 'LBFGS'
         - 'FISTA'
         - 'LP'
+
+    plan : RTPlan
+        The plan to optimize.
+    dict
+        The optimization parameters, depending on the selected method.
     """
     def __init__(self, method, plan:RTPlan, **kwargs):
         super().__init__(plan, **kwargs)
@@ -369,6 +374,8 @@ class BoundConstraintsOptimizer(PlanOptimizer):
     ----------
     bounds : tuple (default: (0.02, 5))
         The bounds.
+    dict
+        The optimization parameters for the SciPy L-BFGS-B method.
     """
     def __init__(self, plan: RTPlan, method='Scipy_L-BFGS-B', bounds=(0.02, 250), **kwargs):
         super().__init__(plan, **kwargs)
