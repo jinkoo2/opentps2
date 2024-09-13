@@ -58,17 +58,17 @@ def interpolateTrilinear(image, gridSize, interpolatedPoints, fillValue=0, tryGP
       elif (platform.system() == "Darwin"): libInterp3 = ctypes.cdll.LoadLibrary(os.path.join(os.path.dirname(__file__),
                                                                                               "libInterp3MAC.so"))
       else: print("Error: not compatible with " + platform.system() + " system.")
-      float_array = np.ctypeslib.ndpointer(dtype=np.float64)
+      float_array = np.ctypeslib.ndpointer(dtype=np.float32)
       int_array = np.ctypeslib.ndpointer(dtype=np.int32)
       libInterp3.Trilinear_Interpolation.argtypes = [float_array, int_array, float_array, ctypes.c_int, ctypes.c_float, float_array]
       libInterp3.Trilinear_Interpolation.restype = ctypes.c_void_p
 
       # prepare inputs for C library
-      Img = np.array(image, dtype=np.float64, order='C')
+      Img = np.array(image, dtype=np.float32, order='C')
       Size = np.array(gridSize, dtype=np.int32, order='C')
-      Points = np.array(interpolatedPoints, dtype=np.float64, order='C')
+      Points = np.array(interpolatedPoints, dtype=np.float32, order='C')
       NumPoints = interpolatedPoints.shape[0]
-      interpolatedImage = np.zeros(NumPoints, dtype=np.float64, order='C')
+      interpolatedImage = np.zeros(NumPoints, dtype=np.float32, order='C')
 
       # call C function
       libInterp3.Trilinear_Interpolation(Img, Size, Points, NumPoints, fillValue, interpolatedImage)

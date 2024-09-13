@@ -178,10 +178,10 @@ class NormL21(Norm):
         elif scale_reg == "wenbo":
             arrayWithOnes = np.ones(len(x1D[group]))
             if use_MKL:
-                beamDoseTarget = sparse_dot_mkl.dot_product_mkl(self.BLTarget[:, group], arrayWithOnes.astype(np.float64))
+                beamDoseTarget = sparse_dot_mkl.dot_product_mkl(self.BLTarget[:, group], arrayWithOnes.astype(np.float32))
             else:
                 beamDoseTarget = sp.dot_product_mkl(self.BLTarget[:, group],
-                                                                arrayWithOnes.astype(np.float64))
+                                                                arrayWithOnes.astype(np.float32))
             scale = np.sqrt(la.norm(beamDoseTarget) / self.struct.nSpotsInLayer[index])
         else:
             logger.error(

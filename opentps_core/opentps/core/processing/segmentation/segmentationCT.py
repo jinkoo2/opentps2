@@ -31,7 +31,7 @@ def compute3DStructuralElement(radiusXYZ, spacing=[1,1,1]):
     y = np.arange(filt.shape[0])
     z = np.arange(filt.shape[2])
     xi = np.array(np.meshgrid(x, y, z))
-    filt = (np.square(xi[1]-center[0])/np.square(radiusXYZ[0]+np.finfo(np.float64).eps) + np.square(xi[0]-center[1])/np.square(radiusXYZ[1]+np.finfo(np.float64).eps) + np.square(xi[2]-center[2])/np.square(radiusXYZ[2]+np.finfo(np.float64).eps)) <=1
+    filt = (np.square(xi[1]-center[0])/np.square(radiusXYZ[0]+np.finfo(np.float32).eps) + np.square(xi[0]-center[1])/np.square(radiusXYZ[1]+np.finfo(np.float32).eps) + np.square(xi[2]-center[2])/np.square(radiusXYZ[2]+np.finfo(np.float32).eps)) <=1
     return filt
 
 class SegmentationCT():

@@ -93,7 +93,7 @@ class RobustnessEval:
         for contour in contours:
             myDVH = DVH(contour, self.nominal.dose)
             self.nominal.dvh.append(myDVH)
-        self.nominal.dose.imageArray = self.nominal.dose.imageArray.astype(np.float64)
+        self.nominal.dose.imageArray = self.nominal.dose.imageArray.astype(np.float32)
 
     def addScenario(self, dose: DoseImage, contours: Union[ROIContour, ROIMask]):
         """

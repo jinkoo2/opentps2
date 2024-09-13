@@ -120,22 +120,22 @@ class RegistrationMorphons(Registration):
         morphonsPath = os.path.join(os.path.dirname(__file__), 'Morphons_kernels')
         k = []
         k.append(np.reshape(
-            np.float64(np.fromfile(os.path.join(morphonsPath, "kernel1_real.bin"), dtype="float64")) + np.float64(
+            np.float32(np.fromfile(os.path.join(morphonsPath, "kernel1_real.bin"), dtype="float64")) + np.float32(
                 np.fromfile(os.path.join(morphonsPath, "kernel1_imag.bin"), dtype="float64")) * 1j, (9, 9, 9)))
         k.append(np.reshape(
-            np.float64(np.fromfile(os.path.join(morphonsPath, "kernel2_real.bin"), dtype="float64")) + np.float64(
+            np.float32(np.fromfile(os.path.join(morphonsPath, "kernel2_real.bin"), dtype="float64")) + np.float32(
                 np.fromfile(os.path.join(morphonsPath, "kernel2_imag.bin"), dtype="float64")) * 1j, (9, 9, 9)))
         k.append(np.reshape(
-            np.float64(np.fromfile(os.path.join(morphonsPath, "kernel3_real.bin"), dtype="float64")) + np.float64(
+            np.float32(np.fromfile(os.path.join(morphonsPath, "kernel3_real.bin"), dtype="float64")) + np.float32(
                 np.fromfile(os.path.join(morphonsPath, "kernel3_imag.bin"), dtype="float64")) * 1j, (9, 9, 9)))
         k.append(np.reshape(
-            np.float64(np.fromfile(os.path.join(morphonsPath, "kernel4_real.bin"), dtype="float64")) + np.float64(
+            np.float32(np.fromfile(os.path.join(morphonsPath, "kernel4_real.bin"), dtype="float64")) + np.float32(
                 np.fromfile(os.path.join(morphonsPath, "kernel4_imag.bin"), dtype="float64")) * 1j, (9, 9, 9)))
         k.append(np.reshape(
-            np.float64(np.fromfile(os.path.join(morphonsPath, "kernel5_real.bin"), dtype="float64")) + np.float64(
+            np.float32(np.fromfile(os.path.join(morphonsPath, "kernel5_real.bin"), dtype="float64")) + np.float32(
                 np.fromfile(os.path.join(morphonsPath, "kernel5_imag.bin"), dtype="float64")) * 1j, (9, 9, 9)))
         k.append(np.reshape(
-            np.float64(np.fromfile(os.path.join(morphonsPath, "kernel6_real.bin"), dtype="float64")) + np.float64(
+            np.float32(np.fromfile(os.path.join(morphonsPath, "kernel6_real.bin"), dtype="float64")) + np.float32(
                 np.fromfile(os.path.join(morphonsPath, "kernel6_imag.bin"), dtype="float64")) * 1j, (9, 9, 9)))
 
         deformation = Deformation3D()

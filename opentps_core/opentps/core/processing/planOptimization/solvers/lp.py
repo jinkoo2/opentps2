@@ -272,7 +272,7 @@ class LP:
                             for j in range(self.solStruct.nSpots):
                                 self.solStruct.x[j] = self.xVars[j].X
 
-                        x_ungrouped = np.zeros(self.solStruct.nSpots, dtype=np.float64)
+                        x_ungrouped = np.zeros(self.solStruct.nSpots, dtype=np.float32)
                         # ungroup solution
 
                         if self.groupSpots:

@@ -47,7 +47,7 @@ class Image2DForViewer(GenericImageForViewer):
         # shape = imageData.shape
         # print(shape)
 
-        num_array = np.array(np.ravel(imageData), dtype=np.float64)
+        num_array = np.array(np.ravel(imageData), dtype=np.float32)
 
         self._dataImporter.SetNumberOfScalarComponents(1)
         self._dataImporter.SetDataExtent(0, shape[0] - 1, 0, shape[1] - 1, 0, 0)

@@ -259,7 +259,7 @@ if __name__ == '__main__':
                                                                                   pointList,
                                                                                   signalIdxUsed=[subSequencesIndexes[i], subSequencesIndexes[i+1]],
                                                                                   dimensionUsed='Z',
-                                                                                  outputType=np.float64)
+                                                                                  outputType=np.float32)
 
             for deformationIndex, deformation in enumerate(deformationList):
                 resultList.append(deformImageAndMaskAndComputeDRRs(dynMod.midp,
@@ -294,7 +294,7 @@ if __name__ == '__main__':
                                                                                   pointList,
                                                                                   signalIdxUsed=[subSequencesIndexes[i], subSequencesIndexes[i+1]],
                                                                                   dimensionUsed='Z',
-                                                                                  outputType=np.float64)
+                                                                                  outputType=np.float32)
 
             print('Start multi process deformation with', len(deformationList), 'deformations')
             with concurrent.futures.ProcessPoolExecutor() as executor:
