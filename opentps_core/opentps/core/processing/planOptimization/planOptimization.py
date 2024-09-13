@@ -446,8 +446,10 @@ class BoundConstraintsOptimizer(PlanOptimizer):
     ----------
     bounds : tuple (default: (0.02, 5))
         The bounds.
+    plan : RTPlan
+        The plan to optimize.
     dict
-        The optimization parameters for the SciPy L-BFGS-B method.
+        The optimization parameters for the SciPy methods.
     """
     def __init__(self, plan: RTPlan,acceleration:str=None, method='Scipy_L-BFGS-B', bounds=(0.02, 250), **kwargs):
         super().__init__(plan,acceleration, **kwargs)
@@ -555,6 +557,10 @@ class ARCPTPlanOptimizer(PlanOptimizer):
         - 'LS'
         - 'MIP'
         - 'SPArcling'
+    plan : RTPlan
+        The plan to optimize.
+    dict
+        The optimization parameters, depending on the selected method.
     """
     def __init__(self, method, plan, **kwargs):
         super(ARCPTPlanOptimizer, self).__init__(plan, **kwargs)
