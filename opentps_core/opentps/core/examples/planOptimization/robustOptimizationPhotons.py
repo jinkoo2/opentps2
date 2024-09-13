@@ -115,7 +115,7 @@ def run(output_path=""):
         # planDesign.robustness.numScenarios = 5 # specify how many random scenarios to simulate, default = 100
 
         planDesign.targetMargin = max(planDesign.robustness.setupSystematicError)
-
+        planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) # needs to be called prior spot placement
         plan = planDesign.buildPlan()  # Spot placement
         plan.PlanName = "RobustPlan"
 
@@ -124,15 +124,10 @@ def run(output_path=""):
 
 
     saveRTPlan(plan, plan_file, unloadBeamlets=False)
-    plan.planDesign.objectives = ObjectivesList()
-    plan.planDesign.objectives.setTarget(roi.name, 20.0)
-    # scoringGridSize = [int(math.floor(i / j * k)) for i, j, k in zip(ct.gridSize, scoringSpacing, ct.spacing)]
-    # plan.planDesign.objectives.setScoringParameters(ct, scoringGridSize, scoringSpacing)
-    plan.planDesign.objectives.fidObjList = []
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 20.0, 1.0, robust=True)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 20.5, 1.0, robust=True)
 
-    solver = IMPTPlanOptimizer(method='Scipy-LBFGS', plan=plan, maxit=50)
+    solver = IMPTPlanOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxit=50)
     # Optimize treatment plan
     doseInfluenceMatrix = copy.deepcopy(plan.planDesign.beamlets)
     doseImage, ps = solver.optimize()
