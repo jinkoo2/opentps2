@@ -207,7 +207,10 @@ class PlanOptimizer:
             bounds = None
 
         # Optimization
-        result = self.solver.solve(self.functions, x0, bounds=bounds)
+        if bounds is not None:
+            result = self.solver.solve(self.functions, x0, bounds=bounds)
+        else:
+            result = self.solver.solve(self.functions, x0)
 
         if self.GPU_acceleration:
             self.functions[0].unload_blGPU()
@@ -322,6 +325,11 @@ class IMPTPlanOptimizer(PlanOptimizer):
         - 'LBFGS'
         - 'FISTA'
         - 'LP'
+
+    plan : RTPlan
+        The plan to optimize.
+    dict
+        The optimization parameters, depending on the selected method.
     """
     def __init__(self, method, plan:RTPlan, **kwargs):
         super().__init__(plan, **kwargs)
@@ -343,7 +351,7 @@ class IMPTPlanOptimizer(PlanOptimizer):
             self.solver = lp.LP(self.plan, **kwargs)
         else:
             logger.error(
-                'Method {} is not implemented. Pick among ["Scipy-BFGS", "Scipy-LBFGS", "Scipy-SLSQP", "Scipy-COBYLA", "Scipy-trust-constr", "Gradient", "BFGS", "LBFGS", "FISTA", "LP]'.format(
+                'Method {} is not implemented. Pick among ["Scipy_BFGS", "Scipy_L-BFGS-B", "Scipy_SLSQP", "Scipy_COBYLA", "Scipy_trust-constr", "Gradient", "BFGS", "LBFGS", "FISTA", "LP]'.format(
                     self.method))
 
     def getConvergenceData(self):
@@ -366,6 +374,10 @@ class BoundConstraintsOptimizer(PlanOptimizer):
     ----------
     bounds : tuple (default: (0.02, 5))
         The bounds.
+    plan : RTPlan
+        The plan to optimize.
+    dict
+        The optimization parameters for the SciPy methods.
     """
     def __init__(self, plan: RTPlan, method='Scipy_L-BFGS-B', bounds=(0.02, 250), **kwargs):
         super().__init__(plan, **kwargs)
@@ -473,6 +485,10 @@ class ARCPTPlanOptimizer(PlanOptimizer):
         - 'LS'
         - 'MIP'
         - 'SPArcling'
+    plan : RTPlan
+        The plan to optimize.
+    dict
+        The optimization parameters, depending on the selected method.
     """
     def __init__(self, method, plan, **kwargs):
         super(ARCPTPlanOptimizer, self).__init__(plan, **kwargs)
