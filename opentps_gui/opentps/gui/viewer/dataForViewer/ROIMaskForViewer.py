@@ -48,7 +48,7 @@ class ROIMaskForViewer(GenericImageForViewer):
 
         maskData = self._imageArray
         maskData = np.swapaxes(maskData, 0, 2)
-        num_array = np.array(np.ravel(maskData), dtype=np.float32)
+        num_array = np.array(np.ravel(maskData), dtype=np.float64)
 
         self._dataImporter.SetNumberOfScalarComponents(1)
         self._dataImporter.SetDataScalarTypeToFloat()

@@ -237,7 +237,7 @@ def readBinaryMHD(inputPath, metaData=None):
     elif metaData["ElementType"] == "MET_SHORT":
         data = np.fromfile(metaData["ElementDataFile"], dtype=np.uint16)
     else:
-        data = np.fromfile(metaData["ElementDataFile"], dtype=np.float32)
+        data = np.fromfile(metaData["ElementDataFile"], dtype=np.float64)
 
 
     if metaData["ElementNumberOfChannels"] == 1:

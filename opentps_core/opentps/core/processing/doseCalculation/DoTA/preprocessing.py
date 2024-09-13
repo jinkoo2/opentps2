@@ -24,7 +24,7 @@ class DataRescaler():
     def __get_values(self, key):
         '''Calculate the maximum and minimum.'''
         # Initialize max and min values.
-        max_value, min_value = -np.float32('inf'), np.float32('inf')
+        max_value, min_value = -np.float64('inf'), np.float64('inf')
 
         with h5py.File(self.filename, 'r') as fh:
             for i in range(fh[key].shape[-1]):

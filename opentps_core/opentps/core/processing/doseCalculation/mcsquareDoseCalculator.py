@@ -439,7 +439,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         beamletDose = SparseBeamlets()
         beamletDose.setUnitaryBeamlets(
-            csc_matrix.dot(sparseBeamlets, csc_matrix(np.diag(self._beamletRescaling()), dtype=np.float32)))
+            csc_matrix.dot(sparseBeamlets, csc_matrix(np.diag(self._beamletRescaling()), dtype=np.float64)))
 
         beamletDose.doseOrigin = self.scoringOrigin
 

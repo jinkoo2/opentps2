@@ -70,7 +70,7 @@ def readBeamlets(file_path, beamletRescaling:Sequence[float], origin, roi: Optio
     sparseBeamlets = _read_sparse_data(header["Binary_file"], header["NbrVoxels"], header["NbrSpots"], roi)
 
     beamletDose = SparseBeamlets()
-    beamletDose.setUnitaryBeamlets(csc_matrix.dot(sparseBeamlets, csc_matrix(np.diag(beamletRescaling), dtype=np.float32)))
+    beamletDose.setUnitaryBeamlets(csc_matrix.dot(sparseBeamlets, csc_matrix(np.diag(beamletRescaling), dtype=np.float64)))
     beamletDose.doseOrigin = origin
     beamletDose.doseSpacing = header["VoxelSpacing"]
     beamletDose.doseGridSize = header["ImageSize"]
@@ -152,7 +152,7 @@ def _read_sparse_data(Binary_file, NbrVoxels, NbrSpots, roi:Optional[ROIMask]=No
     buffer_size = 5 * NbrVoxels
     col_index = np.zeros((buffer_size), dtype=np.uint32)
     row_index = np.zeros((buffer_size), dtype=np.uint32)
-    beamlet_data = np.zeros((buffer_size), dtype=np.float32)
+    beamlet_data = np.zeros((buffer_size), dtype=np.float64)
     data_id = 0
     last_stacked_col = -1
     num_unstacked_col = 0
@@ -208,7 +208,7 @@ def _read_sparse_data(Binary_file, NbrVoxels, NbrSpots, roi:Optional[ROIMask]=No
                 if spot == 0:
                     BeamletMatrix = sp.csc_matrix(
                         (beamlet_data[:data_id], (row_index[:data_id], col_index[:data_id])), shape=(NbrVoxels, 1),
-                        dtype=np.float32)
+                        dtype=np.float64)
                     data_id = 0
                     last_stacked_col = spot
                     num_unstacked_col = 0
@@ -218,7 +218,7 @@ def _read_sparse_data(Binary_file, NbrVoxels, NbrSpots, roi:Optional[ROIMask]=No
                     col_index = 0 * col_index
                 elif (data_id > buffer_size - NbrVoxels):
                     A = sp.csc_matrix((beamlet_data[:data_id], (row_index[:data_id], col_index[:data_id])),
-                                      shape=(NbrVoxels, num_unstacked_col + 1), dtype=np.float32)
+                                      shape=(NbrVoxels, num_unstacked_col + 1), dtype=np.float64)
                     data_id = 0
                     BeamletMatrix = sp.hstack([BeamletMatrix, A])
                     last_stacked_col = spot
@@ -234,7 +234,7 @@ def _read_sparse_data(Binary_file, NbrVoxels, NbrSpots, roi:Optional[ROIMask]=No
 
     # stack last cols
     A = sp.csc_matrix((beamlet_data[:data_id], (row_index[:data_id], col_index[:data_id])),
-                      shape=(NbrVoxels, num_unstacked_col), dtype=np.float32)
+                      shape=(NbrVoxels, num_unstacked_col), dtype=np.float64)
     if BeamletMatrix is None:
         BeamletMatrix = A
     else:

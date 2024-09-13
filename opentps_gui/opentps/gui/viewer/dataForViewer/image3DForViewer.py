@@ -25,7 +25,7 @@ class Image3DForViewer(GenericImageForViewer):
         imageOrigin = self.origin
         imageSpacing = self.spacing
         imageData = np.swapaxes(self.imageArray, 0, 2)
-        num_array = np.array(np.ravel(imageData), dtype=np.float32)
+        num_array = np.array(np.ravel(imageData), dtype=np.float64)
 
         self._dataImporter.SetNumberOfScalarComponents(1)
         self._dataImporter.SetDataExtent(0, shape[0] - 1, 0, shape[1] - 1, 0, shape[2] - 1)

@@ -376,7 +376,7 @@ class ChoseAngles_dialog(QDialog):
         img_min = image.min()
         # img_max = self.Image.max()
         img_max = np.percentile(image, 99.995)
-        img = 255 * (image.astype(np.float32) - img_min) / (
+        img = 255 * (image.astype(np.float64) - img_min) / (
                     img_max - img_min + 1e-5)  # normalize data betwee, 0 and 255
         img[img > 255] = 255
         return img

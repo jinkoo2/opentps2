@@ -1218,7 +1218,7 @@ def readDicomPlan(dcmFile) -> RTPlan:
                     sum_weights = sum(dcm_layer.ScanSpotMetersetWeights)
 
             elif (plan.scanMode == "LINE"):
-                sum_weights = sum(np.frombuffer(dcm_layer[0x300b1096].value, dtype=np.float32).tolist())
+                sum_weights = sum(np.frombuffer(dcm_layer[0x300b1096].value, dtype=np.float64).tolist())
 
             if sum_weights == 0.0:
                 continue
@@ -1247,15 +1247,15 @@ def readDicomPlan(dcmFile) -> RTPlan:
             elif (plan.scanMode == "LINE"):
                 raise NotImplementedError()
                 # print("SpotNumber: ", dcm_layer[0x300b1092].value)
-                # print("SpotValue: ", np.frombuffer(dcm_layer[0x300b1094].value, dtype=np.float32).tolist())
-                # print("MUValue: ", np.frombuffer(dcm_layer[0x300b1096].value, dtype=np.float32).tolist())
-                # print("SizeValue: ", np.frombuffer(dcm_layer[0x300b1098].value, dtype=np.float32).tolist())
+                # print("SpotValue: ", np.frombuffer(dcm_layer[0x300b1094].value, dtype=np.float64).tolist())
+                # print("MUValue: ", np.frombuffer(dcm_layer[0x300b1096].value, dtype=np.float64).tolist())
+                # print("SizeValue: ", np.frombuffer(dcm_layer[0x300b1098].value, dtype=np.float64).tolist())
                 # print("PaintValue: ", dcm_layer[0x300b109a].value)
-                LineScanPoints = np.frombuffer(dcm_layer[0x300b1094].value, dtype=np.float32).tolist()
+                LineScanPoints = np.frombuffer(dcm_layer[0x300b1094].value, dtype=np.float64).tolist()
                 layer.LineScanControlPoint_x = LineScanPoints[0::2]
                 layer.LineScanControlPoint_y = LineScanPoints[1::2]
                 layer.LineScanControlPoint_Weights = np.frombuffer(dcm_layer[0x300b1096].value,
-                                                                   dtype=np.float32).tolist()
+                                                                   dtype=np.float64).tolist()
                 layer.LineScanControlPoint_MU = np.array(
                     layer.LineScanControlPoint_Weights) * layer.scalingFactor  # weights are converted to MU
                 if layer.LineScanControlPoint_MU.size == 1:
@@ -1918,7 +1918,7 @@ def readDicomVectorField(dcmFile):
     imagePositionPatient = dcmField.ImagePositionPatient
     pixelSpacing = dcmField.GridResolution
 
-    rawField = np.frombuffer(dcmField.VectorGridData, dtype=np.float32)
+    rawField = np.frombuffer(dcmField.VectorGridData, dtype=np.float64)
     rawField = rawField.reshape(
         (3, dcmField.GridDimensions[0], dcmField.GridDimensions[1], dcmField.GridDimensions[2]),
         order='F').transpose(1, 2, 3, 0)

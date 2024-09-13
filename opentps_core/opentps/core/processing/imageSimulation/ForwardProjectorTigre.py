@@ -62,26 +62,26 @@ def forwardProjectionTigre(ct, angles, axis='Z', ctIsocenter=None, SAD=1000, SID
 
     # For binary data
     if ct.imageArray.dtype == 'bool':
-        ct._imageArray = ct.imageArray.astype(np.float32)
+        ct._imageArray = ct.imageArray.astype(np.float64)
         ct._imageArray[ct.imageArray < 0.5] = -1000
         ct._imageArray[ct.imageArray >= 0.5] = 1000
 
     # Convert CT to attenuation in specified axis
     mu_water = 0.0215
     if axis == 'Z':
-        im = np.transpose(np.float32(ct.imageArray) * mu_water / 1000 + mu_water, [2, 1, 0])
+        im = np.transpose(np.float64(ct.imageArray) * mu_water / 1000 + mu_water, [2, 1, 0])
         ctSpacing = np.array([ct.spacing[2], ct.spacing[1], ct.spacing[0]])
         ctGridSize = np.array([ct.gridSize[2], ct.gridSize[1], ct.gridSize[0]])
         ctCenter = np.array([ctCenter[2], ctCenter[1], ctCenter[0]])
         ctIsocenter = np.array([ctIsocenter[2], ctIsocenter[1], ctIsocenter[0]])
     elif axis == 'Y':
-        im = np.transpose(np.float32(ct.imageArray) * mu_water / 1000 + mu_water, [1, 0, 2])
+        im = np.transpose(np.float64(ct.imageArray) * mu_water / 1000 + mu_water, [1, 0, 2])
         ctSpacing = np.array([ct.spacing[1],ct.spacing[0],ct.spacing[2]])
         ctGridSize = np.array([ct.gridSize[1],ct.gridSize[0],ct.gridSize[2]])
         ctCenter = np.array([ctCenter[1],ctCenter[0],ctCenter[2]])
         ctIsocenter = np.array([ctIsocenter[1],ctIsocenter[0],ctIsocenter[2]])
     else:
-        im = np.float32(ct.imageArray) * mu_water / 1000 + mu_water
+        im = np.float64(ct.imageArray) * mu_water / 1000 + mu_water
         ctSpacing = ct.spacing
         ctGridSize = ct.gridSize
 

@@ -67,7 +67,7 @@ def applyBaselineShift(inputData, ROI, shift, sigma=2, tryGPU=True):
         deformation.initFromImage(image)
 
         cert = maskFixed.copy()
-        cert._imageArray = maskFixed.imageArray.astype(np.float32)/1.1 + 0.1
+        cert._imageArray = maskFixed.imageArray.astype(np.float64)/1.1 + 0.1
         cert._imageArray[image.imageArray > 200] = 100
 
         for i in range(3):

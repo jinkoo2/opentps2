@@ -68,7 +68,7 @@ class VectorField3D(Image3D):
         self.origin = image._origin
         self.spacing = image._spacing
 
-    def warp(self, data, fillValue='closest', outputType=np.float32, tryGPU=True):
+    def warp(self, data, fillValue='closest', outputType=np.float64, tryGPU=True):
         """
         Warp 3D data using linear interpolation.
 
@@ -78,7 +78,7 @@ class VectorField3D(Image3D):
             data to be warped.
         fillValue : scalar or 'closest' (default: 'closest')
             interpolation value for locations outside the input voxel grid. If 'closest', the closest voxel value is used.
-        outputType : numpy type (default: np.float32)
+        outputType : numpy type (default: np.float64)
             output data type.
         tryGPU : bool (default: True)
             if True, try to use GPU for warping.
@@ -91,13 +91,13 @@ class VectorField3D(Image3D):
 
         return resampler3D.warp(data, self._imageArray, self.spacing, fillValue=fillValue, outputType=outputType, tryGPU=tryGPU)
 
-    def exponentiateField(self, outputType=np.float32, tryGPU=True):
+    def exponentiateField(self, outputType=np.float64, tryGPU=True):
         """
         Exponentiate the vector field (e.g. to convert velocity in to displacement).
 
         Parameters
         ----------
-        outputType : numpy type (default: np.float32)
+        outputType : numpy type (default: np.float64)
             output data type.
         tryGPU : bool (default: True)
             if True, try to use GPU for warping.

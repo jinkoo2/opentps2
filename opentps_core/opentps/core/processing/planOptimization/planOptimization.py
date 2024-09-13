@@ -185,7 +185,7 @@ class PlanOptimizer:
                 normFactor = self.plan.planDesign.objectives.targetPrescription / maxDose
             if self.xSquared:
                 normFactor = math.sqrt(normFactor)
-            x0 = normFactor * np.ones(self.plan.planDesign.beamlets.shape[1], dtype=np.float32)
+            x0 = normFactor * np.ones(self.plan.planDesign.beamlets.shape[1], dtype=np.float64)
 
         return x0
 
@@ -209,9 +209,9 @@ class PlanOptimizer:
         if self.MKL_acceleration :
             logger.info("Using MKL to create sparse beamlet matrix")
             beamletMatrix = sparse_dot_mkl.dot_product_mkl(
-                sp.diags(roiObjectives.astype(np.float32), format='csc'), self.plan.planDesign.beamlets.toSparseMatrix())
+                sp.diags(roiObjectives.astype(np.float64), format='csc'), self.plan.planDesign.beamlets.toSparseMatrix())
         else:
-            beamletMatrix = sp.csc_matrix.dot(sp.diags(roiObjectives.astype(np.float32), format='csc'),
+            beamletMatrix = sp.csc_matrix.dot(sp.diags(roiObjectives.astype(np.float64), format='csc'),
                                               self.plan.planDesign.beamlets.toSparseMatrix())
 
         self.plan.planDesign.beamlets.setUnitaryBeamlets(beamletMatrix)
@@ -221,11 +221,11 @@ class PlanOptimizer:
                 if self.MKL_acceleration:
                     print("Using MKL to create sparse beamlet matrix")
                     beamletMatrix = sparse_dot_mkl.dot_product_mkl(
-                        sp.diags(roiRobustObjectives.astype(np.float32), format='csc'),
+                        sp.diags(roiRobustObjectives.astype(np.float64), format='csc'),
                         self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
                 else:
                     beamletMatrix = sp.csc_matrix.dot(
-                        sp.diags(roiRobustObjectives.astype(np.float32), format='csc'),
+                        sp.diags(roiRobustObjectives.astype(np.float64), format='csc'),
                         self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
                 self.plan.planDesign.robustness.scenarios[s].setUnitaryBeamlets(beamletMatrix)
 
@@ -238,7 +238,7 @@ class PlanOptimizer:
         assert self.plan.planDesign.beamlets._sparseBeamlets is not None
 
         beamlets = self.plan.planDesign.beamlets
-        weights = np.array(self.plan.spotMUs, dtype=np.float32)
+        weights = np.array(self.plan.spotMUs, dtype=np.float64)
         if self.MKL_acceleration:
             totalDose = sparse_dot_mkl.dot_product_mkl(beamlets._sparseBeamlets, weights) * self.plan.numberOfFractionsPlanned
         else:
@@ -334,9 +334,9 @@ class PlanOptimizer:
         # total dose
         logger.info("Total dose calculation ...")
         if self.xSquared:
-            self.plan.spotMUs = np.square(weights).astype(np.float32) / self.plan.numberOfFractionsPlanned
+            self.plan.spotMUs = np.square(weights).astype(np.float64) / self.plan.numberOfFractionsPlanned
         else:
-            self.plan.spotMUs = weights.astype(np.float32) / self.plan.numberOfFractionsPlanned
+            self.plan.spotMUs = weights.astype(np.float64) / self.plan.numberOfFractionsPlanned
         
         MU_before_simplify = self.plan.spotMUs.copy()
         self.plan.simplify(threshold=self.thresholdSpotRemoval) # remove spots below self.thresholdSpotRemoval
@@ -531,7 +531,7 @@ class BoundConstraintsOptimizer(PlanOptimizer):
             # second optimization with lower bound = self.bounds[0]
             self.solver.params['maxiter'] = nit2
             result = self.solver.solve(self.functions, x0, bounds=self.formatBoundsForSolver(self.bounds))
-            result_weights = np.zeros(ind_to_keep.shape, dtype=np.float32) # reintroduce filtered spots at zero MU
+            result_weights = np.zeros(ind_to_keep.shape, dtype=np.float64) # reintroduce filtered spots at zero MU
             result_weights[ind_to_keep] = result['sol']
             result['sol'] = result_weights
 

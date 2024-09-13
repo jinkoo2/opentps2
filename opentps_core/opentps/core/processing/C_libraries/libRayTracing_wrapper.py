@@ -43,7 +43,7 @@ def WET_raytracing(SPR, beam_direction, ROI=[]):
             libRaytracing = ctypes.cdll.LoadLibrary(clibraries.__path__[0] + os.sep + "libRayTracingMAC.so")
         else:
             logger.error("Not compatible with " + platform.system() + " system.")
-        float_array = np.ctypeslib.ndpointer(dtype=np.float32)
+        float_array = np.ctypeslib.ndpointer(dtype=np.float64)
         int_array = np.ctypeslib.ndpointer(dtype=np.int32)
         bool_array = np.ctypeslib.ndpointer(dtype=bool)
         libRaytracing.raytrace_WET.argtypes = [float_array, bool_array, float_array, float_array, float_array,
@@ -51,18 +51,18 @@ def WET_raytracing(SPR, beam_direction, ROI=[]):
         libRaytracing.raytrace_WET.restype = ctypes.c_void_p
 
         # prepare inputs for C library
-        Offset = np.array(SPR.origin, dtype=np.float32, order='C')
-        PixelSpacing = np.array(SPR.spacing, dtype=np.float32, order='C')
+        Offset = np.array(SPR.origin, dtype=np.float64, order='C')
+        PixelSpacing = np.array(SPR.spacing, dtype=np.float64, order='C')
         GridSize = np.array(SPR.gridSize, dtype=np.int32, order='C')
-        beam_direction = np.array(beam_direction, dtype=np.float32, order='C')
-        WET = np.zeros(SPR.gridSize, dtype=np.float32, order='C')
+        beam_direction = np.array(beam_direction, dtype=np.float64, order='C')
+        WET = np.zeros(SPR.gridSize, dtype=np.float64, order='C')
         if ROI == []:
             ROI_mask = np.ones(SPR.gridSize)
         else:
             ROI_mask = np.array(ROI.imageArray, dtype=np.bool, order='C')
 
         # call C function
-        libRaytracing.raytrace_WET(SPR.imageArray.astype(np.float32), ROI_mask.astype(bool), WET, Offset,
+        libRaytracing.raytrace_WET(SPR.imageArray.astype(np.float64), ROI_mask.astype(bool), WET, Offset,
                                    PixelSpacing, GridSize, beam_direction)
 
 
@@ -155,24 +155,24 @@ def compute_position_from_range(SPR, spot_positions, spot_directions, spot_range
             libRaytracing = ctypes.cdll.LoadLibrary(clibraries.__path__[0] + os.sep + "libRayTracingMAC.so")
         else:
             logger.error("Not compatible with " + platform.system() + " system.")
-        float_array = np.ctypeslib.ndpointer(dtype=np.float32)
+        float_array = np.ctypeslib.ndpointer(dtype=np.float64)
         int_array = np.ctypeslib.ndpointer(dtype=np.int32)
         libRaytracing.compute_position_from_range.argtypes = [float_array, float_array, float_array, int_array,
                                                               float_array, float_array, float_array, ctypes.c_int]
         libRaytracing.compute_position_from_range.restype = ctypes.c_void_p
 
         # prepare inputs for C library
-        Offset = np.array(SPR.origin, dtype=np.float32, order='C')
-        PixelSpacing = np.array(SPR.spacing, dtype=np.float32, order='C')
+        Offset = np.array(SPR.origin, dtype=np.float64, order='C')
+        PixelSpacing = np.array(SPR.spacing, dtype=np.float64, order='C')
         GridSize = np.array(SPR.gridSize, dtype=np.int32, order='C')
-        positions = np.array(spot_positions, dtype=np.float32, order='C')
+        positions = np.array(spot_positions, dtype=np.float64, order='C')
         positions = positions.reshape(NumSpots * 3, order='C')
-        directions = np.array(spot_directions, dtype=np.float32, order='C')
+        directions = np.array(spot_directions, dtype=np.float64, order='C')
         directions = directions.reshape(NumSpots * 3, order='C')
-        ranges = np.array(spot_ranges, dtype=np.float32, order='C')
+        ranges = np.array(spot_ranges, dtype=np.float64, order='C')
 
         # call C function
-        libRaytracing.compute_position_from_range(SPR.imageArray.astype(np.float32), Offset, PixelSpacing, GridSize,
+        libRaytracing.compute_position_from_range(SPR.imageArray.astype(np.float64), Offset, PixelSpacing, GridSize,
                                                   positions, directions, ranges, NumSpots)
 
         CartesianSpotPositions = positions.reshape((NumSpots, 3), order='C').tolist()
@@ -259,7 +259,7 @@ def transport_spots_to_target(SPR, Target_mask, SpotGrid, direction):
             libRaytracing = ctypes.cdll.LoadLibrary(clibraries.__path__[0] + os.sep + "libRayTracingMAC.so")
         else:
             logger.error("Not compatible with " + platform.system() + " system.")
-        float_array = np.ctypeslib.ndpointer(dtype=np.float32)
+        float_array = np.ctypeslib.ndpointer(dtype=np.float64)
         int_array = np.ctypeslib.ndpointer(dtype=np.int32)
         bool_array = np.ctypeslib.ndpointer(dtype=bool)
         libRaytracing.transport_spots_to_target.argtypes = [float_array, bool_array, float_array, float_array,
@@ -268,16 +268,16 @@ def transport_spots_to_target(SPR, Target_mask, SpotGrid, direction):
         libRaytracing.transport_spots_to_target.restype = ctypes.c_void_p
 
         # prepare inputs for C library
-        Offset = np.array(SPR.origin, dtype=np.float32, order='C')
-        PixelSpacing = np.array(SPR.spacing, dtype=np.float32, order='C')
+        Offset = np.array(SPR.origin, dtype=np.float64, order='C')
+        PixelSpacing = np.array(SPR.spacing, dtype=np.float64, order='C')
         GridSize = np.array(SPR.gridSize, dtype=np.int32, order='C')
-        positions = np.array([SpotGrid["x"], SpotGrid["y"], SpotGrid["z"]], dtype=np.float32, order='C').transpose(1, 0)
+        positions = np.array([SpotGrid["x"], SpotGrid["y"], SpotGrid["z"]], dtype=np.float64, order='C').transpose(1, 0)
         positions = positions.reshape(NumSpots * 3, order='C')
-        WETs = np.zeros(NumSpots, dtype=np.float32, order='C')
-        direction = np.array(direction, dtype=np.float32, order='C')
+        WETs = np.zeros(NumSpots, dtype=np.float64, order='C')
+        direction = np.array(direction, dtype=np.float64, order='C')
 
         # call C function
-        libRaytracing.transport_spots_to_target(SPR.imageArray.astype(np.float32),
+        libRaytracing.transport_spots_to_target(SPR.imageArray.astype(np.float64),
                                                 Target_mask.imageArray.astype(bool).flatten(), Offset,
                                                 PixelSpacing, GridSize, positions, WETs, direction, NumSpots)
 
@@ -367,7 +367,7 @@ def transport_spots_inside_target(SPR, Target_mask, SpotGrid, direction, minWET,
             libRaytracing = ctypes.cdll.LoadLibrary(clibraries.__path__[0] + os.sep + "libRayTracingMAC.so")
         else:
             logger.error("Not compatible with " + platform.system() + " system.")
-        float_array = np.ctypeslib.ndpointer(dtype=np.float32)
+        float_array = np.ctypeslib.ndpointer(dtype=np.float64)
         int_array = np.ctypeslib.ndpointer(dtype=np.int32)
         bool_array = np.ctypeslib.ndpointer(dtype=bool)
         libRaytracing.transport_spots_inside_target.argtypes = [float_array, bool_array, float_array, float_array,
@@ -377,18 +377,18 @@ def transport_spots_inside_target(SPR, Target_mask, SpotGrid, direction, minWET,
         libRaytracing.transport_spots_inside_target.restype = ctypes.c_void_p
 
         # prepare input for C library
-        Offset = np.array(SPR.origin, dtype=np.float32, order='C')
-        PixelSpacing = np.array(SPR.spacing, dtype=np.float32, order='C')
+        Offset = np.array(SPR.origin, dtype=np.float64, order='C')
+        PixelSpacing = np.array(SPR.spacing, dtype=np.float64, order='C')
         GridSize = np.array(SPR.gridSize, dtype=np.int32, order='C')
-        positions = np.array([SpotGrid["x"], SpotGrid["y"], SpotGrid["z"]], dtype=np.float32, order='C').transpose(1, 0)
+        positions = np.array([SpotGrid["x"], SpotGrid["y"], SpotGrid["z"]], dtype=np.float64, order='C').transpose(1, 0)
         positions = positions.reshape(NumSpots * 3, order='C')
-        WETs = np.array(SpotGrid["WET"], dtype=np.float32, order='C')
-        direction = np.array(direction, dtype=np.float32, order='C')
+        WETs = np.array(SpotGrid["WET"], dtype=np.float64, order='C')
+        direction = np.array(direction, dtype=np.float64, order='C')
         max_number_layers = round((550 - minWET) / LayerSpacing)
-        Layers = -1.0 * np.ones(NumSpots * max_number_layers, dtype=np.float32, order='C')
+        Layers = -1.0 * np.ones(NumSpots * max_number_layers, dtype=np.float64, order='C')
 
         # call C function
-        libRaytracing.transport_spots_inside_target(SPR.imageArray.astype(np.float32),
+        libRaytracing.transport_spots_inside_target(SPR.imageArray.astype(np.float64),
                                                     Target_mask.imageArray.astype(bool).flatten(),
                                                     Offset,
                                                     PixelSpacing, GridSize, positions, WETs, Layers, direction,
@@ -476,7 +476,7 @@ def transport_spots_inside_target_map(SPR, Target_mask, SpotGrid, direction, min
             libRaytracing = ctypes.cdll.LoadLibrary(clibraries.__path__[0] + os.sep + "libRayTracingMAC.so")
         else:
             logger.error("Not compatible with " + platform.system() + " system.")
-        float_array = np.ctypeslib.ndpointer(dtype=np.float32)
+        float_array = np.ctypeslib.ndpointer(dtype=np.float64)
         int_array = np.ctypeslib.ndpointer(dtype=np.int32)
         bool_array = np.ctypeslib.ndpointer(dtype=bool)
         libRaytracing.transport_spots_inside_target.argtypes = [float_array, bool_array, float_array, float_array,
@@ -486,18 +486,18 @@ def transport_spots_inside_target_map(SPR, Target_mask, SpotGrid, direction, min
         libRaytracing.transport_spots_inside_target.restype = ctypes.c_void_p
 
         # prepare input for C library
-        Offset = np.array(SPR.origin, dtype=np.float32, order='C')
-        PixelSpacing = np.array(SPR.spacing, dtype=np.float32, order='C')
+        Offset = np.array(SPR.origin, dtype=np.float64, order='C')
+        PixelSpacing = np.array(SPR.spacing, dtype=np.float64, order='C')
         GridSize = np.array(SPR.gridSize, dtype=np.int32, order='C')
-        positions = np.array([SpotGrid["x"], SpotGrid["y"], SpotGrid["z"]], dtype=np.float32, order='C').transpose(1, 0)
+        positions = np.array([SpotGrid["x"], SpotGrid["y"], SpotGrid["z"]], dtype=np.float64, order='C').transpose(1, 0)
         positions = positions.reshape(NumSpots * 3, order='C')
-        WETs = np.array(SpotGrid["WET"], dtype=np.float32, order='C')
-        direction = np.array(direction, dtype=np.float32, order='C')
+        WETs = np.array(SpotGrid["WET"], dtype=np.float64, order='C')
+        direction = np.array(direction, dtype=np.float64, order='C')
         max_number_layers = round((550 - minWET) / LayerSpacing)
-        Layers = -1.0 * np.ones(NumSpots * max_number_layers, dtype=np.float32, order='C')
+        Layers = -1.0 * np.ones(NumSpots * max_number_layers, dtype=np.float64, order='C')
 
         # call C function
-        libRaytracing.transport_spots_inside_target(SPR.imageArray.astype(np.float32), Target_mask.imageArray.astype(bool).flatten(), Offset,
+        libRaytracing.transport_spots_inside_target(SPR.imageArray.astype(np.float64), Target_mask.imageArray.astype(bool).flatten(), Offset,
                                                     PixelSpacing, GridSize, positions, WETs, Layers, direction,
                                                     NumSpots, max_number_layers, minWET, LayerSpacing)
 

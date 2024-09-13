@@ -22,7 +22,7 @@ from opentps.core.processing.imageProcessing.imageTransform3D import \
 
 
 
-def imageToSITK(image:Union[Image2D, Image3D], type=np.float32):
+def imageToSITK(image:Union[Image2D, Image3D], type=np.float64):
     """
     Convert an Image2D or Image3D to a SimpleITK image
 
@@ -31,7 +31,7 @@ def imageToSITK(image:Union[Image2D, Image3D], type=np.float32):
     image: Image2D or Image3D
         The image to convert
     type: np.dtype
-        The type of the image to convert to. Default is np.float32
+        The type of the image to convert to. Default is np.float64
 
     returns
     -------
@@ -47,7 +47,7 @@ def imageToSITK(image:Union[Image2D, Image3D], type=np.float32):
         raise ValueError(image.__class__.__name__ + ' is not a valid type.')
 
 
-def image2DToSITK(image: Image2D, type=np.float32):
+def image2DToSITK(image: Image2D, type=np.float64):
     """
     Convert an Image2D to a SimpleITK image
 
@@ -56,7 +56,7 @@ def image2DToSITK(image: Image2D, type=np.float32):
     image: Image2D
         The image to convert
     type: np.dtype
-        The type of the image to convert to. Default is np.float32
+        The type of the image to convert to. Default is np.float64
 
     returns
     -------
@@ -75,7 +75,7 @@ def image2DToSITK(image: Image2D, type=np.float32):
     return img
 
 
-def image3DToSITK(image: Image3D, type=np.float32):
+def image3DToSITK(image: Image3D, type=np.float64):
     """
     Convert an Image3D to a SimpleITK image
 
@@ -84,7 +84,7 @@ def image3DToSITK(image: Image3D, type=np.float32):
     image: Image3D
         The image to convert
     type: np.dtype
-        The type of the image to convert to. Default is np.float32
+        The type of the image to convert to. Default is np.float64
 
     returns
     -------
@@ -112,7 +112,7 @@ def sitkImageToImage3D(sitkImage: sitk.Image, type=float):
     sitkImage: sitk.Image
         The image to convert
     type: np.dtype
-        The type of the image to convert to. Default is np.float32
+        The type of the image to convert to. Default is np.float64
 
     returns
     -------
@@ -136,7 +136,7 @@ def sitkImageToImage2D(sitkImage: sitk.Image, type=float):
     sitkImage: sitk.Image
         The image to convert
     type: np.dtype
-        The type of the image to convert to. Default is np.float32
+        The type of the image to convert to. Default is np.float64
 
     returns
     -------

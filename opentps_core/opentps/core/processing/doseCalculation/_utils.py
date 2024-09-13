@@ -152,7 +152,7 @@ class MCsquareSharedLib():
                 cumContValNb += contValNb
 
             A = csc_matrix((rowVal[spotInd], (spotRowInd, np.zeros((nbVal, )))), shape=(nVoxels, 1),
-                           dtype=np.float32)
+                           dtype=np.float64)
 
             if beamletMat is None:
                 beamletMat = A

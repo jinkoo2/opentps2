@@ -4,7 +4,7 @@ from opentps.core.processing.deformableDataAugmentationToolBox.weightMaps import
 from opentps.core.processing.deformableDataAugmentationToolBox.modelManipFunctions import *
 
 ## -------------------------------------------------------------------------------
-def generateDynSeqFromBreathingSignalsAndModel(model, signalList, ROIList, signalIdxUsed=[0, 0], dimensionUsed='Z', outputType=np.float32, tryGPU=True):
+def generateDynSeqFromBreathingSignalsAndModel(model, signalList, ROIList, signalIdxUsed=[0, 0], dimensionUsed='Z', outputType=np.float64, tryGPU=True):
 
     """
     Generate a dynamic 3D sequence from a model, in which each given ROI follows its breathing signal
@@ -19,7 +19,7 @@ def generateDynSeqFromBreathingSignalsAndModel(model, signalList, ROIList, signa
         list of points as [X, Y, Z] or (X, Y, Z) --> does not work with ROI's as masks or struct
     dimensionUsed : str
         X, Y, Z or norm, the dimension used to compare the breathing signals with the model deformation values
-    outputType : pixel data type (np.float32, np.uint16, etc)
+    outputType : pixel data type (np.float64, np.uint16, etc)
 
     Returns
     -------
@@ -78,7 +78,7 @@ def generateDynSeqFromBreathingSignalsAndModel(model, signalList, ROIList, signa
     return dynseq
 
 ## -------------------------------------------------------------------------------
-def generateDeformationListFromBreathingSignalsAndModel(model, signalList, ROIList, signalIdxUsed=[0, 0], dimensionUsed='Z', outputType=np.float32, tryGPU=True):
+def generateDeformationListFromBreathingSignalsAndModel(model, signalList, ROIList, signalIdxUsed=[0, 0], dimensionUsed='Z', outputType=np.float64, tryGPU=True):
 
     """
     Generate a list of deformation fields from a model, in which each given ROI follows its breathing signal
@@ -93,7 +93,7 @@ def generateDeformationListFromBreathingSignalsAndModel(model, signalList, ROILi
         list of points as [X, Y, Z] or (X, Y, Z) --> does not work with ROI's as masks or struct
     dimensionUsed : str
         X, Y, Z or norm, the dimension used to compare the breathing signals with the model deformation values
-    outputType : pixel data type (np.float32, np.uint16, etc)
+    outputType : pixel data type (np.float64, np.uint16, etc)
 
     Returns
     -------
