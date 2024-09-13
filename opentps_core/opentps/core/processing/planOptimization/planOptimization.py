@@ -151,6 +151,7 @@ class PlanOptimizer:
             if n_threads is not None:
                 sparse_dot_mkl.mkl_set_num_threads(n_threads)
                 logger.info('MKL acceleration activated with {} threads'.format(n_threads))
+            logger.info('CAUTION : MKL might not work on Unix systems')
             self.MKL_acceleration = True
             logger.info('MKL acceleration activated')
 
