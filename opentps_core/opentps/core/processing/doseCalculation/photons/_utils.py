@@ -4,14 +4,6 @@ import scipy.sparse as sp
 from scipy import ndimage
 import logging
 logger = logging.getLogger(__name__)
-try:
-    import pycuda.autoinit
-    import pycuda.gpuarray as gpuarray
-    from pycuda.compiler import SourceModule
-    from pycuda.autoinit import context
-    import pycuda.driver as cuda
-except ModuleNotFoundError:
-    logger.warning("No GPU found. Switch to C++ implementation instead")
 from scipy.ndimage import shift, gaussian_filter
 import scipy.sparse as sp
 from scipy.sparse import csc_matrix
@@ -20,6 +12,7 @@ from opentps.core.data.plan._photonPlan import PhotonPlan
 import ctypes
 import os
 import psutil
+import os
 
 def getConvolveNonZeroElements(kernel_size, nonZeroIndexes, image_size):
     nonZeroIndexes_convolved = []
@@ -38,88 +31,15 @@ def convolveVoxel(sparse,index,kernel, image_size):
                 index_shifted = index + CCCdoseEngineIO.convertTo1DcoordFortran([i - kernel_size//2, j - kernel_size//2, k - kernel_size//2], image_size)
                 convolution += sparse[index_shifted,0] * kernel[i,j,k]
     return convolution
-'''
-mod=SourceModule("""
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-
-__device__ float getElement(int *index, int size, int target, float *sparse);
-__device__ float linearInterpolation(float x, float xi0, float xi1, float xi2, float yi0, float yi1, float yi2);           
-__device__ int sign(float x);
-
-__global__ void shiftSparse(float *sparse, float *sparseShifted, int *index, int *indexShifted, int *shift, int *gridSize, float shiftValue, int indexNumberOfElements) {
-    int start = threadIdx.x + blockIdx.x*blockDim.x;
-    if (start < indexNumberOfElements) {
-        indexShifted[2 * start] =  index[start] + shift[0];
-        if (shiftValue != 0.0) {
-            int index0 = index[start] + shift[1];
-            float value0 = getElement(index, indexNumberOfElements, index0, sparse);
-
-            float value1 = sparse[start];
-                 
-            int index2 = index[start] + shift[2];
-            float value2 = getElement(index, indexNumberOfElements, index2, sparse);
-            
-            sparseShifted[2 * start] = linearInterpolation(shiftValue * -1, -1, 0, 1, value0, value1, value2);
-            sparseShifted[2 * start + 1] = linearInterpolation(sign(shiftValue) - shiftValue, -1, 0, 1, value0, value1, value2);
-                 
-            if (value2 != 0.0)
-              sparseShifted[2 * start + 1] /= 2;
-            if (value0 != 0.0)
-              sparseShifted[2 * start] /= 2;
-            
-            indexShifted[2 * start + 1] = indexShifted[2 * start] + shift[2];
-      }
-      else {
-          sparseShifted[2 * start] = sparse[start];
-      }          
-    }         
-}
-__device__ float getElement(int index[], int size, int target, float sparse[]) {
-    int left = 0;
-    int right = size - 1;
-    while (left <= right) {
-        int mid = left + (int) ((right - left) / 2);
-        if (index[mid] == target) {
-            return sparse[mid]; // Element found, return its index
-        } else if (index[mid] < target) {
-            left = mid + 1; // Search the right half
-        } else {
-            right = mid - 1; // Search the left half
-        }
-    }
-    return 0; // Element not found
-}        
-
-__device__ float linearInterpolation(float x, float xi0, float xi1, float xi2, float yi0, float yi1, float yi2) {
-              
-    if ((xi0 <= x) && (x <= xi1)) {
-        return (yi1 - yi0) / (xi1 - xi0) * (x - xi0) + yi0; 
-    } else if ((xi1 < x) && (x <= xi2)) {
-        return (yi2 - yi1) / (xi2 - xi1) * (x - xi1) + yi1; 
-    }      
-    else {
-        return -1000;
-    }
-}          
-
-__device__ int sign(float x) {
-    if (x>0) {
-        return 1; 
-    } else if (x<0) {
-        return -1; 
-    }      
-    else {
-        return 0;
-    }
-}   
-""")
 
 def correctShift(setup, angle):
     return np.array([(setup[0] * np.cos(angle) - setup[1] * np.sin(angle)) * np.cos(angle), (setup[0] * np.cos(angle) - setup[1] * np.sin(angle)) * np.sin(angle), setup[2]])
 
-def shiftBeamlets(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
+def shiftBeamlets_cu(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
+    import pycuda.autoinit
+    from pycuda.compiler import SourceModule
+    import pycuda.driver as cuda
+
     scenarioShift_voxel[2]*=-1 ### To have the setup error in LPS. Check because some signs problem
     scenarioShift_voxel[1]*=-1 ### To have the setup error in LPS. Check because some signs problem
     nbOfBeamlets = sparseBeamlets.shape[1]
@@ -127,6 +47,13 @@ def shiftBeamlets(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_
     assert(len(beamletAngles_rad), nbOfBeamlets)
     gridSize = np.array(gridSize, dtype=np.int32)
     BeamletMatrix = []
+
+    # Load the CUDA code from the external file
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "shiftBeamletsKernel.cu"), "r") as cuda_file:
+        kernel_code = cuda_file.read()
+
+    # Compile the CUDA code
+    mod = SourceModule(kernel_code)
 
     for index in range(nbOfBeamlets):
         scenarioShiftCorrected_voxel = np.round(correctShift(scenarioShift_voxel, beamletAngles_rad[index]),3)
@@ -183,19 +110,11 @@ def shiftBeamlets(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_
 
                 nonZeroValuesShiftedExtendedArray = np.append(nonZeroValuesShiftedExtendedArray,nonZeroValuesShifted * weight)
                 nonZeroIndexesShiftedExtendedArray = np.append(nonZeroIndexesShiftedExtendedArray,nonZeroIndexesShifted)
-                spp = sp.csc_matrix((nonZeroValuesShiftedExtendedArray, (nonZeroIndexesShiftedExtendedArray, np.zeros(nonZeroIndexesShiftedExtendedArray.size))), shape=(nbOfVoxelInImage, 1),dtype=np.float32)
-                # print('Here')
-                # printaux(spp.nonzero()[0], spp[spp.nonzero()][0])
             beamlet = sp.csc_matrix((nonZeroValuesShiftedExtendedArray, (nonZeroIndexesShiftedExtendedArray, np.zeros(nonZeroIndexesShiftedExtendedArray.size))), shape=(nbOfVoxelInImage, 1),dtype=np.float32)    
         else:
             beamlet = sp.csc_matrix((nonZeroValues[0], (nonZeroIndexes, np.zeros(nonZeroIndexes.size))), shape=(nbOfVoxelInImage, 1),dtype=np.float32)      
         BeamletMatrix.append(beamlet)  
-    return sp.hstack(BeamletMatrix)
-
-def printaux(indexes, values):
-    values = np.ravel(values)
-    for index, value in zip(indexes, values):
-        print(f"{index:<10} {value:<10}")
+    return sp.hstack(BeamletMatrix, format='csc')
 
 def find_change_indices(arr):
     arr = np.array(arr)
@@ -205,47 +124,25 @@ def find_change_indices(arr):
     change_indices = np.where(changes)[0] + 1
     return change_indices.tolist()
 
-def shiftBeamlets1(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
-    lib = ctypes.cdll.LoadLibrary('/home/luciano/Codes/newOpenTPS/opentps/opentps_core/opentps/core/processing/doseCalculation/photons/shiftBeamlets.so')
+def shiftBeamlets(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
+    paralelize = False
+    try:
+        import pycuda.driver as cuda
+        import pycuda.autoinit
+        cuda.init()
+        device_count = cuda.Device.count()
+        if device_count>0:
+            paralelize = True
+    except Exception as e:
+        print(f"CUDA is not available: {e}")
     
-    # Define the argument types and return types for the C++ function
-    lib.shiftBeamlets.argtypes = [
-        np.ctypeslib.ndpointer(dtype=np.float32, ndim=1, flags='C_CONTIGUOUS'),
-        np.ctypeslib.ndpointer(dtype=np.float32, ndim=1, flags='C_CONTIGUOUS'),
-        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-        np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-        ctypes.c_float,
-        ctypes.c_int,
-        ctypes.c_int
-    ]
-    numThreads = os.cpu_count()
-    scenarioShift_voxel[2]*=-1 ### To have the setup error in LPS. Check because some signs problem
-    scenarioShift_voxel[1]*=-1 ### To have the setup error in LPS. Check because some signs problem
-    nbOfBeamlets = sparseBeamlets.shape[1]
-    nbOfVoxelInImage = sparseBeamlets.shape[0]
-    assert(len(beamletAngles_rad), nbOfBeamlets)
-    gridSize = np.array(gridSize, dtype=np.int32)
-    BeamletMatrix = []
-    
-    nonZeroIndexes = sparseBeamlets.nonzero()
-    nonZeroValues = np.array(sparseBeamlets[nonZeroIndexes], dtype= np.float32)[0]
-    nonZeroIndexes_beamlet = np.array(nonZeroIndexes[0], dtype= np.int32)
-    indexes_beamlet = np.array(nonZeroIndexes[1], dtype= np.int32)
-    arg = np.argsort(indexes_beamlet)
-    
-    indexes_beamlet = indexes_beamlet[arg]
-    nonZeroIndexes_beamlet = nonZeroIndexes_beamlet[arg]
-    nonZeroValues = nonZeroValues[arg]
-    indexes = [0] + find_change_indices(indexes_beamlet)
-    
-    # lib.shiftBeamlets(nonZeroValues, nonZeroValuesShifted, nonZeroIndexes, nonZeroIndexesShifted, Shift_voxel, shiftValue, NumberOfElements, numThreads)   
-        
-    return sp.hstack(BeamletMatrix)
-'''
+    if paralelize:
+        return shiftBeamlets_cu(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad)
+    return shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad)
 
-def shiftBeamletscpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
-    lib = ctypes.cdll.LoadLibrary('/home/luciano/Codes/newOpenTPS/opentps/opentps_core/opentps/core/processing/doseCalculation/photons/shiftBeamlets.so')
+
+def shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
+    lib = ctypes.cdll.LoadLibrary(os.path.join(os.path.dirname(os.path.abspath(__file__)), "shiftBeamlets.so"))
     
     # Define the argument types and return types for the C++ function
     lib.shiftBeamlets.argtypes = [

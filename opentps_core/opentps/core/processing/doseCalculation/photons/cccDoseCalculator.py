@@ -20,15 +20,12 @@ from opentps.core.data.images import ROIMask
 from opentps.core.data import ROIContour
 from opentps.core.data.plan._photonPlan import PhotonPlan
 import opentps.core.io.CCCdoseEngineIO as CCCdoseEngineIO
-from scipy import interpolate
-try:
-    from opentps.core.processing.doseCalculation.photons._utils import shiftBeamlets
-except ImportError:
-    from opentps.core.processing.doseCalculation.photons._utils import shiftBeamletscpp 
+from opentps.core.processing.doseCalculation.photons._utils import shiftBeamlets
+
 import time
 # from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness
 
-__all__ = ['MCsquareDoseCalculator']
+__all__ = ['CCCDoseCalculator']
 
 
 logger = logging.getLogger(__name__)
@@ -193,7 +190,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
 
             if self._subprocessKilled:
                 self._subprocessKilled = False
-                raise Exception('MCsquare subprocess killed by caller.')
+                raise Exception('Collapse Cone Convolution subprocess killed by caller.')
             self._subprocess = []
 
 
@@ -217,7 +214,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
 
     def computeBeamlets(self, ct: CTImage, plan: PhotonPlan, overRidingDict: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
  
-        logger.info("Prepare MCsquare Beamlet calculation")
+        logger.info("Prepare Collapse Cone Convolution Beamlet calculation")
         if self._ct == None:
             self._ct = ct
             self._ct = self.fromHU2Densities(self._ct, overRidingDict) 
@@ -248,7 +245,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         return beamletDose
 
     def computeRobustScenarioBeamlets(self, ct: CTImage, plan: PhotonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None, robustMode = "Shift", computeNominal = True) -> SparseBeamlets:
-        logger.info("Prepare MCsquare Beamlet calculation")
+        logger.info("Prepare Collapse Cone Convolution Beamlet calculation")
         self._plan = plan
         self._ct = self.fromHU2Densities(ct, roi) 
         self._roi = roi
@@ -291,7 +288,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             nbOfBeamlets = nominal._sparseBeamlets.shape[1]
             assert(nbOfBeamlets==len(self._plan.beamlets))
 
-            BeamletMatrix = shiftBeamletscpp(nominal._sparseBeamlets, nominal.doseGridSize, scenarioShift_voxel, self._plan.beamletsAngle_rad) ### Implement the convolutions in case of sre in GPU look at shiftBeamlets
+            BeamletMatrix = shiftBeamlets(nominal._sparseBeamlets, nominal.doseGridSize, scenarioShift_voxel, self._plan.beamletsAngle_rad) ### Implement the convolutions in case of sre in GPU look at shiftBeamlets
             beamletsScenario = SparseBeamlets()
             beamletsScenario.setUnitaryBeamlets(BeamletMatrix)
             beamletsScenario.doseOrigin = nominal.doseOrigin
@@ -310,7 +307,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             os.mkdir(folder)
 
     def computeDose(self, ct: CTImage, plan: PhotonPlan, overRidingDict: Optional[Sequence[Union[ROIContour, ROIMask]]] = None, Density = False) -> SparseBeamlets:
-        logger.info("Prepare MCsquare Beamlet calculation")
+        logger.info("Prepare Collapse Cone Convolution Beamlet calculation")
         self._ct = ct
         self._plan = plan
         # self._roi = roi

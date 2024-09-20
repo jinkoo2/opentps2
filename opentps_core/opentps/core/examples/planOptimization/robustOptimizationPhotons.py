@@ -26,6 +26,9 @@ import copy
 from scipy.sparse import csc_matrix
 from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness as RobustnessPhotons
 from opentps.core.io.dicomIO import writeRTDose
+
+
+
 def calculateDoseArray(beamlets,weights, numberOfFractionsPlanned):
     doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
     totalDose = np.reshape(doseArray, beamlets._gridSize, order='F')
@@ -107,44 +110,28 @@ def run(output_path=""):
         planDesign.robustness.setupRandomError = 0
         planDesign.robustness.sseNumberOfSamples = 1
 
-        # All scenarios (includes diagonals on sphere)
-        # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.ALL
-
-        # Random scenario sampling  
-        # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.RANDOM
-        # planDesign.robustness.numScenarios = 5 # specify how many random scenarios to simulate, default = 100
-
         planDesign.targetMargin = max(planDesign.robustness.setupSystematicError)
 
         plan = planDesign.buildPlan()  # Spot placement
         plan.PlanName = "RobustPlan"
 
-        ccc.computeRobustScenarioBeamlets(ct, plan, robustMode='Simulation')
+        ccc.computeRobustScenarioBeamlets(ct, plan, robustMode='Shift')
         
 
 
     saveRTPlan(plan, plan_file, unloadBeamlets=False)
     plan.planDesign.objectives = ObjectivesList()
     plan.planDesign.objectives.setTarget(roi.name, 20.0)
-    # scoringGridSize = [int(math.floor(i / j * k)) for i, j, k in zip(ct.gridSize, scoringSpacing, ct.spacing)]
-    # plan.planDesign.objectives.setScoringParameters(ct, scoringGridSize, scoringSpacing)
     plan.planDesign.objectives.fidObjList = []
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 20.0, 1.0, robust=True)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 20.5, 1.0, robust=True)
 
     solver = IMPTPlanOptimizer(method='Scipy-LBFGS', plan=plan, maxit=50)
-    # Optimize treatment plan
     doseInfluenceMatrix = copy.deepcopy(plan.planDesign.beamlets)
     doseImage, ps = solver.optimize()
 
     doseImage.imageArray  = calculateDoseArray(doseInfluenceMatrix, plan.beamletMUs, plan.numberOfFractionsPlanned)
-    # User input filename
-    # writeRTDose(doseImage, output_path, outputFilename="BeamletTotalDose")
-    # or default name
     writeRTDose(doseImage, output_path)
-    # MCsquare simulation
-    # mc2.nbPrimaries = 1e6
-    # doseImage = mc2.computeDose(ct, plan)
 
     # Compute DVH
     target_DVH = DVH(roi, doseImage)
