@@ -304,7 +304,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
     def _createFolderIfNotExists(self, folder):
         folder = Path(folder)
         if not folder.is_dir():
-            os.mkdir(folder)
+            os.makedirs(folder)
 
     def computeDose(self, ct: CTImage, plan: PhotonPlan, overRidingDict: Optional[Sequence[Union[ROIContour, ROIMask]]] = None, Density = False) -> SparseBeamlets:
         logger.info("Prepare Collapse Cone Convolution Beamlet calculation")
