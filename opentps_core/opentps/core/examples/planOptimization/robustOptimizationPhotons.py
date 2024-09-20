@@ -111,7 +111,7 @@ def run(output_path=""):
         planDesign.robustness.sseNumberOfSamples = 1
 
         planDesign.targetMargin = max(planDesign.robustness.setupSystematicError)
-
+        planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) # needs to be called prior spot placement
         plan = planDesign.buildPlan()  # Spot placement
         plan.PlanName = "RobustPlan"
 

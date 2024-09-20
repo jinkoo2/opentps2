@@ -6,13 +6,13 @@ import numpy as np
 from opentps.core.data.plan._planIonBeam import PlanIonBeam
 from opentps.core.data.plan._planIonLayer import PlanIonLayer
 from opentps.core.data.plan._planIonSpot import PlanIonSpot
-from opentps.core.data.plan._rtPlan import RTPlan
+from opentps.core.data.plan._ionPlan import IonPlan
 
 '''
 Extend rtplan with attributs .layers and .spots to access directly global id and energy for each beam, layer and spot without looping. 
 '''
 
-def extendPlanLayers(plan: RTPlan) -> RTPlan:
+def extendPlanLayers(plan: IonPlan) -> IonPlan:
     """
     Extends the plan with a list of layers and spots for each beam.
 

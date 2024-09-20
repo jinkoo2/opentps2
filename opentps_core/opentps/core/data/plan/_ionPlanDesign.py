@@ -1,6 +1,7 @@
 
 __all__ = ['IonPlanDesign']
 
+from enum import Enum
 import logging
 import time
 from typing import Optional, Sequence, Union
@@ -16,6 +17,7 @@ from opentps.core.processing.imageProcessing import resampler3D
 from opentps.core.data._patientData import PatientData
 from opentps.core.data.plan._objectivesList import ObjectivesList
 from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
+from opentps.core.data.plan._rtPlanDesign import Robustness
 from opentps.core.processing.planOptimization.planInitializer import PlanInitializer
 from opentps.core.data.plan._rtPlanDesign import RTPlanDesign
 
@@ -136,3 +138,37 @@ class IonPlanDesign(RTPlanDesign):
                                self.proximalLayers, self.distalLayers)
 
 
+class RobustnessIon(Robustness):
+    """
+    This class is used to compute the robustness of an ion plan.
+
+    Attributes
+    ----------
+    selectionStrategy : str
+        The selection strategy used to select the scenarios.
+        It can be "REDUCED_SET" or "ALL" or "DISABLED".
+    setupSystematicError : list (default = [1.6, 1.6, 1.6]) (mm)
+        The setup systematic error in mm.
+    setupRandomError : list (default = [1.4, 1.4, 1.4]) (mm, sigma)
+        The setup random error in mm.
+    rangeSystematicError : float (default = 1.6) (%)
+        The range systematic error in %.
+    numScenarios : int
+        The number of scenarios.
+    scenarios : list
+        The list of scenarios.
+    """
+    class Strategies(Enum):
+        DEFAULT = "DISABLED"
+        DISABLED = "DISABLED"
+        ALL = "ALL"
+        REDUCED_SET = "REDUCED_SET"
+        RANDOM = "RANDOM"
+
+    def __init__(self):
+        self.selectionStrategy = self.Strategies.DEFAULT
+        self.setupSystematicError = [1.6, 1.6, 1.6]  # mm
+        self.setupRandomError = [1.4, 1.4, 1.4]  # mm
+        self.rangeSystematicError = 1.6  # %
+        self.numScenarios = 0
+        self.scenarios = []

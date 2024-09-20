@@ -64,7 +64,7 @@ def run(output_path=""):
     data = huAir * np.ones((ctSize, ctSize, ctSize))
     data[:, 50:, :] = huWater
     ct.imageArray = data
-    writeDicomCT(ct, output_path)
+    #writeDicomCT(ct, output_path)
 
     # Struct
     roi = ROIMask()
@@ -109,6 +109,8 @@ def run(output_path=""):
         planDesign.xBeamletSpacing_mm = 5
         planDesign.yBeamletSpacing_mm = 5
         planDesign.targetMargin = 5.0
+        planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) 
+        
         plan = planDesign.buildPlan() 
 
         beamlets = ccc.computeBeamlets(ct, plan) 
@@ -119,18 +121,16 @@ def run(output_path=""):
         # Save plan with initial spot weights in serialized format (OpenTPS format)
         saveRTPlan(plan, plan_file)
 
-    plan.planDesign.objectives = ObjectivesList()
-    plan.planDesign.objectives.setTarget(roi.name, 20.0)
-    plan.planDesign.objectives.fidObjList = []
+
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 20.0, 1.0)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 20.5, 1.0)
     
     plan.numberOfFractionsPlanned = 30
 
-    solver = IMPTPlanOptimizer(method='Scipy-LBFGS', plan=plan, maxit=1000)
+    solver = IMPTPlanOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxit=1000)
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
-    doseImage.imageArray  = calculateDoseArray(doseInfluenceMatrix, plan.beamletMUs, plan.numberOfFractionsPlanned)
+    doseImage.imageArray  = calculateDoseArray(plan.planDesign.beamlets, plan.beamletMUs, plan.numberOfFractionsPlanned)
     # User input filename
     # writeRTDose(doseImage, output_path, outputFilename="BeamletTotalDose")
     # or default name

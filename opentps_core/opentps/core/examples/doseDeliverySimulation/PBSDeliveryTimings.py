@@ -2,13 +2,13 @@ import numpy as np
 np.random.seed(42)
 from opentps.core.data.plan._planIonBeam import PlanIonBeam
 from opentps.core.data.plan._planIonLayer import PlanIonLayer
-from opentps.core.data.plan._rtPlan import RTPlan
+from opentps.core.data.plan._ionPlan import IonPlan
 from opentps.core.processing.planDeliverySimulation.scanAlgoBeamDeliveryTimings import ScanAlgoBeamDeliveryTimings
 from opentps.core.processing.planDeliverySimulation.simpleBeamDeliveryTimings import SimpleBeamDeliveryTimings
 from opentps.core.io.dicomIO import readDicomPlan
 
 # Create random plan
-plan = RTPlan()
+plan = IonPlan()
 plan.appendBeam(PlanIonBeam())
 energies = np.array([130, 140, 150, 160, 170])
 for m in energies:
