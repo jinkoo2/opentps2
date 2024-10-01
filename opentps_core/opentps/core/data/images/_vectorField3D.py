@@ -119,24 +119,27 @@ class VectorField3D(Image3D):
         displacement = self.copy()
 
         if tryGPU:
+            try:
+                field = cupy.asarray(self._imageArray, dtype='float32')
+                norm = cupy.square(field[:, :, :, 0] / self.spacing[0]) + cupy.square(
+                    field[:, :, :, 1] / self.spacing[1]) + cupy.square(field[:, :, :, 2] / self.spacing[2])
+                N = cupy.asnumpy(cupy.ceil(2 + cupy.log2(cupy.maximum(1.0, cupy.amax(cupy.sqrt(norm)))) / 2)) + 1
+                if N < 1: N = 1
+                field = field * 2 ** (-N)
+                for r in range(int(N)):
+                    new_0 = morphonsCupy.warpCupy(field[:, :, :, 0], field, self.spacing)
+                    new_1 = morphonsCupy.warpCupy(field[:, :, :, 1], field, self.spacing)
+                    new_2 = morphonsCupy.warpCupy(field[:, :, :, 2], field, self.spacing)
+                    field[:, :, :, 0] += new_0
+                    field[:, :, :, 1] += new_1
+                    field[:, :, :, 2] += new_2
 
-            field = cupy.asarray(self._imageArray, dtype='float32')
-            norm = cupy.square(field[:, :, :, 0] / self.spacing[0]) + cupy.square(
-                field[:, :, :, 1] / self.spacing[1]) + cupy.square(field[:, :, :, 2] / self.spacing[2])
-            N = cupy.asnumpy(cupy.ceil(2 + cupy.log2(cupy.maximum(1.0, cupy.amax(cupy.sqrt(norm)))) / 2)) + 1
-            if N < 1: N = 1
-            field = field * 2 ** (-N)
-            for r in range(int(N)):
-                new_0 = morphonsCupy.warpCupy(field[:, :, :, 0], field, self.spacing)
-                new_1 = morphonsCupy.warpCupy(field[:, :, :, 1], field, self.spacing)
-                new_2 = morphonsCupy.warpCupy(field[:, :, :, 2], field, self.spacing)
-                field[:, :, :, 0] += new_0
-                field[:, :, :, 1] += new_1
-                field[:, :, :, 2] += new_2
+                displacement._imageArray = cupy.asnumpy(displacement._imageArray).astype(outputType)
+            except:
+                logger.warning('cupy not used for field exponentiation.')
+                tryGPU = False
 
-            displacement._imageArray = cupy.asnumpy(displacement._imageArray).astype(outputType)
-
-        else:
+        if tryGPU is False:
             norm = np.square(self._imageArray[:, :, :, 0]/self.spacing[0]) + np.square(self._imageArray[:, :, :, 1]/self.spacing[1]) + np.square(self._imageArray[:, :, :, 2]/self.spacing[2])
             N = math.ceil(2 + math.log2(np.maximum(1.0, np.amax(np.sqrt(norm)))) / 2) + 1
             if N < 1: N = 1
