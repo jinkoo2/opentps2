@@ -32,7 +32,9 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.getcwd()
+        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
         
     logger.info('Files will be stored in {}'.format(output_path))
 
@@ -67,8 +69,7 @@ def run(output_path=""):
     data = huAir * np.ones((ctSize, ctSize, ctSize))
     data[:, 50:, :] = huWater
     ct.imageArray = data
-    dcm_CT_file = os.path.join(output_path, "CTImage_WaterPhantom_cropped_resampled_optimized")
-    writeDicomCT(ct, dcm_CT_file)
+    writeDicomCT(ct, output_path)
 
     # Struct
     roi = ROIMask()
@@ -117,7 +118,8 @@ def run(output_path=""):
         planDesign.layerSpacing = 5.0
         planDesign.targetMargin = 5.0
         planDesign.setScoringParameters(scoringSpacing=[2, 2, 2], adapt_gridSize_to_new_spacing=True)
-
+        planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) # needs to be called prior spot placement
+        
         plan = planDesign.buildPlan()  # Spot placement
         plan.rtPlanName = "Simple_Patient"
 
@@ -127,9 +129,7 @@ def run(output_path=""):
         # Save plan with initial spot weights in serialized format (OpenTPS format)
         saveRTPlan(plan, plan_file)
 
-    plan.planDesign.objectives = ObjectivesList()
-    plan.planDesign.objectives.setTarget(roi.name, 20.0)
-    plan.planDesign.objectives.fidObjList = []
+    # Set objectives (attribut is already initialized in planDesign object)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 20.0, 1.0)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 20.5, 1.0)
     
@@ -139,7 +139,7 @@ def run(output_path=""):
     plan.frameOfReferenceUID = frameOfReferenceUID
     plan.rtPlanGeometry = "TREATMENT_DEVICE"
     
-    solver = IMPTPlanOptimizer(method='Scipy-LBFGS', plan=plan, maxit=1000)
+    solver = IMPTPlanOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=1000)
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
 
@@ -148,8 +148,7 @@ def run(output_path=""):
     saveRTPlan(plan, plan_file_optimized)
     # Save plan with updated spot weights in dicom format
     plan.patient = patient
-    dcm_Plan_file = os.path.join(output_path, "Plan_WaterPhantom_cropped_resampled_optimized.dcm")
-    writeRTPlan(plan, dcm_Plan_file)
+    writeRTPlan(plan, output_path)
     
     # MCsquare simulation
     # mc2.nbPrimaries = 1e7
@@ -177,8 +176,7 @@ def run(output_path=""):
     doseImage.studyTime = dt.strftime('%H%M%S.%f')
     doseImage.studyDate = dt.strftime('%Y%m%d')
     
-    dcm_dose_file = os.path.join(output_path, "Dose_WaterPhantom_cropped_resampled_optimized.dcm")
-    writeRTDose(doseImage, dcm_dose_file)
+    writeRTDose(doseImage, output_path)
 
     # center of mass
     roi = resampleImage3DOnImage3D(roi, ct)

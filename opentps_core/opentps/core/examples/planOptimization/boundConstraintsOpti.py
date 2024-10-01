@@ -25,8 +25,13 @@ from opentps.core.processing.planOptimization.planOptimization import BoundConst
 logger = logging.getLogger(__name__)
 
 # Generic example: box of water with squared target
-def run():
-    output_path = os.getcwd()
+def run(output_path=""):
+    if(output_path != ""):
+        output_path = output_path
+    else:
+        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
 
     ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)
@@ -78,7 +83,6 @@ def run():
     else:
         planInit = PlanDesign()
         planInit.ct = ct
-        planInit.targetMask = roi
         planInit.gantryAngles = gantryAngles
         planInit.beamNames = beamNames
         planInit.couchAngles = couchAngles
@@ -87,7 +91,8 @@ def run():
         planInit.layerSpacing = 5.0
         planInit.targetMargin = 5.0
         planInit.setScoringParameters(scoringSpacing=[2, 2, 2], adapt_gridSize_to_new_spacing=True)
-
+        planInit.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) # needs to be called prior spot placement
+        
         plan = planInit.buildPlan()  # Spot placement
         plan.PlanName = "NewPlan"
 
@@ -97,13 +102,11 @@ def run():
 
         saveRTPlan(plan, plan_file)
 
-    plan.planDesign.objectives = ObjectivesList()
-    plan.planDesign.objectives.setTarget(roi.name, 20.0)
-    plan.planDesign.objectives.fidObjList = []
+    # Set objectives (attribut is already initialized in planDesign object)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 20.0, 1.0)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 20.5, 1.0)
 
-    solver = BoundConstraintsOptimizer(method='Scipy-LBFGS', plan=plan, maxit=50, bounds=(0.2, 50))
+    solver = BoundConstraintsOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=50, bounds=(0.2, 50))
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
 

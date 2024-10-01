@@ -7,7 +7,7 @@ import logging
 from opentps.core.data._patientData import PatientData
 from opentps.core.data._patient import Patient
 from opentps.core.data._patientList import PatientList
-from opentps.core.io.dicomIO import readDicomCT, readDicomMRI, readDicomDose, readDicomVectorField, readDicomStruct, readDicomPlan
+from opentps.core.io.dicomIO import readDicomCT, readDicomMRI, readDicomDose, readDicomVectorField, readDicomStruct, readDicomPlan, readDicomRigidTransform
 from opentps.core.io import mhdIO
 from opentps.core.io.serializedObjectIO import loadDataStructure
 
@@ -123,16 +123,17 @@ def readData(inputPaths, maxDepth=-1) -> Sequence[Union[PatientData, Patient]]:
         dcm = pydicom.dcmread(filePath)
 
         # Dicom field
-        if dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.66.3" or dcm.Modality == "REG":
-            field = readDicomVectorField(filePath)
-            dataList.append(field)
+        if dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.66.3" or (hasattr(dcm, 'Modality') and dcm.Modality == "REG"):
+            if hasattr(dcm,'RegistrationSequence'):
+                transform = readDicomRigidTransform(filePath)
+                dataList.append(transform)
+            if hasattr(dcm,'DeformableRegistrationSequence'):
+                field = readDicomVectorField(filePath)
+                dataList.append(field)
 
         # Dicom CT
         elif dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.2":
             # Dicom CT are not loaded directly. All slices must first be classified according to SeriesInstanceUID.
-
-            print(filePath)
-            print(os.path.dirname(os.path.dirname(filePath)))
 
             # this checks if a breathingPeriod file is present in the ct folder or in the parent of the ct folder
             # if yes, this ct slice is given a dynamic series index
@@ -140,7 +141,6 @@ def readData(inputPaths, maxDepth=-1) -> Sequence[Union[PatientData, Patient]]:
             for txtFilePathIndex, txtFilePath in enumerate(fileLists["txt"]):
                 if txtFilePath.endswith('breathingPeriod.txt'):
                     if os.path.dirname(txtFilePath) == os.path.dirname(filePath) or os.path.dirname(txtFilePath) == os.path.dirname(os.path.dirname(filePath)):
-                        print('In Data loader IN IF', txtFilePath)
                         dynSeriesIndex = txtFilePathIndex
                         ## associer la slice à une série 4D
 
@@ -252,7 +252,7 @@ def readSingleData(filePath, dicomCT = {}):
             dcm = pydicom.dcmread(filePath)
 
             # Dicom field
-            if dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.66.3" or dcm.Modality == "REG":
+            if dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.66.3" or (hasattr(dcm, 'Modality') and dcm.Modality == "REG"):
                 field = readDicomVectorField(filePath)
                 return field
 
