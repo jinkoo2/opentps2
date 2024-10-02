@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import math
 import logging
 
 logger = logging.getLogger(__name__)
@@ -49,10 +48,10 @@ def normGaussConvCupy(data, cert, sigma):
 
 def exponentiateFieldCupy(field, spacing):
     norm = cupy.square(field[:, :, :, 0]/spacing[0]) + cupy.square(field[:, :, :, 1]/spacing[1]) + cupy.square(field[:, :, :, 2]/spacing[2])
-    N = math.ceil(2 + math.log2(cupy.maximum(1.0, cupy.amax(cupy.sqrt(norm)))) / 2) + 1
+    N = cupy.asnumpy(cupy.ceil(2 + cupy.log2(cupy.maximum(1.0, cupy.amax(cupy.sqrt(norm)))) / 2)) + 1
     if N < 1: N = 1
     field = field * 2 ** (-N)
-    for r in range(N):
+    for r in range(int(N)):
         new_0 = warpCupy(field[:, :, :, 0], field, spacing)
         new_1 = warpCupy(field[:, :, :, 1], field, spacing)
         new_2 = warpCupy(field[:, :, :, 2], field, spacing)
