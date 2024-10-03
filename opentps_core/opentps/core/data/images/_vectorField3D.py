@@ -72,7 +72,11 @@ class VectorField3D(Image3D):
         #     imgGridSize = image.gridSize
         # if image.__class__ == "CTImage":
         imgGridSize = image.gridSize
-        self._imageArray = np.zeros((imgGridSize[0], imgGridSize[1], imgGridSize[2], 3))
+        if hasattr(image, 'velocity'):
+            dtype=image.velocity.imageArray.dtype
+        else:
+            dtype=image.imageArray.dtype
+        self._imageArray = np.zeros((imgGridSize[0], imgGridSize[1], imgGridSize[2], 3), dtype=dtype)
         self.origin = image._origin
         self.spacing = image._spacing
 
