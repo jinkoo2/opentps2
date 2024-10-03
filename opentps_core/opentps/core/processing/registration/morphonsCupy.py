@@ -90,7 +90,7 @@ def resampleCupy(input, inputOrigin, inputSpacing, outputOrigin, outputSpacing, 
     xi = xi.reshape((xi.size // 3, 3))
 
     if vectorDimension > 1:
-        field = cupy.zeros((*outputGridSize, vectorDimension))
+        field = cupy.zeros((*outputGridSize, vectorDimension), dtype="float32")
         for i in range(vectorDimension):
             fieldTemp = cupyx.scipy.ndimage.map_coordinates(data[:, :, :, i], xi.T, order=1, mode='nearest', cval=fillValue)
             field[:, :, :, i] = fieldTemp.reshape((outputGridSize[1], outputGridSize[0], outputGridSize[2])).transpose(1, 0, 2)
