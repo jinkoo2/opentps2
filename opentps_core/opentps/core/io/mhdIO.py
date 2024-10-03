@@ -257,12 +257,13 @@ def readBinaryMHD(inputPath, metaData=None):
         else:
             raise NotImplementedError(f'Method not implemented for image of size {metaData["DimSize"]}')
     else:
-        data = data.reshape(np.append(metaData["DimSize"], metaData["ElementNumberOfChannels"]), order='F')
         if metaData["NDims"]==4:
+            data = data.reshape(np.append(metaData["DimSize"][:-1], [metaData["ElementNumberOfChannels"],metaData["DimSize"][-1]]), order='F')
             image = []
-            for d in range(data.shape[3]):
-                image.append(VectorField3D(imageArray=data[:,:,:,d], name=fileName, origin=metaData["Offset"][:-1], spacing=metaData["ElementSpacing"][:-1]))
+            for d in range(data.shape[4]):
+                image.append(VectorField3D(imageArray=data[:,:,:,:,d], name=fileName, origin=metaData["Offset"][:-1], spacing=metaData["ElementSpacing"][:-1]))
         elif metaData["NDims"]==3:
+            data = data.reshape(np.append(metaData["DimSize"], metaData["ElementNumberOfChannels"]), order='F')
             image = VectorField3D(imageArray=data, name=fileName, origin=metaData["Offset"], spacing=metaData["ElementSpacing"])
         else:
             raise NotImplementedError(f'Method not implemented for vector field of size {metaData["DimSize"]}')
@@ -368,5 +369,13 @@ class ListOfImagesToNPlus1DimImage(Image3D):
         self._spacing = np.append(listOfImages[0].spacing, 1)
         self._origin = np.append(listOfImages[0].origin, 0)
         self._imageArray = np.stack([image._imageArray for image in listOfImages], axis=-1)
+
+
+    @property
+    def gridSize(self):
+        if isinstance(self.listOfImages[0], VectorField3D):
+            return np.append(self.listOfImages[0].gridSize, self._imageArray.shape[-1])
+        else:
+            return self._imageArray.shape
 
     
