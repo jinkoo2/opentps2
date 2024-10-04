@@ -66,17 +66,8 @@ class VectorField3D(Image3D):
         image : Image3D
             image from which the voxel grid is copied.
         """
-
-        # print('in vectorField3D initFromImage --> this if-fix is not ideal and should be changed. The issue comes from the gridSize which is a parameter ')
-        # if image.__class__ == "CTImage":
-        #     imgGridSize = image.gridSize
-        # if image.__class__ == "CTImage":
         imgGridSize = image.gridSize
-        if hasattr(image, 'velocity'):
-            dtype=image.velocity.imageArray.dtype
-        else:
-            dtype=image.imageArray.dtype
-        self._imageArray = np.zeros((imgGridSize[0], imgGridSize[1], imgGridSize[2], 3), dtype=dtype)
+        self._imageArray = np.zeros((imgGridSize[0], imgGridSize[1], imgGridSize[2], 3), dtype="float32")
         self.origin = image._origin
         self.spacing = image._spacing
 
