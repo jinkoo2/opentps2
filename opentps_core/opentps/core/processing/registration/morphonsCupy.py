@@ -287,4 +287,4 @@ def computeMorphonsCupy(fixed,fixedOrigin,fixedSpacing,moving,movingOrigin,movin
     displacement = exponentiateFieldCupy(velocityResampled, fixedSpacing)
     deformed = warpCupy(cupy.asarray(moving), displacement, fixedSpacing, movingSpacing, fixedOrigin, movingOrigin)
 
-    return cupy.asnumpy(velocityResampled), cupy.asnumpy(deformed)
+    return cupy.asnumpy(velocity), cupy.asnumpy(deformed)
