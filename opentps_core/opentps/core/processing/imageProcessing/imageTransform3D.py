@@ -471,7 +471,7 @@ def transform3DMatrixFromTranslationAndRotationsVectors(transVec=[0, 0, 0], rotV
     affineTransformMatrix = np.array([[1, 0, 0, -transVec[0]],
                                   [0, 1, 0, -transVec[1]],
                                   [0, 0, 1, -transVec[2]],
-                                  [0, 0, 0, 1]]).astype(np.float)
+                                  [0, 0, 0, 1]]).astype(float)
 
     affineTransformMatrix[0:3, 0:3] = r.as_matrix()
 
