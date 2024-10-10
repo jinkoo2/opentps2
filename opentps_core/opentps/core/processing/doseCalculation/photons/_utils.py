@@ -44,7 +44,6 @@ def shiftBeamlets_cu(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngl
     scenarioShift_voxel[1]*=-1 ### To have the setup error in LPS. Check because some signs problem
     nbOfBeamlets = sparseBeamlets.shape[1]
     nbOfVoxelInImage = sparseBeamlets.shape[0]
-    assert(len(beamletAngles_rad), nbOfBeamlets)
     gridSize = np.array(gridSize, dtype=np.int32)
     BeamletMatrix = []
 
@@ -162,7 +161,6 @@ def shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAng
     scenarioShift_voxel[1]*=-1 ### To have the setup error in LPS. Check because some signs problem
     nbOfBeamlets = sparseBeamlets.shape[1]
     nbOfVoxelInImage = sparseBeamlets.shape[0]
-    assert(len(beamletAngles_rad), nbOfBeamlets)
     gridSize = np.array(gridSize, dtype=np.int32)
     BeamletMatrix = []
     
@@ -232,7 +230,6 @@ def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): ###
         dose = np.zeros(doseGridSize)
         sizeImage = nominal.sb._sparseBeamlets.shape[0]
         nofBeamlets = nominal.sb._sparseBeamlets.shape[1]
-        assert(nofBeamlets==len(plan.beamlets), f"The number of beamlets in the dose influece matrix is {nofBeamlets} but the number of beamlets in the treatment plan is {len(plan.beamlets)}")
         for segment in plan.beamSegments:
             beamletsSegment = nominal.sb._sparseBeamlets[:, cumulativeNumberBeamlets: cumulativeNumberBeamlets + len(segment)]
             weightsSegment = weights[cumulativeNumberBeamlets: cumulativeNumberBeamlets + len(segment)]
