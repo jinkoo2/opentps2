@@ -16,7 +16,7 @@ call conda activate OpenTPS
 
 pip3 install --upgrade pip
 pip3 install pydicom
-pip3 install numpy
+pip3 install numpy>=1.24.0
 pip3 install scipy
 pip3 install matplotlib
 pip3 install Pillow
