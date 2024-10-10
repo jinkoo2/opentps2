@@ -40,7 +40,7 @@ class RTPlan(PatientData):
         self._numberOfFractionsPlanned: int = 1
 
         self.seriesInstanceUID = ""
-        self.SOPInstanceUID = ""
+        self.sopInstanceUID = ""
         self.modality = ""
         self.radiationType = ""
         self.scanMode = "MODULATED"

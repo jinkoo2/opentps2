@@ -20,6 +20,9 @@ class PhotonPlan(RTPlan):
     """
     def __init__(self, name="PhotonPlan", patient=None):
         super().__init__(name=name, patient=patient)
+        self.sopInstanceUID = "1.2.840.10008.5.1.4.1.1.481.5"
+        self.radiationType = "PHOTON"
+        self.modality = "RT Plan IOD"
     
     @property
     def numberOfBeamlets(self) -> int:

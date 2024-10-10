@@ -74,7 +74,7 @@ class PhotonPlanDesign(RTPlanDesign):
         plan = PhotonPlan("NewPlan")   
         plan.SOPInstanceUID = pydicom.uid.generate_uid()
         plan.seriesInstanceUID = plan.SOPInstanceUID + ".1"
-        plan.modality = "Radiotherapy"
+        plan.modality = "RT Plan IOD"
         plan.radiationType = "Photon"
         plan.scanMode = "MODULATED"
         plan.treatmentMachineName = "Unknown"
@@ -86,7 +86,7 @@ class PhotonPlanDesign(RTPlanDesign):
         self.initializeBeams(plan)
         plan.planDesign = self
 
-        logger.info("New plan created in {} sec".format(time.time() - start))
+        logger.info("New photon plan created in {} sec".format(time.time() - start))
         logger.info("Number of beamlets: {}".format(plan.numberOfBeamlets))
 
         return plan
