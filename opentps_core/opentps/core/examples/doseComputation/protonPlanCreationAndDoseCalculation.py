@@ -28,7 +28,6 @@ from opentps.core.data import Patient
 from opentps.core.data.images import ROIMask
 from pathlib import Path
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -61,6 +60,7 @@ def run(output_path=""):
 
     # Load DICOM plan
     dicomPath = os.path.join(Path(os.getcwd()).parent.absolute(),'opentps','testData','Phantom')
+    print(dicomPath)
     dataList = readData(dicomPath, maxDepth=1)
     plan3 = [d for d in dataList if isinstance(d, RTPlan)][0]
     # or provide path to RTPlan and read it
