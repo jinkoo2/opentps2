@@ -2,8 +2,10 @@
 import os
 import datetime
 import logging
-
+import copy
 import numpy as np
+
+from opentps.core.io.dicomIO import writeRTDose, readDicomDose
 from matplotlib import pyplot as plt
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
@@ -13,16 +15,28 @@ from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
-from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
+from opentps.core.processing.planEvaluation.robustnessPhotons import RobustEvaluation
+from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness as RobustnessPhotons
+from opentps.core.processing.doseCalculation.photons.cccDoseCalculator import CCCDoseCalculator
+from opentps.core.data.plan import PhotonPlanDesign
+from scipy.sparse import csc_matrix
+from opentps.core.data import DVH
+
 
 logger = logging.getLogger(__name__)
+
+def calculateDoseArray(beamlets, weights, numberOfFractionsPlanned):
+    doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
+    totalDose = np.reshape(doseArray, beamlets._gridSize, order='F')
+    totalDose = np.flip(totalDose, 0)
+    totalDose = np.flip(totalDose, 1)
+    return totalDose
 
 def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Proton_Output_Example')
+        output_path = os.path.join(os.getcwd(), 'Photon_Robust_Output_Example')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
@@ -30,6 +44,9 @@ def run(output_path=""):
 
     ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)
     bdl = mcsquareIO.readBDL(DoseCalculationConfig().bdlFile)
+
+    # Dose_Blur = readDicomDose('/home/colin/opentps/Photon_Robust_Output_Example/RD_Blurred.dcm')
+    # Dose_scenarios = readDicomDose('/home/colin/opentps/Photon_Robust_Output_Example/RD_SumScenarios.dcm')
 
     patient = Patient()
     patient.name = 'Patient'
@@ -60,60 +77,58 @@ def run(output_path=""):
         os.mkdir(output_path)
 
     # Configure MCsquare
-    mc2 = MCsquareDoseCalculator()
-    mc2.beamModel = bdl
-    mc2.nbPrimaries = 5e4
-    mc2.statUncertainty = 2.
-    mc2.ctCalibration = ctCalibration
+    ccc = CCCDoseCalculator(batchSize= 30)
+    ccc.ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)
 
     # Load / Generate new plan
-    plan_file = os.path.join(output_path, "Plan_WaterPhantom_cropped_resampled_optimized.tps")
+    plan_file = os.path.join(output_path, "Plan_Photon_WaterPhantom_cropped_optimized.tps")
 
     if os.path.isfile(plan_file):
-        plan = loadRTPlan(plan_file)
+        plan = loadRTPlan(plan_file, 'photon')
         print('Plan loaded')
     else:
         print("You need to design and optimize a plan first - See SimpleOptimization or robustOptimization script.")
+        exit()
 
     # Load / Generate scenarios
-    scenario_folder = os.path.join(output_path,'RobustnessTest_Jul-17-2024_15-16-10_')
+    scenario_folder = '/home/colin/opentps/Photon_Robust_Output_Example/RobustnessTest'
     if os.path.isdir(scenario_folder):
-        scenarios = RobustnessEval()
-        scenarios.selectionStrategy = RobustnessEval.Strategies.ALL
+        scenarios = RobustEvaluation()
+        scenarios.selectionStrategy = RobustnessPhotons.Strategies.DEFAULT
         scenarios.setupSystematicError = plan.planDesign.robustnessEval.setupSystematicError
         scenarios.setupRandomError = plan.planDesign.robustnessEval.setupRandomError
-        scenarios.rangeSystematicError = plan.planDesign.robustnessEval.rangeSystematicError
         scenarios.load(scenario_folder)
     else:
         # MCsquare config for scenario dose computation
-        mc2.nbPrimaries = 1e7
-        plan.planDesign.robustnessEval = RobustnessEval()
-        plan.planDesign.robustnessEval.setupSystematicError = [5.0, 5.0, 5.0]  # mm
-        plan.planDesign.robustnessEval.setupRandomError = [0.0, 0.0, 0.0]  # mm (sigma)
-        plan.planDesign.robustnessEval.rangeSystematicError = 3.0  # %
+        plan.planDesign.robustnessEval = RobustEvaluation()
+        plan.planDesign.robustnessEval.setupSystematicError = 0 #[1.6] * 3
+        plan.planDesign.robustnessEval.setupRandomError = 1.6
+        plan.planDesign.robustnessEval.sseNumberOfSamples = 1
 
-        # Regular scenario sampling
-        #plan.planDesign.robustnessEval.selectionStrategy = planDesign.robustnessEval.Strategies.REDUCED_SET
-
-        # All scenarios (includes diagonals on sphere)
-        # plan.planDesign.robustnessEval.selectionStrategy = planDesign.robustnessEval.Strategies.ALL
-
-        # Random scenario sampling  
         plan.planDesign.robustnessEval.selectionStrategy = plan.planDesign.robustnessEval.Strategies.RANDOM
-        plan.planDesign.robustnessEval.numScenarios = 30 # specify how many random scenarios to simulate, default = 100
-        
+        plan.planDesign.robustnessEval.NumScenarios = 50
+
+        plan.planDesign.robustnessEval.doseDistributionType = "Nominal"
+
         plan.patient = None
+
         # run MCsquare simulation
-        scenarios = mc2.computeRobustScenario(ct, plan, [roi])
-        if not os.path.isdir(output_path):
-          os.mkdir(output_path)
-        output_folder = os.path.join(output_path, "RobustnessTest_" + datetime.datetime.today().strftime("%b-%d-%Y_%H-%M-%S"))
+        scenarios = ccc.computeRobustScenario(ct, plan, robustMode = "Shift")
+        output_folder = os.path.join(output_path, "RobustnessTest")
         scenarios.save(output_folder)
 
     # Robustness analysis
-    scenarios.analyzeErrorSpace(ct, "D95", roi, plan.planDesign.objectives.targetPrescription)
-    scenarios.printInfo()
     scenarios.recomputeDVH([roi])
+    scenarios.analyzeErrorSpace("D95", roi, plan.planDesign.objectives.targetPrescription)
+    scenarios.printInfo()
+
+    
+    # writeRTDose(scenarios.scenarios[0].dose, output_path)
+
+    # scenarios.nominal.dose.imageArray = np.zeros((150,150,150))
+    # for i in range(len(scenarios.scenarios)):
+    #     scenarios.nominal.dose.imageArray += scenarios.scenarios[i].dose.imageArray / plan.planDesign.robustnessEval.NumScenarios
+    # writeRTDose(scenarios.nominal.dose, output_path)
 
     # Display DVH + DVH-bands
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
@@ -126,7 +141,7 @@ def run(output_path=""):
     ax.set_ylabel("Volume (%)")
     plt.grid(True)
     plt.legend()
-
+    plt.savefig(os.path.join(output_path,'Evaluation_RobustOptimizationPhotons.png'))
     plt.show()
 if __name__ == "__main__":
     run()

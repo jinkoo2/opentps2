@@ -7,6 +7,8 @@ from typing import Union
 import numpy as np
 import pickle
 import os
+import itertools
+
 
 from opentps.core.data._sparseBeamlets import SparseBeamlets
 import copy
@@ -83,7 +85,9 @@ class Robustness:
     class Strategies(Enum): #### Use these classes
         DEFAULT = "DISABLED"
         DISABLED = "DISABLED"
-        ERRORSPACE_REGULAR = "ERRORSPACE_REGULAR"
+        REDUCED_SET = "REDUCED_SET"
+        ALL = "ALL"
+        RANDOM = "RANDOM"
         ERRORSPACE_STAT = "ERRORSPACE_STAT"
         DOSIMETRIC = "DOSIMETRIC"
     
@@ -98,7 +102,7 @@ class Robustness:
         self.target = []
         self.targetPrescription = 60  # Gy
         self.nominal = RobustScenario()
-        # self.numScenarios = 0
+        self.NumScenarios = 0
         self.scenarios:list[RobustScenario] = []
         self.dvhBands = []
         self.doseDistributionType = ""
@@ -131,17 +135,69 @@ class Robustness:
         self.scenarios.append(scenario)
     
     def generateRobustScenarios4Planning(self):
-        if self.setupSystematicError!=None:
-            for index, sse in enumerate(self.setupSystematicError):
-                for scale in range(1,self.sseNumberOfSamples+1):
-                    sseScaled = sse / self.sseNumberOfSamples * scale
-                    for sign in [-1,1]:
-                        array = np.zeros(3)
-                        array[index] = sseScaled * sign * self.numberOfSigmas
-                        scenario = RobustScenario(sse = array)
-                        self.scenarios.append(scenario)
+        if self.setupSystematicError not in [None, 0, [0,0,0]]:
+            if self.selectionStrategy == self.selectionStrategy.RANDOM :
+                self.generateRandomScenarios()
+            elif self.selectionStrategy == self.selectionStrategy.REDUCED_SET :
+                self.generateReducedErrorSpacecenarios()
+            elif self.selectionStrategy == self.selectionStrategy.ALL :
+                self.generateAllErrorSpaceScenarios()
+            elif self.selectionStrategy == self.selectionStrategy.DISABLED :
+                self.scenarios.append(RobustScenario(sse = np.array([self.setupSystematicError[0]* self.numberOfSigmas, self.setupSystematicError[1]* self.numberOfSigmas, 
+                                                                     self.setupSystematicError[2]* self.numberOfSigmas])))
+        else : #Add a nominal for the computation of the RandomSetupError
+            if self.selectionStrategy == self.selectionStrategy.RANDOM :
+                for _ in range(self.NumScenarios):
+                    self.scenarios.append(RobustScenario(sse = np.array([0, 0, 0]))) #we can simulate n time the RSE
+            else :
+                self.scenarios.append(RobustScenario(sse = np.array([0, 0, 0]))) #if ALL and Reduced, only one scenario
 
+    def generateReducedErrorSpacecenarios(self):
+        # nominal = RobustScenario(sse = np.array([0, 0, 0]))
+        # self.scenarios.append(nominal)
 
+        #From [a, b, c] to 6 scenarios [+-a, +-b, +-c]
+        for index, sse in enumerate(self.setupSystematicError):
+            for scale in range(1,self.sseNumberOfSamples+1):
+                sseScaled = sse / self.sseNumberOfSamples * scale
+                for sign in [-1,1]:
+                    array = np.zeros(3)
+                    array[index] = sseScaled * sign * self.numberOfSigmas
+                    scenario = RobustScenario(sse = array)
+                    self.scenarios.append(scenario)
+    
+    def generateAllErrorSpaceScenarios(self):
+        # nominal = RobustScenario(sse = np.array([0, 0, 0]))
+        # self.scenarios.append(nominal)
+
+        # Point coordinates on hypersphere with two zero axes
+        R = self.setupSystematicError[0] * self.numberOfSigmas
+        for sign in [-1, 1]:
+            self.scenarios.append(RobustScenario(sse = np.round(np.array([sign * R, 0, 0]), 2)))
+            self.scenarios.append(RobustScenario(sse = np.round(np.array([0, sign * R, 0]), 2)))
+            self.scenarios.append(RobustScenario(sse = np.round(np.array([0, 0, sign * R]), 2)))
+
+        # Coordinates of point on hypersphere with zero axis
+        sqrt2 = R / np.sqrt(2)
+        for sign1, sign2 in itertools.product([-1, 1], repeat=2):
+            self.scenarios.append(RobustScenario(sse = np.round(np.array([sign1 * sqrt2, sign2 * sqrt2, 0]), 2)))
+            self.scenarios.append(RobustScenario(sse = np.round(np.array([sign1 * sqrt2, 0, sign2 * sqrt2]), 2)))
+            self.scenarios.append(RobustScenario(sse = np.round(np.array([0, sign1 * sqrt2, sign2 * sqrt2]), 2)))
+
+        # Coordinates of point on hypersphere without any zero axis (diagonals)
+        sqrt3 = R / np.sqrt(3)
+        for signs in itertools.product([-1, 1], repeat=3):
+            self.scenarios.append(RobustScenario(sse = np.round(np.array([signs[0] * sqrt3, signs[1] * sqrt3, signs[2] * sqrt3]), 2)))
+
+    def generateRandomScenarios(self):
+
+        # Sample in gaussian
+        setupErrorSpace = self.setupSystematicError
+        for _ in range(self.NumScenarios):
+            SampleSetupError = [np.random.normal(0, sigma) for sigma in setupErrorSpace]
+            SampleSetupError = np.round(SampleSetupError, 2)
+            scenario = RobustScenario(sse = SampleSetupError)
+            self.scenarios.append(scenario)
 
     def sampleScenario(self):
         sse_sampled = list(np.random.normal([0]*len(self.setupSystematicError),self.setupSystematicError)) if self.setupSystematicError != None else None
@@ -166,7 +222,7 @@ class Robustness:
         with open(path, 'rb') as file:
             tmp = pickle.load(file)
         self.__dict__.update(tmp)
-    
+
     def save(self, path):
         with open(path, 'wb') as file:
             pickle.dump(self, file)
@@ -374,6 +430,8 @@ class RobustEvaluation(Robustness):
             self.scenarios[i].printInfo()
 
     def save(self, folder_path):
+        if not os.path.isdir(folder_path):
+            os.mkdir(folder_path)
         try:
             file_path = os.path.join(folder_path, "RobustnessEvaluation" + ".pkl")
             with open(file_path, "wb") as file:

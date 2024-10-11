@@ -94,7 +94,7 @@ def run(output_path=""):
         planDesign.robustness.rangeSystematicError = 0.0  # %
 
         # Regular scenario sampling
-        planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.REDUCED_SET
+        planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.ALL
 
         # All scenarios (includes diagonals on sphere)
         # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.ALL
@@ -130,6 +130,9 @@ def run(output_path=""):
     solver = IMPTPlanOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=50)
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
+
+    plan_file = os.path.join(output_path, "Plan_Proton_WaterPhantom_cropped_optimized.tps")
+    saveRTPlan(plan, plan_file, unloadBeamlets=False)
 
     # MCsquare simulation
     # mc2.nbPrimaries = 1e6

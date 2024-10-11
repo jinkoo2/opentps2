@@ -13,6 +13,8 @@ import ctypes
 import os
 import psutil
 import os
+from matplotlib import pyplot as plt
+
 
 def getConvolveNonZeroElements(kernel_size, nonZeroIndexes, image_size):
     nonZeroIndexes_convolved = []
@@ -232,7 +234,7 @@ def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): ###
         dose = np.zeros(doseGridSize)
         sizeImage = nominal.sb._sparseBeamlets.shape[0]
         nofBeamlets = nominal.sb._sparseBeamlets.shape[1]
-        assert(nofBeamlets==len(plan.beamlets), f"The number of beamlets in the dose influece matrix is {nofBeamlets} but the number of beamlets in the treatment plan is {len(plan.beamlets)}")
+        assert nofBeamlets==len(plan.beamlets), f"The number of beamlets in the dose influece matrix is {nofBeamlets} but the number of beamlets in the treatment plan is {len(plan.beamlets)}"
         for segment in plan.beamSegments:
             beamletsSegment = nominal.sb._sparseBeamlets[:, cumulativeNumberBeamlets: cumulativeNumberBeamlets + len(segment)]
             weightsSegment = weights[cumulativeNumberBeamlets: cumulativeNumberBeamlets + len(segment)]
@@ -240,7 +242,7 @@ def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): ###
             result = np.reshape(result, doseGridSize, order='F')
             result = np.flip(result, 0)
             result = np.flip(result, 1)
-            shiftVoxelsCorrected = np.round(correctShift(shiftVoxels, segment.gantryAngle_degree / 180 * np.pi),3)
+            shiftVoxelsCorrected = np.round(correctShift(shiftVoxels, segment.gantryAngle_degree / 180 * np.pi),3) #only for axe of the beeam
             dose +=  shift(result, shiftVoxelsCorrected, mode='constant', cval=0, order=1)
             cumulativeNumberBeamlets+=len(segment)
 
@@ -250,10 +252,10 @@ def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): ###
         dose = nominal.sb.toDoseImage()
 
     doseArray = dose.imageArray
-    if scenario.sre != None:
-        doseArray = gaussian_filter(doseArray.astype(float), sigma = scenario.sre, order=0, truncate=2)
-    else:
-        return dose
+    # if scenario.sre != None:
+    #     doseArray = gaussian_filter(doseArray.astype(float), sigma = scenario.sre, order=0, truncate=2)
+    # else:
+    #     return dose
     dose.imageArray = doseArray
 
     return dose

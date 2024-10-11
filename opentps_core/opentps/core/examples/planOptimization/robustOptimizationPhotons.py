@@ -3,6 +3,7 @@ import logging
 import numpy as np
 from matplotlib import pyplot as plt
 import sys
+import scipy as sp
 sys.path.append('..')
 
 from opentps.core.data.images import CTImage
@@ -16,9 +17,7 @@ from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import loadRTPlan, saveRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
 from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
 from opentps.core.processing.doseCalculation.photons.cccDoseCalculator import CCCDoseCalculator
 from opentps.core.data.plan import PhotonPlanDesign
@@ -26,7 +25,10 @@ import copy
 from scipy.sparse import csc_matrix
 from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness as RobustnessPhotons
 from opentps.core.io.dicomIO import writeRTDose
-def calculateDoseArray(beamlets,weights, numberOfFractionsPlanned):
+
+
+def calculateDoseArray(beamlets, weights, numberOfFractionsPlanned):
+    # beamlets._sparseBeamlets.data = sp.ndimage.gaussian_filter(beamlets._sparseBeamlets.data, 10)
     doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
     totalDose = np.reshape(doseArray, beamlets._gridSize, order='F')
     totalDose = np.flip(totalDose, 0)
@@ -103,18 +105,14 @@ def run(output_path=""):
         planDesign.yBeamletSpacing_mm = 5
         # Robustness settings
         planDesign.robustness = RobustnessPhotons()
-        planDesign.robustness.setupSystematicError = [1.6] * 3
-        planDesign.robustness.setupRandomError = 0
+        planDesign.robustness.setupSystematicError = [0, 0, 0] #[1.6] * 3
+        planDesign.robustness.setupRandomError = 1.6
         planDesign.robustness.sseNumberOfSamples = 1
 
-        # All scenarios (includes diagonals on sphere)
-        # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.ALL
+        planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.REDUCED_SET
+        # planDesign.robustness.NumScenarios = 10
 
-        # Random scenario sampling  
-        # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.RANDOM
-        # planDesign.robustness.numScenarios = 5 # specify how many random scenarios to simulate, default = 100
-
-        planDesign.targetMargin = max(planDesign.robustness.setupSystematicError)
+        planDesign.targetMargin = max([sse + planDesign.robustness.setupRandomError for sse in planDesign.robustness.setupSystematicError]) 
         planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) # needs to be called prior spot placement
         plan = planDesign.buildPlan()  # Spot placement
         plan.PlanName = "RobustPlan"
@@ -137,9 +135,9 @@ def run(output_path=""):
     # writeRTDose(doseImage, output_path, outputFilename="BeamletTotalDose")
     # or default name
     writeRTDose(doseImage, output_path)
-    # MCsquare simulation
-    # mc2.nbPrimaries = 1e6
-    # doseImage = mc2.computeDose(ct, plan)
+
+    plan_file = os.path.join(output_path, "Plan_Photon_WaterPhantom_cropped_optimized.tps")
+    saveRTPlan(plan, plan_file, unloadBeamlets=False)
 
     # Compute DVH
     target_DVH = DVH(roi, doseImage)
@@ -172,7 +170,7 @@ def run(output_path=""):
     ax[1].set_ylabel("Volume (%)")
     plt.grid(True)
     plt.legend()
-    plt.savefig(os.path.join(output_path, 'dose.png'))
+    plt.savefig(os.path.join(output_path, 'Dose_RobustOptimizationPhotons.png'))
     # plt.show()
 
 if __name__ == "__main__":

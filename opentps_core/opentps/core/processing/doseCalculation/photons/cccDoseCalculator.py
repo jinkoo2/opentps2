@@ -5,11 +5,13 @@ import os
 import platform
 import shutil
 import subprocess
+import scipy as sp
 from pathlib import Path
 from typing import Optional, Sequence, Union
+from matplotlib import pyplot as plt
 
 import numpy as np
-
+from opentps.core.data.images import DoseImage
 from opentps.core.data import SparseBeamlets
 from opentps.core.processing.doseCalculation.abstractDoseCalculator import AbstractDoseCalculator
 from opentps.core.utils.programSettings import ProgramSettings
@@ -20,7 +22,7 @@ from opentps.core.data.images import ROIMask
 from opentps.core.data import ROIContour
 from opentps.core.data.plan._photonPlan import PhotonPlan
 import opentps.core.io.CCCdoseEngineIO as CCCdoseEngineIO
-from opentps.core.processing.doseCalculation.photons._utils import shiftBeamlets
+from opentps.core.processing.doseCalculation.photons._utils import shiftBeamlets, adjustDoseToScenario
 
 import time
 # from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness
@@ -247,7 +249,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
     def computeRobustScenarioBeamlets(self, ct: CTImage, plan: PhotonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None, robustMode = "Shift", computeNominal = True) -> SparseBeamlets:
         logger.info("Prepare Collapse Cone Convolution Beamlet calculation")
         self._plan = plan
-        self._ct = self.fromHU2Densities(ct, roi) 
+        self._ct = self.fromHU2Densities(ct, roi)
         self._roi = roi
         self.batchSize = plan.numberOfBeamlets if plan.numberOfBeamlets / self.batchSize < 1 else self.batchSize
         origin = ct.origin
@@ -268,6 +270,13 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             self.ROFolder = 'Scenario_{}'.format(number)
             scenario.sb = self.calculateRobustBeamlets(scenario, origin, plan.planDesign.robustness.nominal.sb, mode = robustMode)
         self._ct.origin = origin
+
+        if plan.planDesign.robustness.setupRandomError != 0 :
+            sre = plan.planDesign.robustness.setupRandomError
+            plan.planDesign.robustness.nominal.sb._sparseBeamlets.data = sp.ndimage.gaussian_filter(plan.planDesign.robustness.nominal.sb._sparseBeamlets.data, sre)
+            for s in range(len(scenarios)) :
+                beamlets = plan.planDesign.robustness.scenarios[s].sb._sparseBeamlets.data
+                plan.planDesign.robustness.scenarios[s].sb._sparseBeamlets.data = sp.ndimage.gaussian_filter(beamlets, sre)
 
     def calculateRobustBeamlets(self, scenario, origin, nominal = None, mode = "Simulation"):
         t0 = time.time()
@@ -299,6 +308,57 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             KeyError('The only modes available to calculate the setup scenarios are "Simulation" or "Shift"')
         print('The scenario runned in ',time.time()-t0)
         return beamletsScenario
+    
+    def computeRobustScenario(self, ct: CTImage, plan: PhotonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None, robustMode = "Shift", computeNominal = True):
+        """
+        Compute robustness scenario using Collapse Cone Convolution
+
+        Parameters
+        ----------
+
+
+        Returns
+        -------
+        scenarios:Robustness
+            Robustness with nominal and error scenarios
+        """
+        self._plan = plan
+        self._ct = self.fromHU2Densities(ct, roi) 
+        self._roi = roi
+        self.batchSize = plan.numberOfBeamlets if plan.numberOfBeamlets / self.batchSize < 1 else self.batchSize
+        origin = ct.origin
+        plan.planDesign.robustnessEval.generateRobustScenarios4Planning()
+        scenarios = plan.planDesign.robustnessEval.scenarios
+
+        if computeNominal:
+            print('Calculating Nominal Scenario')
+            self.ROFolder = 'Nominal'
+            dose = self.computeDose(self._ct, self._plan, roi)
+            plan.planDesign.robustnessEval.nominal.dose = dose
+            plan.planDesign.robustnessEval.nominal.sb = plan.planDesign.robustness.nominal.sb
+            plan.planDesign.robustnessEval.nominal.sb.beamletWeights = plan.beamletMUs
+        
+        sb_data = plan.planDesign.robustnessEval.nominal.sb._sparseBeamlets.data
+
+        for number, scenario in enumerate(scenarios):
+            nominal_scenario = plan.planDesign.robustnessEval.nominal
+
+            if plan.planDesign.robustnessEval.setupRandomError != 0 :
+                sre_sigma = plan.planDesign.robustnessEval.setupRandomError
+                sre = np.random.normal(0, sre_sigma)
+                sb_data_smooth = sp.ndimage.gaussian_filter(sb_data, sre)
+                nominal_scenario.sb._sparseBeamlets.data = sb_data_smooth
+
+            print('Calculating Scenario {}'.format(number))
+            print(scenario)
+            self.ROFolder = 'Scenario_{}'.format(number)
+            plan.planDesign.robustnessEval.scenarios[number].sb = plan.planDesign.robustnessEval.nominal.sb
+            plan.planDesign.robustnessEval.scenarios[number].sb.beamletWeights = plan.planDesign.robustnessEval.nominal.sb.beamletWeights
+            scenario.dose = self.computeRobustScenarioDose(scenario, origin, nominal_scenario, mode = robustMode)
+
+        self._ct.origin = origin
+
+        return plan.planDesign.robustnessEval
 
 
     def _createFolderIfNotExists(self, folder):
@@ -325,4 +385,27 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         Dose = self._importDose()
         Dose.imageArray *= self._plan.numberOfFractionsPlanned
         return Dose
+  
+    def computeRobustScenarioDose(self, scenario, origin, nominal, mode = "Simulation"):
+        t0 = time.time()
+        self._ct.origin = origin + scenario.sse
+        nominal.sb.spacing = self._ct.spacing
+        scenario.sre = None if scenario.sre == [0,0,0] else scenario.sre
 
+        if mode == "Simulation":
+            print(origin, self._ct.origin)
+            DoseScenario = self.computeDose(self._ct, self._plan, self._roi)
+            DoseScenario.doseOrigin = origin
+
+        elif mode == "Shift" or scenario.sre != None:
+            if nominal == None:
+                KeyError('To calculate the robust scenarios beamlets in precise mode it is necessary the nominal beamlets')
+
+            nbOfBeamlets = nominal.sb._sparseBeamlets.shape[1]
+            assert(nbOfBeamlets==len(self._plan.beamlets))
+            DoseScenario = adjustDoseToScenario(scenario, nominal, nominal.sb.spacing, self._plan)
+
+        else:
+            KeyError('The only modes available to calculate the setup scenarios are "Simulation" or "Shift"')
+        print('The scenario runned in ',time.time()-t0)
+        return DoseScenario
