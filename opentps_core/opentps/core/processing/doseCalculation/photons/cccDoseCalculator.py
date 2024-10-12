@@ -202,11 +202,11 @@ class CCCDoseCalculator(AbstractDoseCalculator):
 
 
     def _importBeamlets(self):
-        beamletDose = CCCdoseEngineIO.readBeamlets(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize)
+        beamletDose = CCCdoseEngineIO.readBeamlets(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._roi)
         return beamletDose
 
     def _importDose(self):
-        beamletDose = CCCdoseEngineIO.computeDose(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._plan.beamletMUs)
+        beamletDose = CCCdoseEngineIO.computeDose(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._plan.beamletMUs, self._roi)
         return beamletDose
 
     def fromHU2Densities(self, ct : CTImage, overRidingList : Sequence[Dict[str, Any]] = None):
@@ -229,7 +229,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         return ct
 
 
-    def computeBeamlets(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None) -> SparseBeamlets:
+    def computeBeamlets(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, roi: Sequence[Union[ROIContour, ROIMask]] = None) -> SparseBeamlets:
         """
         Compute beamlets using Collapse Cone Convolution algorithm
 
@@ -252,7 +252,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             self._ct = ct
             self._ct = self.fromHU2Densities(self._ct, overRidingList) 
             self._plan = plan
-        # self._roi = roi
+        self._roi = roi
 
         self._cleanDir(self.outputDir)
         self._cleanDir(self._executableDir)
@@ -278,7 +278,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         return beamletDose
 
 
-    def computeRobustScenarioBeamlets(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, robustMode = "Shift", computeNominal = True) -> SparseBeamlets:
+    def computeRobustScenarioBeamlets(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, roi: Sequence[Union[ROIContour, ROIMask]] = None, robustMode = "Shift", computeNominal = True) -> SparseBeamlets:
         """
         Compute beamlets for different scenarios using Collapse Cone Convolution algorithm. The beamlets are saved in plan.planDesign.robustness
 
@@ -298,7 +298,8 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         logger.info("Prepare Collapse Cone Convolution Beamlet calculation")
         self._plan = plan
         self._ct = self.fromHU2Densities(ct, overRidingList) 
-        self._roi = overRidingList
+        self._roi = roi
+        self._overRidingList = overRidingList
         self.batchSize = plan.numberOfBeamlets if plan.numberOfBeamlets / self.batchSize < 1 else self.batchSize
         origin = ct.origin
         plan.planDesign.robustness.generateRobustScenarios4Planning()
@@ -344,7 +345,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
 
         if mode == "Simulation":
             print(origin, self._ct.origin)
-            beamletsScenario = self.computeBeamlets(self._ct, self._plan, self._roi)
+            beamletsScenario = self.computeBeamlets(self._ct, self._plan, self._overRidingList, self._roi)
             beamletsScenario.doseOrigin = origin
         elif mode == "Shift" or scenario.sre != None:
             scenarioShift_voxel = scenario.sse / self._ct.spacing
@@ -373,7 +374,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         if not folder.is_dir():
             os.makedirs(folder)
 
-    def computeDose(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, Density = False) -> SparseBeamlets:
+    def computeDose(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, roi: Optional[Sequence[ROIContour]] = None,  Density = False) -> SparseBeamlets:
         """
         Compute dose distribution in the patient using Collapse Cone Convolution algorithm
 
@@ -394,7 +395,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         logger.info("Prepare Collapse Cone Convolution Beamlet calculation")
         self._ct = ct
         self._plan = plan
-        # self._roi = roi
+        self._roi = roi
 
         self._cleanDir(self.outputDir)
         self._cleanDir(self._executableDir)
