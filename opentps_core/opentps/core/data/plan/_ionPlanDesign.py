@@ -76,7 +76,7 @@ class IonPlanDesign(RTPlanDesign):
         plan = IonPlan("NewPlan")
         plan.SOPInstanceUID = pydicom.uid.generate_uid()
         plan.seriesInstanceUID = plan.SOPInstanceUID + ".1"
-        plan.modality = "Ion therapy"
+        plan.modality = "RT Ion Plan IOD"
         plan.radiationType = "Proton"
         plan.scanMode = "MODULATED"
         plan.treatmentMachineName = "Unknown"
@@ -87,7 +87,7 @@ class IonPlanDesign(RTPlanDesign):
         for beam in plan.beams:
             beam.reorderLayers('decreasing')
 
-        logger.info("New plan created in {} sec".format(time.time() - start))
+        logger.info("New proton plan created in {} sec".format(time.time() - start))
         logger.info("Number of spots: {}".format(plan.numberOfSpots))
 
         return plan

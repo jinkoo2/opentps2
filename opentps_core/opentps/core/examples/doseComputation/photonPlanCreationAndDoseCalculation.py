@@ -148,4 +148,3 @@ def run(output_path=""):
     
 if __name__ == "__main__":
     run()
-    # run('/data1/luciano/data')

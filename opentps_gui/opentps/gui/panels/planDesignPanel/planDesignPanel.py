@@ -3,10 +3,11 @@ import time
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QDoubleSpinBox, QListWidget, \
-    QHBoxLayout, QMenu, QAction
+    QHBoxLayout, QMenu, QAction, QComboBox
 
-from opentps.core.data.plan._rtPlanDesign import RTPlanDesign
+from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data._patient import Patient
+from opentps.core.data.plan._photonPlanDesign import PhotonPlanDesign
 from opentps.core.io import mcsquareIO
 from opentps.core.io.mcsquareIO import readBDL
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
@@ -26,7 +27,15 @@ class PlanDesignPanel(QWidget):
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
-        self._planLabel = QLabel('plan name:')
+        self._modalityLabel = QLabel('Modality:')
+        self.layout.addWidget(self._modalityLabel)
+        self._modalityComboBox = QComboBox(self)
+        self._modalityComboBox.addItem("IMPT")
+        self._modalityComboBox.addItem("IMRT")
+        self.layout.addWidget(self._modalityComboBox)
+        self._modalityComboBox.currentTextChanged.connect(self.updateUIBasedOnModality)
+        
+        self._planLabel = QLabel('Plan name:')
         self.layout.addWidget(self._planLabel)
         self._planNameEdit = QLineEdit(self)
         self._planNameEdit.setText('New plan design')
@@ -37,9 +46,36 @@ class PlanDesignPanel(QWidget):
         self._mcsquareConfigWidget.setContentsMargins(0, 0, 0, 0)
         self.layout.addWidget(self._mcsquareConfigWidget)
 
+        self._xBeamletSpacingLayout = QHBoxLayout()
+        self.layout.addLayout(self._xBeamletSpacingLayout)
+        self.xBeamletSpacingLabel = QLabel('Beamlet spacing X:')
+        self._xBeamletSpacingLayout.addWidget(self.xBeamletSpacingLabel)
+        self._xBeamletSpacing = QDoubleSpinBox()
+        self._xBeamletSpacing.setGroupSeparatorShown(True)
+        self._xBeamletSpacing.setRange(0.1, 100.0)
+        self._xBeamletSpacing.setSingleStep(1.0)
+        self._xBeamletSpacing.setValue(5.0)
+        self._xBeamletSpacing.setSuffix(" mm")
+        self._xBeamletSpacingLayout.addWidget(self._xBeamletSpacing)
+        self._yBeamletSpacingLayout = QHBoxLayout()
+        self.layout.addLayout(self._yBeamletSpacingLayout)
+        self.yBeamletSpacingLabel = QLabel('Beamlet spacing Y:')
+        self._yBeamletSpacingLayout.addWidget(self.yBeamletSpacingLabel)
+        self._yBeamletSpacing = QDoubleSpinBox()
+        self._yBeamletSpacing.setGroupSeparatorShown(True)
+        self._yBeamletSpacing.setRange(0.1, 100.0)
+        self._yBeamletSpacing.setSingleStep(1.0)
+        self._yBeamletSpacing.setValue(5.0)
+        self._yBeamletSpacing.setSuffix(" mm")
+        self._yBeamletSpacingLayout.addWidget(self._yBeamletSpacing)
+
+        self.xBeamletSpacingLabel.hide()
+        self._xBeamletSpacing.hide()
+        self.yBeamletSpacingLabel.hide()
+        self._yBeamletSpacing.hide()
+
         self._spacingLayout = QHBoxLayout()
         self.layout.addLayout(self._spacingLayout)
-
         self._spacingLabel = QLabel('Spot spacing:')
         self._spacingLayout.addWidget(self._spacingLabel)
         self._spacingSpin = QDoubleSpinBox()
@@ -123,24 +159,68 @@ class PlanDesignPanel(QWidget):
         self.setCurrentPatient(self._viewController.currentPatient)
         self._viewController.currentPatientChangedSignal.connect(self.setCurrentPatient)
 
+    @property
+    def selectedModality(self):
+        return self._modalityComboBox.currentText()
+    
+    @selectedModality.setter
+    def selectedModality(self, modality):
+        self._modalityComboBox.setCurrentText(modality)
+    
+    def updateUIBasedOnModality(self,modality):
+        if modality == "IMRT":
+            self._mcsquareConfigWidget._txt2.hide()
+            self._spacingLabel.hide()
+            self._spacingSpin.hide()
+            self._layerLabel.hide()
+            self._layerSpin.hide()
+            self._proximalLabel.hide()
+            self._proximalSpin.hide()
+            self._distalLabel.hide()
+            self._distalSpin.hide()
+
+            self.xBeamletSpacingLabel.show()
+            self._xBeamletSpacing.show()
+            self.yBeamletSpacingLabel.show()
+            self._yBeamletSpacing.show()
+
+        elif modality == "IMPT":
+            self._mcsquareConfigWidget._txt2.show()
+            self._spacingLabel.show()
+            self._spacingSpin.show()
+            self._layerLabel.show()
+            self._layerSpin.show()
+            self._proximalLabel.show()
+            self._proximalSpin.show()
+            self._distalLabel.show()
+            self._distalSpin.show()
+
+            self.xBeamletSpacingLabel.hide()
+            self._xBeamletSpacing.hide()
+            self.yBeamletSpacingLabel.hide()
+            self._yBeamletSpacing.hide()
+
     def setCurrentPatient(self, patient:Patient):
         self._patient = patient
 
     def _create(self):
         logger.info('Plan is designed...')
         start = time.time()
-        planDesign = PlanDesign()
-        planDesign.spotSpacing = self._spacingSpin.value()
-        planDesign.layerSpacing = self._layerSpin.value()
+
+        if self.selectedModality == "IMRT":
+            planDesign = PhotonPlanDesign()
+            planDesign.xBeamletSpacing_mm = self._xBeamletSpacing.value()
+            planDesign.yBeamletSpacing_mm = self._yBeamletSpacing.value()
+        elif self.selectedModality == "IMPT":
+            planDesign = IonPlanDesign()
+            planDesign.spotSpacing = self._spacingSpin.value()
+            planDesign.layerSpacing = self._layerSpin.value()
+            
+        else:
+            logger.error(f"Unsupported modality: {self.selectedModality}")
         planDesign.targetMargin = self._marginSpin.value()
-
         planDesign.name = self._planNameEdit.text()
-
         planDesign.patient = self._patient
-
-        settings = DoseCalculationConfig()
-        beamModel = mcsquareIO.readBDL(settings.bdlFile)
-
         # extract beam info from QListWidget
         beamNames = []
         gantryAngles = []
@@ -153,14 +233,16 @@ class PlanDesignPanel(QWidget):
                 beamNames.append(self._beamDescription[i]["BeamName"])
                 gantryAngles.append(self._beamDescription[i]["GantryAngle"])
                 couchAngles.append(self._beamDescription[i]["CouchAngle"])
-                rs = self._beamDescription[i]["RangeShifter"]
-                rangeShifters.append(rs)
+                if self.selectedModality == "IMPT":
+                    rs = self._beamDescription[i]["RangeShifter"]
+                    rangeShifters.append(rs)
 
         planDesign.gantryAngles = gantryAngles
         planDesign.beamNames = beamNames
         planDesign.couchAngles = couchAngles
-        planDesign.rangeShifters = rangeShifters
+        if self.selectedModality == "IMPT": planDesign.rangeShifters = rangeShifters
 
+        #TODO: Robustness photons
         planDesign.robustness = self._robustSettings.robustness
         logger.info("New plan design created in {} sec".format(time.time() - start))
 
@@ -168,30 +250,37 @@ class PlanDesignPanel(QWidget):
         beam_number = self._beams.count()
 
         # retrieve list of range shifters from BDL
-        bdl = readBDL(DoseCalculationConfig().bdlFile)
-        RangeShifterList = [rs.ID for rs in bdl.rangeShifters]
+        if self.selectedModality == "IMPT":
+            bdl = readBDL(DoseCalculationConfig().bdlFile)
+            RangeShifterList = [rs.ID for rs in bdl.rangeShifters]
+        else: RangeShifterList=[]
 
-        dialog = BeamDialog("Beam " + str(beam_number + 1), RangeShifterList=RangeShifterList)
+        dialog = BeamDialog(self.selectedModality, "Beam " + str(beam_number + 1), RangeShifterList=RangeShifterList)
         if (dialog.exec()):
             BeamName = dialog.BeamName.text()
             GantryAngle = dialog.GantryAngle.value()
             CouchAngle = dialog.CouchAngle.value()
-            RangeShifter = dialog.RangeShifter.currentText()
-
-            if (RangeShifter == "None"):
-                RS_disp = ""
-                rs = None
-            else:
-                RS_disp = ", RS"
-                rs = [rsElem for rsElem in bdl.rangeShifters if rsElem.ID==RangeShifter]
-                if len(rs)==0:
+            if self.selectedModality == "IMPT":
+                RangeShifter = dialog.RangeShifter.currentText()
+                if (RangeShifter == "None"):
+                    RS_disp = ""
                     rs = None
                 else:
-                    rs = rs[0]
-            self._beams.addItem(BeamName + ":  G=" + str(GantryAngle) + "°,  C=" + str(CouchAngle) + "°" + RS_disp)
-            self._beamDescription.append(
-                {"BeamType": "beam", "BeamName": BeamName, "GantryAngle": GantryAngle, "CouchAngle": CouchAngle,
-                 "RangeShifter": rs})
+                    RS_disp = ", RS"
+                    rs = [rsElem for rsElem in bdl.rangeShifters if rsElem.ID==RangeShifter]
+                    if len(rs)==0:
+                        rs = None
+                    else:
+                        rs = rs[0]
+                self._beams.addItem(BeamName + ":  G=" + str(GantryAngle) + "°,  C=" + str(CouchAngle) + "°" + RS_disp)
+                self._beamDescription.append(
+                    {"BeamType": "beam", "BeamName": BeamName, "GantryAngle": GantryAngle, "CouchAngle": CouchAngle,
+                    "RangeShifter": rs})
+            else:
+                self._beams.addItem(BeamName + ":  G=" + str(GantryAngle) + "°,  C=" + str(CouchAngle) + "°")
+                self._beamDescription.append(
+                    {"BeamType": "beam", "BeamName": BeamName, "GantryAngle": GantryAngle, "CouchAngle": CouchAngle})
+
 
     def List_RightClick(self, pos, list_type):
         if list_type == 'beam':

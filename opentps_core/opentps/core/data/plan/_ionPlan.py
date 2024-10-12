@@ -45,8 +45,10 @@ class IonPlan(RTPlan):
     """
     def __init__(self, *args, **kwargs):
         super(IonPlan, self).__init__(*args, **kwargs)
-        self._planType = 'ion'
         self.deliveredProtons = None
+        self.sopInstanceUID = "1.2.840.10008.5.1.4.1.1.481.8"
+        self.radiationType = "PROTON"
+        self.modality = "RT Ion Plan IOD"
 
 
     @property
