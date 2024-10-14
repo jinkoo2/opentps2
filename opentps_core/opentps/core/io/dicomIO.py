@@ -1457,7 +1457,7 @@ def writeRTPlan(plan: RTPlan, outputFolder:str, outputFilename:str=None, struct:
         meta.MediaStorageSOPInstanceUID = plan.sopInstanceUID if hasattr(plan, 'sopInstanceUID') and plan.sopInstanceUID != "" and not plan.sopInstanceUID is None else pydicom.uid.generate_uid()
     
 
-    if plan.modality=="RT Plan IOD" and plan.radiationType=="PHOTON": # photon plan
+    if plan.modality=="RT Plan IOD" and plan.radiationType.upper()=="PHOTON": # photon plan
         # Create the File Meta Information
         meta.MediaStorageSOPClassUID = plan.mediaStorageSOPClassUID if hasattr(plan, 'mediaStorageSOPClassUID') else "1.2.840.10008.5.1.4.1.1.481.5"
 
@@ -1558,7 +1558,7 @@ def writeRTPlan(plan: RTPlan, outputFolder:str, outputFilename:str=None, struct:
         dcm_file.ContentDate = dt.strftime('%Y%m%d')
         dcm_file.ContentTime = dt.strftime('%H%M%S')
 
-    elif plan.modality=="RT Ion Plan IOD" and plan.radiationType=="PROTON": # proton plan
+    elif plan.modality=="RT Ion Plan IOD" and plan.radiationType.upper()=="PROTON": # proton plan
         meta.MediaStorageSOPClassUID = plan.mediaStorageSOPClassUID if hasattr(plan, 'mediaStorageSOPClassUID') else "1.2.840.10008.5.1.4.1.1.481.8"
         # dicom dataset
         dcm_file = pydicom.dataset.FileDataset(outputFolder, {}, file_meta=meta, preamble=b"\0" * 128)
