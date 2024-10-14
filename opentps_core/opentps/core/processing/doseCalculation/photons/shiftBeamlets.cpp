@@ -104,6 +104,20 @@ void pushToSparseMatrix(const float* imageShifted, int size, float* nonZeroValue
     }
 }
 
+/**
+ * @brief Shifts beamlets based on setup shifts and beamlet angles.
+ *
+ * @param nonZeroValues Pointer to the non-zero values of the sparse matrix.
+ * @param nonZeroValuesShifted Pointer to store the shifted non-zero values.
+ * @param indexes Pointer to the indexes of non-zero elements.
+ * @param nonZeroIndexesShifted Pointer to store the shifted indexes.
+ * @param beamIndexes Pointer to the beamlet indexes.
+ * @param setUpShift Pointer to the setup shift values.
+ * @param gridSize Pointer to the grid size dimensions.
+ * @param beamletAngles_rad Pointer to the beamlet angles in radians.
+ * @param nOfBeamlets Number of beamlets to shift.
+ * @param numThreads Number of threads for parallel execution.
+ */
 void shiftBeamlets(const float* nonZeroValues, float* nonZeroValuesShifted, const int* indexes, int* nonZeroIndexesShifted, int* beamIndexes, const float* setUpShift, const int* gridSize, const float* beamletAngles_rad, int nOfBeamlets, int numThreads) {
     for (int i = 0; i < nOfBeamlets; ++i) {
         int beamletStart = beamIndexes[i];
@@ -113,12 +127,9 @@ void shiftBeamlets(const float* nonZeroValues, float* nonZeroValuesShifted, cons
         int shiftTrunctated = convertTo1DcoordFortran(truncateToIntegers(correctedShift), gridSize);
         std::array<double, 3> shiftSmallVoxel = elementWiseRest(correctedShift , truncateToIntegers(correctedShift));
         float shiftSmallVoxelAbsSum = elementWiseSumAbs(shiftSmallVoxel);
-        // float imageShifted[gridSize[0]*gridSize[1]*gridSize[2]] = {0}; 
         float* imageShifted = new float[gridSize[0]*gridSize[1]*gridSize[2]]();
-        // std::cout<<i<<std::endl;
         if (elementWiseSum(shiftSmallVoxel)!=0){
             int j = 0;
-            // auto start = std::chrono::high_resolution_clock::now();
             for (double& shift : shiftSmallVoxel){
                 if (shift != 0){
                     float weight = std::abs(shift) / shiftSmallVoxelAbsSum;
@@ -130,16 +141,12 @@ void shiftBeamlets(const float* nonZeroValues, float* nonZeroValuesShifted, cons
 
                     std::array<int, 3> Shift_voxel = {magnitude, directionNeg, direction};
                     parallelShiftSparse(nonZeroValues, imageShifted, indexes, Shift_voxel.data(), custom_mod(shift, 1), beamletStart, numberOfElementsInBeamlet, weight,  numThreads);
-                    // printNonZeroElements(imageShifted, gridSize[0] * gridSize[1] * gridSize[2]);
                     j+=1;
                 }
                 else{
                     j+=1;
                 }   
             }
-            // auto end = std::chrono::high_resolution_clock::now();
-            // std::chrono::duration<double> duration = end - start;
-            // std::cout << "Execution time: " << duration.count() << " seconds" << std::endl;
         }
         pushToSparseMatrix(imageShifted, gridSize[0]*gridSize[1]*gridSize[2], nonZeroValuesShifted, nonZeroIndexesShifted, beamletStart, 3);
         delete[] imageShifted;
@@ -147,7 +154,19 @@ void shiftBeamlets(const float* nonZeroValues, float* nonZeroValuesShifted, cons
     }
 }
 
-// Helper function to divide work among threads
+/**
+ * @brief Distributes the shifting of the sparse matrix across multiple threads.
+ *
+ * @param sparse Pointer to the original sparse matrix.
+ * @param imageShifted Pointer to the shifted image array.
+ * @param index Pointer to the index array.
+ * @param shift Pointer to the shift array.
+ * @param shiftValue The fractional shift value.
+ * @param beamletStart Starting index of the beamlet.
+ * @param indexNumberOfElements Number of elements in the beamlet.
+ * @param weight Weight factor for the shift.
+ * @param numThreads Number of threads for parallel processing.
+ */
 void parallelShiftSparse(const float* sparse, float* imageShifted, const int* index, const int* shift, float shiftValue, int beamletStart, int indexNumberOfElements, float weight, int numThreads) {
 
     std::vector<std::thread> threads;
@@ -166,18 +185,30 @@ void parallelShiftSparse(const float* sparse, float* imageShifted, const int* in
     }
 }
 
-// Implementation of shiftSparse
-void shiftSparse(const float* sparse, float* imageShifted, const int* index, const int* shift, float shiftValue, int indexNumberOfElements, float weight, int beamletStart,  int start, int end) {  //// Maybe return the indexes to avoid a for loop over the whole image in the function pushToSparseMatrix. This will speed up the code. This can also be perfomed with a map instead of imageShifted.
+/**
+ * @brief Shifts a sparse matrix by applying linear interpolation to its values.
+ *
+ * @param sparse Pointer to the original sparse matrix.
+ * @param imageShifted Pointer to the output array where shifted values will be stored.
+ * @param index Pointer to the index array.
+ * @param shift Pointer to the shift array.
+ * @param shiftValue The fractional shift value.
+ * @param indexNumberOfElements Number of elements in the beamlet.
+ * @param weight Weight factor for the shift.
+ * @param beamletStart Starting index of the beamlet.
+ * @param start Start index for the chunk of data to process.
+ * @param end End index for the chunk of data to process.
+ */
+void shiftSparse(const float* sparse, float* imageShifted, const int* index, const int* shift, float shiftValue, int indexNumberOfElements, float weight, int beamletStart,  int start, int end) {  
     for (int i = start; i < end; ++i) {
         if (shiftValue != 0.0) {
             int index0 = index[i] + shift[1];
-            float value0 = getElement(index, index0, sparse, beamletStart, beamletStart + indexNumberOfElements); // Pasa estas variables en el input de la funcion
+            float value0 = getElement(index, index0, sparse, beamletStart, beamletStart + indexNumberOfElements); 
 
             float value1 = sparse[i];
 
             int index2 = index[i] + shift[2];
-            float value2 = getElement(index, index2, sparse, beamletStart, beamletStart + indexNumberOfElements); // Pasa estas variables en el input de la funcion
-
+            float value2 = getElement(index, index2, sparse, beamletStart, beamletStart + indexNumberOfElements); 
             int indexShifted0  = index[i] + shift[0];
             int indexShifted1  = indexShifted0 + shift[2];
 

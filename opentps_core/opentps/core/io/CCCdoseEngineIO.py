@@ -13,6 +13,9 @@ from opentps.core.data import SparseBeamlets
 import math
 from opentps.core.data.images._doseImage import DoseImage
 from opentps.core.data.images._image3D import Image3D
+from typing import Optional, Sequence, Union
+from opentps.core.data import ROIContour
+from opentps.core.data.images import ROIMask
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +184,24 @@ def read_sparse_data(matrixBeamlets_path, header, BeamletMatrix = None):
         BeamletMatrix.append(d_beamletMatrix)
     return BeamletMatrix, Nbeamlets
 
-def readBeamlets(CTheaderfile_path, outputDir, batchSize): 
+def mergeContours(roi, flatAndFlip = True):
+    if isinstance(roi, ROIMask):
+        roi = [roi]
+    logger.info("Beamlets are computed on {}".format([contour.name for contour in roi]))
+    roiUnion = None
+    for contour in roi:
+        if flatAndFlip:
+            roiData = np.flip(contour.imageArray,(0,1))
+            roiData = np.ndarray.flatten(roiData,'F').astype('bool')
+        else:
+            roiData = contour.imageArray
+        if roiUnion is None:
+            roiUnion = roiData
+        else:
+            roiUnion = np.logical_or(roiUnion, roiData)
+    return roiUnion
+
+def readBeamlets(CTheaderfile_path, outputDir, batchSize, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None): 
     if (not CTheaderfile_path.endswith('.txt')):
         raise NameError('File ', CTheaderfile_path, ' is not a valid sparse matrix header')
 
@@ -200,16 +220,23 @@ def readBeamlets(CTheaderfile_path, outputDir, batchSize):
     
     sparseBeamletsDose = sp.hstack(sparseBeamletsDose)
     header["NbrBeamlets"] = numberOfBeamlets
+
+    if not(roi is None) or (roi is list and not(len(roi)==0)):
+        roiUnion = mergeContours(roi)
+        sparseBeamletsDose = sp.csc_matrix.dot(sp.diags(roiUnion.astype(np.int32), format='csc'),
+                                              sparseBeamletsDose)
+        
     beamletDose = SparseBeamlets()
     beamletDose.setUnitaryBeamlets(sparseBeamletsDose)
     # beamletDose.beamletWeights = np.ones(header["NbrBeamlets"])
     beamletDose.doseOrigin = header["Origin_cm"] * 10
     beamletDose.doseSpacing = header["Spacing_cm"] * 10
     beamletDose.doseGridSize = header["Size"]
+     
     return beamletDose
 
 
-def computeDose(CTheaderfile_path, outputDir, batchSize, Mu): 
+def computeDose(CTheaderfile_path, outputDir, batchSize, Mu, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None): 
     if (not CTheaderfile_path.endswith('.txt')):
         raise NameError('File ', CTheaderfile_path, ' is not a valid sparse matrix header')
 
@@ -239,4 +266,7 @@ def computeDose(CTheaderfile_path, outputDir, batchSize, Mu):
     doseImage = DoseImage(imageArray=totalDose, origin=header["Origin_cm"] * 10, spacing=header["Spacing_cm"] * 10,
                             angles=orientation) ### The TPS works with mm
 
+    if not(roi is None) or (roi is list and not(len(roi)==0)):
+        doseImage = doseImage[mergeContours(roi, flatAndFlip = False)]
+        
     return doseImage
