@@ -20,7 +20,7 @@ from opentps.core.data import ROIContour
 from opentps.core.data.plan._photonPlan import PhotonPlan
 import opentps.core.io.CCCdoseEngineIO as CCCdoseEngineIO
 from opentps.core.processing.doseCalculation.photons._utils import shiftBeamlets
-from opentps.core.processing.planEvaluation.robustnessPhotons import RobustScenario
+from opentps.core.data.plan._robustnessPhoton import RobustScenario
 import time
 # from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness
 
