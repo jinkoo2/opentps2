@@ -252,10 +252,10 @@ def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): ###
         dose = nominal.sb.toDoseImage()
 
     doseArray = dose.imageArray
-    # if scenario.sre != None:
-    #     doseArray = gaussian_filter(doseArray.astype(float), sigma = scenario.sre, order=0, truncate=2)
-    # else:
-    #     return dose
+    if np.all(scenario.sre) != None:
+        doseArray = gaussian_filter(doseArray.astype(float), sigma = scenario.sre, order=0, truncate=2)
+    else:
+        return dose
     dose.imageArray = doseArray
 
     return dose

@@ -45,9 +45,6 @@ def run(output_path=""):
     ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)
     bdl = mcsquareIO.readBDL(DoseCalculationConfig().bdlFile)
 
-    # Dose_Blur = readDicomDose('/home/colin/opentps/Photon_Robust_Output_Example/RD_Blurred.dcm')
-    # Dose_scenarios = readDicomDose('/home/colin/opentps/Photon_Robust_Output_Example/RD_SumScenarios.dcm')
-
     patient = Patient()
     patient.name = 'Patient'
 
@@ -101,19 +98,19 @@ def run(output_path=""):
     else:
         # MCsquare config for scenario dose computation
         plan.planDesign.robustnessEval = RobustEvaluation()
-        plan.planDesign.robustnessEval.setupSystematicError = 0 #[1.6] * 3
-        plan.planDesign.robustnessEval.setupRandomError = 1.6
+        plan.planDesign.robustnessEval.setupSystematicError = [1.6] * 3
+        plan.planDesign.robustnessEval.setupRandomError = [1.6]*3
         plan.planDesign.robustnessEval.sseNumberOfSamples = 1
 
         plan.planDesign.robustnessEval.selectionStrategy = plan.planDesign.robustnessEval.Strategies.RANDOM
-        plan.planDesign.robustnessEval.NumScenarios = 50
+        plan.planDesign.robustnessEval.NumScenarios = 20
 
         plan.planDesign.robustnessEval.doseDistributionType = "Nominal"
 
         plan.patient = None
 
         # run MCsquare simulation
-        scenarios = ccc.computeRobustScenario(ct, plan, robustMode = "Shift")
+        scenarios = ccc.computeRobustScenario(ct, plan, robustMode = "Simulation")
         output_folder = os.path.join(output_path, "RobustnessTest")
         scenarios.save(output_folder)
 

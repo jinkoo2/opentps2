@@ -28,7 +28,6 @@ from opentps.core.io.dicomIO import writeRTDose
 
 
 def calculateDoseArray(beamlets, weights, numberOfFractionsPlanned):
-    # beamlets._sparseBeamlets.data = sp.ndimage.gaussian_filter(beamlets._sparseBeamlets.data, 10)
     doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
     totalDose = np.reshape(doseArray, beamlets._gridSize, order='F')
     totalDose = np.flip(totalDose, 0)
@@ -105,14 +104,14 @@ def run(output_path=""):
         planDesign.yBeamletSpacing_mm = 5
         # Robustness settings
         planDesign.robustness = RobustnessPhotons()
-        planDesign.robustness.setupSystematicError = [0, 0, 0] #[1.6] * 3
-        planDesign.robustness.setupRandomError = 1.6
+        planDesign.robustness.setupSystematicError = [1.6] * 3
+        # planDesign.robustness.setupRandomError = 1.6
         planDesign.robustness.sseNumberOfSamples = 1
 
         planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.REDUCED_SET
         # planDesign.robustness.NumScenarios = 10
 
-        planDesign.targetMargin = max([sse + planDesign.robustness.setupRandomError for sse in planDesign.robustness.setupSystematicError]) 
+        planDesign.targetMargin = max(planDesign.robustness.setupSystematicError)
         planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) # needs to be called prior spot placement
         plan = planDesign.buildPlan()  # Spot placement
         plan.PlanName = "RobustPlan"

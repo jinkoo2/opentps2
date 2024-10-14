@@ -9,6 +9,8 @@ import scipy as sp
 from pathlib import Path
 from typing import Optional, Sequence, Union
 from matplotlib import pyplot as plt
+from scipy.sparse import csc_matrix
+
 
 import numpy as np
 from opentps.core.data.images import DoseImage
@@ -271,13 +273,6 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             scenario.sb = self.calculateRobustBeamlets(scenario, origin, plan.planDesign.robustness.nominal.sb, mode = robustMode)
         self._ct.origin = origin
 
-        if plan.planDesign.robustness.setupRandomError != 0 :
-            sre = plan.planDesign.robustness.setupRandomError
-            plan.planDesign.robustness.nominal.sb._sparseBeamlets.data = sp.ndimage.gaussian_filter(plan.planDesign.robustness.nominal.sb._sparseBeamlets.data, sre)
-            for s in range(len(scenarios)) :
-                beamlets = plan.planDesign.robustness.scenarios[s].sb._sparseBeamlets.data
-                plan.planDesign.robustness.scenarios[s].sb._sparseBeamlets.data = sp.ndimage.gaussian_filter(beamlets, sre)
-
     def calculateRobustBeamlets(self, scenario, origin, nominal = None, mode = "Simulation"):
         t0 = time.time()
         self._ct.origin = origin + scenario.sse
@@ -323,7 +318,8 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             Robustness with nominal and error scenarios
         """
         self._plan = plan
-        self._ct = self.fromHU2Densities(ct, roi) 
+        self._ct = self.fromHU2Densities(ct, roi)
+        self._ct = ct
         self._roi = roi
         self.batchSize = plan.numberOfBeamlets if plan.numberOfBeamlets / self.batchSize < 1 else self.batchSize
         origin = ct.origin
@@ -334,24 +330,20 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             print('Calculating Nominal Scenario')
             self.ROFolder = 'Nominal'
             dose = self.computeDose(self._ct, self._plan, roi)
-            plan.planDesign.robustnessEval.nominal.dose = dose
+            #
             plan.planDesign.robustnessEval.nominal.sb = plan.planDesign.robustness.nominal.sb
             plan.planDesign.robustnessEval.nominal.sb.beamletWeights = plan.beamletMUs
+            nominal_sb = plan.planDesign.robustnessEval.nominal.sb
+            dose = self.calculateDoseArray(nominal_sb, nominal_sb.beamletWeights, 1)
+            plan.planDesign.robustnessEval.nominal.dose = dose
         
-        sb_data = plan.planDesign.robustnessEval.nominal.sb._sparseBeamlets.data
-
         for number, scenario in enumerate(scenarios):
-            nominal_scenario = plan.planDesign.robustnessEval.nominal
-
-            if plan.planDesign.robustnessEval.setupRandomError != 0 :
-                sre_sigma = plan.planDesign.robustnessEval.setupRandomError
-                sre = np.random.normal(0, sre_sigma)
-                sb_data_smooth = sp.ndimage.gaussian_filter(sb_data, sre)
-                nominal_scenario.sb._sparseBeamlets.data = sb_data_smooth
-
             print('Calculating Scenario {}'.format(number))
             print(scenario)
             self.ROFolder = 'Scenario_{}'.format(number)
+
+            scenario.sre = np.array(plan.planDesign.robustnessEval.setupRandomError)
+            nominal_scenario = plan.planDesign.robustnessEval.nominal
             plan.planDesign.robustnessEval.scenarios[number].sb = plan.planDesign.robustnessEval.nominal.sb
             plan.planDesign.robustnessEval.scenarios[number].sb.beamletWeights = plan.planDesign.robustnessEval.nominal.sb.beamletWeights
             scenario.dose = self.computeRobustScenarioDose(scenario, origin, nominal_scenario, mode = robustMode)
@@ -360,6 +352,15 @@ class CCCDoseCalculator(AbstractDoseCalculator):
 
         return plan.planDesign.robustnessEval
 
+    def calculateDoseArray(self, beamlets, weights, numberOfFractionsPlanned):
+        doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
+        totalDose = np.reshape(doseArray, beamlets._gridSize, order='F')
+        totalDose = np.flip(totalDose, 0)
+        totalDose = np.flip(totalDose, 1)
+        orientation = (1, 0, 0, 0, 1, 0, 0, 0, 1)
+        doseImage = DoseImage(imageArray=totalDose, origin=self._ct.origin, spacing=self._ct.spacing,
+                        angles=orientation)
+        return doseImage
 
     def _createFolderIfNotExists(self, folder):
         folder = Path(folder)
@@ -390,7 +391,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         t0 = time.time()
         self._ct.origin = origin + scenario.sse
         nominal.sb.spacing = self._ct.spacing
-        scenario.sre = None if scenario.sre == [0,0,0] else scenario.sre
+        scenario.sre = None if np.all(scenario.sre == [0,0,0]) else scenario.sre
 
         if mode == "Simulation":
             print(origin, self._ct.origin)
