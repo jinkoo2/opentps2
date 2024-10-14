@@ -47,7 +47,6 @@ def run(output_path=""):
     logger.info('Files will be stored in {}'.format(output_path))
 
     ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)
-    bdl = mcsquareIO.readBDL(DoseCalculationConfig().bdlFile)
 
     patient = Patient()
     patient.name = 'Patient'

@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 import sys
 sys.path.append('..')
 
-from opentps.core.io.dicomIO import writeRTDose, writeDicomCT, writeDicomPhotonRTPlan, writeRTStruct
+from opentps.core.io.dicomIO import writeRTDose, writeDicomCT, writeRTPlan, writeRTStruct
 from opentps.core.processing.planOptimization.tools import evaluateClinical
 from opentps.core.data.images import CTImage, DoseImage
 from opentps.core.data.images import ROIMask

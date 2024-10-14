@@ -1,20 +1,14 @@
 import numpy as np
 import opentps.core.io.CCCdoseEngineIO as CCCdoseEngineIO
 import scipy.sparse as sp
-from scipy import ndimage
 import logging
 logger = logging.getLogger(__name__)
-from scipy.ndimage import shift, gaussian_filter
 import scipy.sparse as sp
-from scipy.sparse import csc_matrix
-from opentps.core.data.images import DoseImage
-from opentps.core.data.plan._photonPlan import PhotonPlan
 import ctypes
 import os
 import psutil
 import os
 from matplotlib import pyplot as plt
-
 
 def getConvolveNonZeroElements(kernel_size, nonZeroIndexes, image_size):
     nonZeroIndexes_convolved = []
@@ -35,9 +29,38 @@ def convolveVoxel(sparse,index,kernel, image_size):
     return convolution
 
 def correctShift(setup, angle):
+    """
+    Correct the setup error for a given angle. This takes into account that a shift on the beam direction does not affect the dose distribution.
+    Parameters
+    ----------
+    setup : np.array
+        Setup error in LPS coordinates
+    angle : float
+        Angle of the beam in radians
+    Returns
+    -------
+    np.array
+        Corrected setup error in LPS coordinates
+    """     
     return np.array([(setup[0] * np.cos(angle) - setup[1] * np.sin(angle)) * np.cos(angle), (setup[0] * np.cos(angle) - setup[1] * np.sin(angle)) * np.sin(angle), setup[2]])
 
 def shiftBeamlets_cu(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
+    """
+    Shift the beamlets in the dose influence matrix for a given setup error. This would be equivalent to recalculating the dose distribution for a given setup error. This function parallelizes the calculation of the shifts over each voxel of the beamlet using CUDA.
+    ----------
+    sparseBeamlets : sp.csc_matrix
+        Sparse matrix of the beamlets
+    gridSize : np.array
+        Size of the grid
+    scenarioShift_voxel : np.array
+        Setup error in voxels
+    beamletAngles_rad : np.array
+        Angles of the beamlets in radians
+    Returns
+    -------
+    sp.csc_matrix
+        Sparse matrix of the shifted beamlets
+    """   
     import pycuda.autoinit
     from pycuda.compiler import SourceModule
     import pycuda.driver as cuda
@@ -46,7 +69,6 @@ def shiftBeamlets_cu(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngl
     scenarioShift_voxel[1]*=-1 ### To have the setup error in LPS. Check because some signs problem
     nbOfBeamlets = sparseBeamlets.shape[1]
     nbOfVoxelInImage = sparseBeamlets.shape[0]
-    assert(len(beamletAngles_rad), nbOfBeamlets)
     gridSize = np.array(gridSize, dtype=np.int32)
     BeamletMatrix = []
 
@@ -105,7 +127,7 @@ def shiftBeamlets_cu(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngl
                 cuda.memcpy_htod(scenarioShiftVoxel_gpu, Shift_voxel)
 
                 shiftSparse = mod.get_function("shiftSparse")
-                shiftSparse(nonZeroValues_gpu,nonZeroValuesShifted_gpu,nonZeroIndexes_gpu,nonZeroIndexesShifted_gpu, scenarioShiftVoxel_gpu, gridSize_gpu, shiftValue, NumberOfElements, grid=(int(NumberOfElements/1024)+1,1),block=(1024,1,1))
+                shiftSparse(nonZeroValues_gpu,nonZeroValuesShifted_gpu,nonZeroIndexes_gpu,nonZeroIndexesShifted_gpu, scenarioShiftVoxel_gpu, gridSize_gpu, shiftValue, NumberOfElements, np.int32(nbOfVoxelInImage), grid=(int(NumberOfElements/1024)+1,1),block=(1024,1,1))
 
                 cuda.memcpy_dtoh(nonZeroValuesShifted,nonZeroValuesShifted_gpu)
                 cuda.memcpy_dtoh(nonZeroIndexesShifted,nonZeroIndexesShifted_gpu)
@@ -114,11 +136,24 @@ def shiftBeamlets_cu(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngl
                 nonZeroIndexesShiftedExtendedArray = np.append(nonZeroIndexesShiftedExtendedArray,nonZeroIndexesShifted)
             beamlet = sp.csc_matrix((nonZeroValuesShiftedExtendedArray, (nonZeroIndexesShiftedExtendedArray, np.zeros(nonZeroIndexesShiftedExtendedArray.size))), shape=(nbOfVoxelInImage, 1),dtype=np.float32)    
         else:
-            beamlet = sp.csc_matrix((nonZeroValues[0], (nonZeroIndexes, np.zeros(nonZeroIndexes.size))), shape=(nbOfVoxelInImage, 1),dtype=np.float32)      
+            mask =nonZeroIndexes<nbOfVoxelInImage
+            nonZeroValues = nonZeroValues[0][mask]
+            nonZeroIndexes = nonZeroIndexes[mask]
+            
+            beamlet = sp.csc_matrix((nonZeroValues, (nonZeroIndexes, np.zeros(nonZeroIndexes.size))), shape=(nbOfVoxelInImage, 1),dtype=np.float32)      
         BeamletMatrix.append(beamlet)  
     return sp.hstack(BeamletMatrix, format='csc')
 
 def find_change_indices(arr):
+    """
+    Find the indices where the values of an array change
+    ----------
+    arr : np.array
+        Array of values
+    -------
+    list
+        List of indices where the values change
+    """   
     arr = np.array(arr)
     # Create a boolean array where changes occur
     changes = arr[1:] != arr[:-1]
@@ -127,6 +162,22 @@ def find_change_indices(arr):
     return change_indices.tolist()
 
 def shiftBeamlets(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
+    """
+    Shift the beamlets in the dose influence matrix for a given setup error. This would be equivalent to recalculating the dose distribution for a given setup error. 
+    ----------
+    sparseBeamlets : sp.csc_matrix
+        Sparse matrix of the beamlets
+    gridSize : np.array
+        Size of the grid
+    scenarioShift_voxel : np.array
+        Setup error in voxels
+    beamletAngles_rad : np.array
+        Angles of the beamlets in radians
+    Returns
+    -------
+    sp.csc_matrix
+        Sparse matrix of the shifted beamlets
+    """   
     paralelize = False
     try:
         import pycuda.driver as cuda
@@ -144,6 +195,22 @@ def shiftBeamlets(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_
 
 
 def shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
+    """
+    Shift the beamlets in the dose influence matrix for a given setup error. This would be equivalent to recalculating the dose distribution for a given setup error. This function is executed in c++ to gain speed and parallelize the process over different threads.
+    ----------
+    sparseBeamlets : sp.csc_matrix
+        Sparse matrix of the beamlets
+    gridSize : np.array
+        Size of the grid
+    scenarioShift_voxel : np.array
+        Setup error in voxels
+    beamletAngles_rad : np.array
+        Angles of the beamlets in radians
+    Returns
+    -------
+    sp.csc_matrix
+        Sparse matrix of the shifted beamlets
+    """   
     lib = ctypes.cdll.LoadLibrary(os.path.join(os.path.dirname(os.path.abspath(__file__)), "shiftBeamlets.so"))
     
     # Define the argument types and return types for the C++ function
@@ -164,7 +231,6 @@ def shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAng
     scenarioShift_voxel[1]*=-1 ### To have the setup error in LPS. Check because some signs problem
     nbOfBeamlets = sparseBeamlets.shape[1]
     nbOfVoxelInImage = sparseBeamlets.shape[0]
-    assert(len(beamletAngles_rad), nbOfBeamlets)
     gridSize = np.array(gridSize, dtype=np.int32)
     BeamletMatrix = []
     
@@ -201,13 +267,6 @@ def shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAng
         BeamletMatrix.append(sp.csc_matrix((values, (indexes, np.zeros(len(indexes)))), shape=(length,1), dtype=np.float32))
         
     return sp.hstack(BeamletMatrix, format='csc')
-
-def convolveSparseMatrix(sparse, sigma_voxels, image_size):
-    len = sparse.shape[0]
-    matrix = np.reshape(sparse.A, image_size ,order='F')
-    convolved_matrix = ndimage.gaussian_filter(matrix.astype(float), sigma = sigma_voxels, order=0, truncate=2)
-    matrix = np.reshape(convolved_matrix, (len, 1), order='F')
-    return sp.csc_matrix(matrix)
 
 
 def dnorm(x, mu, sd):

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional, Sequence, Union
 from matplotlib import pyplot as plt
 from scipy.sparse import csc_matrix
-
+from typing import Optional, Sequence, Union, Dict, Any
 
 import numpy as np
 from opentps.core.data.images import DoseImage
@@ -62,6 +62,11 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         Subprocess killed (if subprocess is used)
     overwriteOutsideROI : bool
         if true, set to air all the region in the CT outside the ROI
+    self.WorkSpaceDir : str
+        Path to the directory where the opentps code was cloned
+    self.ROFolder : str
+        Name of the folder where robust scenarios are stored
+        
     """
     def __init__(self, batchSize = 1):
 
@@ -76,7 +81,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         self._subprocess = []
         self._subprocessKilled = True
 
-        self.overwriteOutsideROI = None  # Previously cropCTContour but this name was confusing
+        self.overwriteOutsideROI = None  
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.WorkSpaceDir = os.path.abspath(os.path.join(current_dir, os.pardir, os.pardir, os.pardir, os.pardir, os.pardir))
@@ -129,6 +134,9 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         self._ctCalibration = ctCalibration
 
     def createKernelFilePath(self):
+        """
+        Write the kernel file paths into a txt file which is stored into the simulation folder. This is required for the CCC dose calculation.
+        """
         kernelsDir = os.path.join(self.WorkSpaceDir,'opentps','core','processing','doseCalculation','photons','Kernels_differentFluence')
         f = open(os.path.join(self._CCCSimuDir, 'kernelPaths.txt'),'w')
         for fileName in os.listdir(kernelsDir):
@@ -199,14 +207,24 @@ class CCCDoseCalculator(AbstractDoseCalculator):
 
 
     def _importBeamlets(self):
-        beamletDose = CCCdoseEngineIO.readBeamlets(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize)
+        beamletDose = CCCdoseEngineIO.readBeamlets(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._roi)
         return beamletDose
 
     def _importDose(self):
-        beamletDose = CCCdoseEngineIO.computeDose(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._plan.beamletMUs)
+        beamletDose = CCCdoseEngineIO.computeDose(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._plan.beamletMUs, self._roi)
         return beamletDose
 
-    def fromHU2Densities(self, ct : CTImage, overRidingList = None):
+    def fromHU2Densities(self, ct : CTImage, overRidingList : Sequence[Dict[str, Any]] = None):
+        """
+        Convert the HU values of the CT image to densities using the calibration curve. It also override the density values of the CT image using the overRidingList
+
+        Parameters
+        ----------
+        ct: CTImage
+            Treatment planning CT image
+        overRidingList: Sequence[Dict[str, Any]]
+            It stores in every element of the sequence a dictionary with the keys 'Mask' and 'Value'. 'Mask' is the ROI mask and 'Value' is the value to override.
+        """
         Density = self._ctCalibration._PiecewiseHU2Density__densities
         HU = self._ctCalibration._PiecewiseHU2Density__hu
         ct.imageArray = np.interp(ct.imageArray, HU, Density)
@@ -216,14 +234,30 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         return ct
 
 
-    def computeBeamlets(self, ct: CTImage, plan: PhotonPlan, overRidingDict: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
- 
+    def computeBeamlets(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, roi: Sequence[Union[ROIContour, ROIMask]] = None) -> SparseBeamlets:
+        """
+        Compute beamlets using Collapse Cone Convolution algorithm
+
+        Parameters
+        ----------
+        ct: CTImage
+            Treatment planning CT image
+        plan : PhotonPlan
+            RT plan
+        overRidingList: Sequence[Dict[str, Any]]
+            It stores in every element of the sequence a dictionary with the keys 'Mask' and 'Value'. 'Mask' is the ROI mask and 'Value' is the value to override.
+        Returns
+        -------
+        beamletDose:SparseBeamlets
+            Beamlets dose with same grid size and spacing as the CT image
+
+        """
         logger.info("Prepare Collapse Cone Convolution Beamlet calculation")
         if self._ct == None:
             self._ct = ct
-            self._ct = self.fromHU2Densities(self._ct, overRidingDict) 
+            self._ct = self.fromHU2Densities(self._ct, overRidingList) 
             self._plan = plan
-        # self._roi = roi
+        self._roi = roi
 
         self._cleanDir(self.outputDir)
         self._cleanDir(self._executableDir)
@@ -248,11 +282,29 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             beamletDose.beamletWeights = beamletsMU
         return beamletDose
 
-    def computeRobustScenarioBeamlets(self, ct: CTImage, plan: PhotonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None, robustMode = "Shift", computeNominal = True) -> SparseBeamlets:
+
+    def computeRobustScenarioBeamlets(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, roi: Sequence[Union[ROIContour, ROIMask]] = None, robustMode = "Shift", computeNominal = True) -> SparseBeamlets:
+        """
+        Compute beamlets for different scenarios using Collapse Cone Convolution algorithm. The beamlets are saved in plan.planDesign.robustness
+
+        Parameters
+        ----------
+        ct: CTImage
+            Treatment planning CT image
+        plan : PhotonPlan
+            RT plan
+        overRidingList: Sequence[Dict[str, Any]]
+            It stores in every element of the sequence a dictionary with the keys 'Mask' and 'Value'. 'Mask' is the ROI mask and 'Value' is the value to override.
+        robustMode: str ['Shift', 'Simulation']
+            It selects the type of robust scenarios to calculate. 'Shift' calculates the scenarios by shifting the beamlets, 'Simulation' calculates the scenarios by simulating the beamlets again per every scenario.
+        computeNominal: bool
+            If true, the nominal scenario is calculated and stored in plan.planDesign.robustness.nominal.sb
+        """
         logger.info("Prepare Collapse Cone Convolution Beamlet calculation")
         self._plan = plan
-        self._ct = self.fromHU2Densities(ct, roi)
+        self._ct = self.fromHU2Densities(ct, overRidingList) 
         self._roi = roi
+        self._overRidingList = overRidingList
         self.batchSize = plan.numberOfBeamlets if plan.numberOfBeamlets / self.batchSize < 1 else self.batchSize
         origin = ct.origin
         plan.planDesign.robustness.generateRobustScenarios4Planning()
@@ -260,7 +312,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         if computeNominal:
             print('Calculating Nominal Scenario')
             self.ROFolder = 'Nominal'
-            plan.planDesign.robustness.nominal.sb = self.computeBeamlets(self._ct, self._plan, roi)   
+            plan.planDesign.robustness.nominal.sb = self.computeBeamlets(self._ct, self._plan, overRidingList)   
             plan.planDesign.beamlets = plan.planDesign.robustness.nominal.sb 
         else:
             plan.planDesign.robustness.nominal.sb = plan.planDesign.beamlets 
@@ -273,17 +325,34 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             scenario.sb = self.calculateRobustBeamlets(scenario, origin, plan.planDesign.robustness.nominal.sb, mode = robustMode)
         self._ct.origin = origin
 
-    def calculateRobustBeamlets(self, scenario, origin, nominal = None, mode = "Simulation"):
+    def calculateRobustBeamlets(self, scenario: RobustScenario, origin: Sequence[float], nominal:SparseBeamlets = None, mode = "Simulation"):
+        """
+        Compute the beamlets for a given scenario
+
+        Parameters
+        ----------
+        scenario: RobustScenario
+            scenario to calculate the beamlets
+        origin : Sequence[float]
+            origin of the treatment planning CT image
+        nominal: SparseBeamlets
+            nominal beamlets
+        mode: str ['Shift', 'Simulation']
+            It selects the type of robust scenarios to calculate. 'Shift' calculates the scenarios by shifting the beamlets, 'Simulation' calculates the scenarios by simulating the beamlets again per every scenario.
+        Returns
+        -------
+        beamletsScenario:SparseBeamlets
+            Beamlets dose with same grid size and spacing as the CT image
+        """
         t0 = time.time()
         self._ct.origin = origin + scenario.sse
         scenario.sre = None if scenario.sre == [0,0,0] else scenario.sre 
 
         if mode == "Simulation":
             print(origin, self._ct.origin)
-            beamletsScenario = self.computeBeamlets(self._ct, self._plan, self._roi)
+            beamletsScenario = self.computeBeamlets(self._ct, self._plan, self._overRidingList, self._roi)
             beamletsScenario.doseOrigin = origin
         elif mode == "Shift" or scenario.sre != None:
-            # kernel = gaussian_kernel_3d(3, scenario.sre)
             scenarioShift_voxel = scenario.sse / self._ct.spacing
             BeamletMatrix = []
             if nominal == None:
@@ -367,17 +436,34 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         if not folder.is_dir():
             os.makedirs(folder)
 
-    def computeDose(self, ct: CTImage, plan: PhotonPlan, overRidingDict: Optional[Sequence[Union[ROIContour, ROIMask]]] = None, Density = False) -> SparseBeamlets:
+    def computeDose(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, roi: Optional[Sequence[ROIContour]] = None,  Density = False) -> SparseBeamlets:
+        """
+        Compute dose distribution in the patient using Collapse Cone Convolution algorithm
+
+        Parameters
+        ----------
+        ct : CTImage
+            Treatment planning CT image of the patient
+        plan : IonPlan
+            RT plan
+        overRidingList: Sequence[Dict[str, Any]]
+            It stores in every element of the sequence a dictionary with the keys 'Mask' and 'Value'. 'Mask' is the ROI mask and 'Value' is the value to override.
+
+        Returns
+        -------
+        DoseImage
+            Dose distribution with same grid size and spacing as the CT image
+        """ 
         logger.info("Prepare Collapse Cone Convolution Beamlet calculation")
         self._ct = ct
         self._plan = plan
-        # self._roi = roi
+        self._roi = roi
 
         self._cleanDir(self.outputDir)
         self._cleanDir(self._executableDir)
         self._cleanDir(self._beamDirectory)
         if not Density:
-            self._ct = self.fromHU2Densities(self._ct, overRidingDict) 
+            self._ct = self.fromHU2Densities(self._ct, overRidingList) 
         self._writeFilesToSimuDir()
         self.writeExecuteCCCfile()
         self._startCCC()

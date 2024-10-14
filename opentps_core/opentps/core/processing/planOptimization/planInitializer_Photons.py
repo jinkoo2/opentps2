@@ -16,6 +16,18 @@ from opentps.core.data.plan._planPhotonBeam import PlanPhotonBeam
 logger = logging.getLogger(__name__)
 
 class BeamInitializer:
+    """
+    This class is used to initialize a photon beam.
+
+    Attributes
+    ----------
+    calibration : AbstractCTCalibration
+        The CT calibration used to convert the CT image to RSP image.
+    targetMargin : float
+        The margin around the target in mm.
+    beam : PlanPhotonBeam
+        The beam to initialize.
+    """
     def __init__(self):
         self.targetMargin = 0.
         self.beam: PlanPhotonBeam = None
@@ -23,7 +35,9 @@ class BeamInitializer:
         self.calibration: AbstractCTCalibration = None
 
     def initializeBeam(self):
-
+        """
+        Initialize the beam with beamlets.
+        """
         # generate hexagonal spot grid around isocenter
         beamletGrid = self._definePencilBeamGridAroundIsocenter()
         numBeamlets = len(beamletGrid["x"])
