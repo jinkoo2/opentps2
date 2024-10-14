@@ -33,7 +33,7 @@ class PlanDesignPanel(QWidget):
         self._modalityComboBox.addItem("IMPT")
         self._modalityComboBox.addItem("IMRT")
         self.layout.addWidget(self._modalityComboBox)
-        self._modalityComboBox.currentTextChanged.connect(self.updateUIBasedOnModality)
+        
         
         self._planLabel = QLabel('Plan name:')
         self.layout.addWidget(self._planLabel)
@@ -157,6 +157,7 @@ class PlanDesignPanel(QWidget):
         self.layout.addStretch()
 
         self.setCurrentPatient(self._viewController.currentPatient)
+        self._modalityComboBox.currentTextChanged.connect(self.updateUIBasedOnModality)
         self._viewController.currentPatientChangedSignal.connect(self.setCurrentPatient)
 
     @property
@@ -184,6 +185,8 @@ class PlanDesignPanel(QWidget):
             self.yBeamletSpacingLabel.show()
             self._yBeamletSpacing.show()
 
+            self._robustSettings.setDisabled(True) #TODO: connect to robust opti
+
         elif modality == "IMPT":
             self._mcsquareConfigWidget._txt2.show()
             self._spacingLabel.show()
@@ -199,6 +202,8 @@ class PlanDesignPanel(QWidget):
             self._xBeamletSpacing.hide()
             self.yBeamletSpacingLabel.hide()
             self._yBeamletSpacing.hide()
+
+        self._robustSettings._updateForModality(modality)
 
     def setCurrentPatient(self, patient:Patient):
         self._patient = patient
@@ -241,8 +246,7 @@ class PlanDesignPanel(QWidget):
         planDesign.beamNames = beamNames
         planDesign.couchAngles = couchAngles
         if self.selectedModality == "IMPT": planDesign.rangeShifters = rangeShifters
-
-        #TODO: Robustness photons
+        
         planDesign.robustness = self._robustSettings.robustness
         logger.info("New plan design created in {} sec".format(time.time() - start))
 

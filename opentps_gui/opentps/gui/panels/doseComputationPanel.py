@@ -70,7 +70,7 @@ class DoseComputationPanel(QWidget):
         self._doseSpacingLabel.hide()
 
         self.layout.addSpacing(15)
-        self._cropBLBox = QCheckBox('Crop Beamlets on ROI')
+        self._cropBLBox = QCheckBox('Crop beamlets on ROI')
         self._cropBLBox.setChecked(True)
         self.layout.addWidget(self._cropBLBox)
         self._cropBLBox.hide()

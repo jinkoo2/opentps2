@@ -328,9 +328,9 @@ class PlanOptimizer:
         return dct
 
 
-class IMPTPlanOptimizer(PlanOptimizer):
+class IntensityModulationOptimizer(PlanOptimizer):
     """
-    This class is used to optimize an Intensity Modulated Proton Therapy (IMPT) plan. It inherits from PlanOptimizer.
+    This class is used to optimize an Intensity Modulated Radiation/Proton Therapy (IMRT/IMPT). It inherits from PlanOptimizer.
     Attributes
     ----------
     method : str
@@ -520,34 +520,3 @@ class ARCPTPlanOptimizer(PlanOptimizer):
         else:
             logger.error(
                 'Method {} is not implemented. Pick among ["FISTA","LS","MIP","SPArcling"]'.format(self.method))
-
-class IMRTPlanOptimizer(PlanOptimizer):
-    def __init__(self, method, plan:RTPlan, **kwargs):
-        self.plan = plan
-        self.opti_params = kwargs
-        self.functions = []
-        self._xSquared = True
-        self.method = method
-
-        if method == 'Scipy-BFGS':
-            self.solver = bfgs.ScipyOpt('BFGS', **kwargs)
-        elif method == 'Scipy-LBFGS':
-            self.solver = bfgs.ScipyOpt('L-BFGS-B', **kwargs)
-        elif method == 'Gradient':
-            self.solver = gradientDescent.GradientDescent(**kwargs)
-        elif method == 'BFGS':
-            self.solver = bfgs.BFGS(**kwargs)
-        elif method == "LBFGS":
-            self.solver = bfgs.LBFGS(**kwargs)
-        elif method == "FISTA":
-            self.solver = fista.FISTA(**kwargs)
-        elif method == "LP":
-            from opentps.core.processing.planOptimization.solvers import lp
-            self.xSquared = False
-            self.solver = lp.LP(self.plan, **kwargs)
-        else:
-            logger.error(
-                'Method {} is not implemented. Pick among ["Scipy-LBFGS", "Gradient", "BFGS", "FISTA"]'.format(
-                    self.method))
-    def getConvergenceData(self):
-        return super().getConvergenceData(self.method)

@@ -13,7 +13,7 @@ from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator impo
 from opentps.core.processing.imageProcessing import resampler3D
 from opentps.core.processing.planOptimization.objectives.doseFidelity import DoseFidelity
 from opentps.core.processing.planOptimization.planInitializer import PlanInitializer
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
+from opentps.core.processing.planOptimization.planOptimization import IntensityModulationOptimizer
 from opentps.core.processing.planOptimization.planOptimizationConfig import PlanOptimizationConfig
 
 logger = logging.getLogger(__name__)
@@ -122,7 +122,7 @@ def _optimizePlan(plan:RTPlan, planStructure:IonPlanDesign):
     beamletMatrix = planStructure.beamlets.toSparseMatrix()
 
     objectiveFunction = DoseFidelity(planStructure.objectives.fidObjList, beamletMatrix, xSquare=False, scenariosBL=None, returnWorstCase=False)
-    solver = IMPTPlanOptimizer(optimizationSettings.imptSolver, plan, functions=[objectiveFunction], maxit=optimizationSettings.imptMaxIter)
+    solver = IntensityModulationOptimizer(optimizationSettings.imptSolver, plan, functions=[objectiveFunction], maxit=optimizationSettings.imptMaxIter)
 
     solver.xSquared = False
 

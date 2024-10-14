@@ -2,6 +2,8 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import Qt
 from opentps.core.data.plan import Robustness
+from opentps.core.data.plan._robustnessIon import RobustnessIon
+from opentps.core.data.plan._robustnessPhoton import RobustnessPhoton
 
 class RobustnessSettings(QWidget):
     def __init__(self, viewController, planEvaluation=False, parent=None):
@@ -12,6 +14,9 @@ class RobustnessSettings(QWidget):
 
         self.layout.setContentsMargins(0, 0, 0, 0)
 
+        self.modality = "IMPT" #default
+        self.planEval = planEvaluation
+
         self._robustnessSettingsButton = QPushButton('Modify robustness settings')
         self._robustnessSettingsButton.clicked.connect(self._openRobustnessSettings)
         self.layout.addWidget(self._robustnessSettingsButton)
@@ -19,18 +24,26 @@ class RobustnessSettings(QWidget):
         self._robustSettingsLabel = QLabel('')
         self.layout.addWidget(self._robustSettingsLabel)
 
-        self._dialog = RobustnessSettingsDialog(planEvaluation=planEvaluation)
+        self._dialog = RobustnessSettingsDialog(modality="IMPT",planEvaluation=planEvaluation)
         self._robustParam = self._dialog.robustness
         self._updateRobustSettings()
-
+        
     @property
     def robustness(self) -> Robustness:
         return self._robustParam
 
     def _openRobustnessSettings(self):
-        self._robustParam = Robustness()
-        self._dialog.robustness = self._robustParam
+        if self.modality.upper() == 'IMPT':
+            self._robustParam = RobustnessIon()        
+        elif self.modality.upper() == 'IMRT':
+            self._robustParam = RobustnessPhoton()
+        else:
+            raise ValueError("Unsupported modality selected")
 
+        self._dialog = RobustnessSettingsDialog(self.modality,planEvaluation=self.planEval)
+        self._updateRobustSettings()
+        self._dialog.robustness = self._robustParam
+        # TODO: connect robust 
         if (self._dialog.exec()):
             self._robustParam = self._dialog.robustness
 
@@ -45,26 +58,42 @@ class RobustnessSettings(QWidget):
             RobustSettings += 'All <br>'
             RobustSettings += 'Syst. setup: E<sub>S</sub> = ' + str(self._robustParam.setupSystematicError) + ' mm<br>'
             RobustSettings += 'Rand. setup: &sigma;<sub>S</sub> = ' + str(self._robustParam.setupRandomError) + ' mm<br>'
-            RobustSettings += 'Syst. range: E<sub>R</sub> = ' + str(self._robustParam.rangeSystematicError) + ' %<br>'
+            if self.modality == "IMPT": RobustSettings += 'Syst. range: E<sub>R</sub> = ' + str(self._robustParam.rangeSystematicError) + ' %<br>'
+            #elif self.modality == "IMRT": RobustSettings += 
         elif (self._robustParam.selectionStrategy == self._robustParam.Strategies.REDUCED_SET):
             RobustSettings += '<b>Scenario</b>: '
             RobustSettings += 'Reduced set<br>'
             RobustSettings += 'Syst. setup: &Sigma;<sub>S</sub> = ' + str(self._robustParam.setupSystematicError) + ' mm<br>'
             RobustSettings += 'Rand. setup: &sigma;<sub>S</sub> = ' + str(self._robustParam.setupRandomError) + ' mm<br>'
-            RobustSettings += 'Syst. range: &Sigma;<sub>R</sub> = ' + str(self._robustParam.rangeSystematicError) + ' %<br>'
+            if self.modality == "IMPT": RobustSettings += 'Syst. range: &Sigma;<sub>R</sub> = ' + str(self._robustParam.rangeSystematicError) + ' %<br>'
         elif self._robustParam.selectionStrategy == self._robustParam.Strategies.RANDOM:
             RobustSettings += '<b>Scenario</b>: '
             RobustSettings += 'Random <br>'
             RobustSettings += 'Syst. setup: &Sigma;<sub>S</sub> = ' + str(self._robustParam.setupSystematicError) + ' mm<br>'
             RobustSettings += 'Rand. setup: &sigma;<sub>S</sub> = ' + str(self._robustParam.setupRandomError) + ' mm<br>'
-            RobustSettings += 'Syst. range: &Sigma;<sub>R</sub> = ' + str(self._robustParam.rangeSystematicError) + ' %<br>'
+            if self.modality == "IMPT": RobustSettings += 'Syst. range: &Sigma;<sub>R</sub> = ' + str(self._robustParam.rangeSystematicError) + ' %<br>'
 
         self._robustSettingsLabel.setText(RobustSettings)
 
-class RobustnessSettingsDialog(QDialog):
-    def __init__(self, planEvaluation=False):
-        self._robustParam = Robustness()
+    def _updateForModality(self, modality):
+        if modality == "IMRT":
+            self.modality = "IMRT"
+        elif modality == "IMPT":
+            self.modality = "IMPT"
+        else:
+            raise ValueError("Unsupported modality selected")
+    
 
+class RobustnessSettingsDialog(QDialog):
+    def __init__(self, modality, planEvaluation=False):
+        self.modality = modality
+        if self.modality == "IMRT":
+            self._robustParam = RobustnessPhoton()
+        elif self.modality == "IMPT":
+            self._robustParam = RobustnessIon()
+        else:
+            raise ValueError("Unsupported modality selected")
+        
         # initialize the window
         QDialog.__init__(self)
         self.setWindowTitle('Robustness Settings')
@@ -123,18 +152,30 @@ class RobustnessSettingsDialog(QDialog):
         self.ErrorLayout.addWidget(QLabel('mm'), 3, 5)
         self.ErrorLayout.setRowMinimumHeight(3, 25)
         self.ErrorLayout.setRowMinimumHeight(4, 25)
-        self.ErrorLayout.addWidget(QLabel('<b>Range uncertainties:</b>'), 5, 0, 1, 4)
-        self.ErrorLayout.addWidget(QLabel('Systematic'), 6, 0)
-        self.SigmaR_label = QLabel('&Sigma;<sub>R</sub>')
-        self.ErrorLayout.addWidget(self.SigmaR_label, 6, 1)
-        self.syst_range = QLineEdit(str(self._robustParam.rangeSystematicError))
-        self.syst_range.setMaximumWidth(30)
-        self.ErrorLayout.addWidget(self.syst_range, 6, 2)
-        self.ErrorLayout.addWidget(QLabel('%'), 6, 3)
-        self.ErrorLayout.addWidget(QLabel('Equiv. error:'), 7, 0, 1, 2)
-        self.RangeError = QLabel('1.0')
-        self.ErrorLayout.addWidget(self.RangeError, 7, 2)
-        self.ErrorLayout.addWidget(QLabel('%'), 7, 3)
+        
+        if self.modality == "IMPT":
+            self.ErrorLayout.addWidget(QLabel('<b>Range uncertainties:</b>'), 5, 0, 1, 4)
+            self.ErrorLayout.addWidget(QLabel('Systematic'), 6, 0)
+            self.SigmaR_label = QLabel('&Sigma;<sub>R</sub>')
+            self.ErrorLayout.addWidget(self.SigmaR_label, 6, 1)
+            self.syst_range = QLineEdit(str(self._robustParam.rangeSystematicError))
+            self.syst_range.setMaximumWidth(30)
+            self.ErrorLayout.addWidget(self.syst_range, 6, 2)
+            self.ErrorLayout.addWidget(QLabel('%'), 6, 3)
+            self.ErrorLayout.addWidget(QLabel('Equiv. error:'), 7, 0, 1, 2)
+            self.RangeError = QLabel('1.0')
+            self.ErrorLayout.addWidget(self.RangeError, 7, 2)
+            self.ErrorLayout.addWidget(QLabel('%'), 7, 3)
+            self.syst_range.textChanged.connect(self.recompute_margin)
+        elif self.modality == "IMRT":
+            self.ErrorLayout.addWidget(QLabel('<b>Number of samples:</b>'), 5, 0, 1, 4)
+            self.NSamples = QSpinBox()
+            self.NSamples.setGroupSeparatorShown(True)
+            self.NSamples.setRange(0, 1e9)
+            self.NSamples.setSingleStep(1)
+            self.NSamples.setValue(1)
+            self.NSamples.setMaximumWidth(30)
+            self.ErrorLayout.addWidget(self.NSamples, 6, 0)
         self.main_layout.addSpacing(30)
 
         self._strategyBox.currentIndexChanged.connect(self.updateRobustStrategy)
@@ -144,7 +185,6 @@ class RobustnessSettingsDialog(QDialog):
         self.rand_setup_x.textChanged.connect(self.recompute_margin)
         self.rand_setup_y.textChanged.connect(self.recompute_margin)
         self.rand_setup_z.textChanged.connect(self.recompute_margin)
-        self.syst_range.textChanged.connect(self.recompute_margin)
         self.recompute_margin()
         if (self._strategyBox.currentText() == 'Disabled'): self.updateRobustStrategy()
 
@@ -211,7 +251,7 @@ class RobustnessSettingsDialog(QDialog):
             self.rand_setup_x.setEnabled(False)
             self.rand_setup_y.setEnabled(False)
             self.rand_setup_z.setEnabled(False)
-            self.syst_range.setEnabled(False)
+            if self.modality=="IMPT": self.syst_range.setEnabled(False)
 
         elif (self._strategyBox.currentText() == 'All'):
             self.syst_setup_x.setEnabled(True)
@@ -220,16 +260,18 @@ class RobustnessSettingsDialog(QDialog):
             self.rand_setup_x.setEnabled(True)
             self.rand_setup_y.setEnabled(True)
             self.rand_setup_z.setEnabled(True)
-            self.syst_range.setEnabled(True)
+            if self.modality=="IMPT": self.syst_range.setEnabled(True)
             self.SigmaS_label.setText('E<sub>S</sub>')
-            self.SigmaR_label.setText('E<sub>R</sub>')
+            
             self.syst_setup_x.setText('5.0')
             self.syst_setup_y.setText('5.0')
             self.syst_setup_z.setText('5.0')
             self.rand_setup_x.setText('0.0')
             self.rand_setup_y.setText('0.0')
             self.rand_setup_z.setText('0.0')
-            self.syst_range.setText('3.0')
+            if self.modality=="IMPT": 
+                self.syst_range.setText('3.0')
+                self.SigmaR_label.setText('E<sub>R</sub>')
 
         elif (self._strategyBox.currentText() == 'Reduced set'):
             self.syst_setup_x.setEnabled(True)
@@ -238,16 +280,17 @@ class RobustnessSettingsDialog(QDialog):
             self.rand_setup_x.setEnabled(True)
             self.rand_setup_y.setEnabled(True)
             self.rand_setup_z.setEnabled(True)
-            self.syst_range.setEnabled(True)
+            if self.modality=="IMPT": 
+                self.syst_range.setEnabled(True)
+                self.SigmaR_label.setText('&Sigma;<sub>R</sub>')
             self.SigmaS_label.setText('&Sigma;<sub>S</sub>')
-            self.SigmaR_label.setText('&Sigma;<sub>R</sub>')
             self.syst_setup_x.setText('2.0')
             self.syst_setup_y.setText('2.0')
             self.syst_setup_z.setText('2.0')
             self.rand_setup_x.setText('0.0')
             self.rand_setup_y.setText('0.0')
             self.rand_setup_z.setText('0.0')
-            self.syst_range.setText('1.6')
+            if self.modality=="IMPT": self.syst_range.setText('1.6')
 
         else:
             self.syst_setup_x.setEnabled(True)
@@ -256,16 +299,17 @@ class RobustnessSettingsDialog(QDialog):
             self.rand_setup_x.setEnabled(True)
             self.rand_setup_y.setEnabled(True)
             self.rand_setup_z.setEnabled(True)
-            self.syst_range.setEnabled(True)
-            self.SigmaS_label.setText('&Sigma;<sub>S</sub>')
-            self.SigmaR_label.setText('&Sigma;<sub>R</sub>')
+            if self.modality=="IMPT": 
+                self.syst_range.setEnabled(True)
+                self.SigmaR_label.setText('&Sigma;<sub>R</sub>')
+            self.SigmaS_label.setText('&Sigma;<sub>S</sub>')  
             self.syst_setup_x.setText('1.6')
             self.syst_setup_y.setText('1.6')
             self.syst_setup_z.setText('1.6')
             self.rand_setup_x.setText('1.4')
             self.rand_setup_y.setText('1.4')
             self.rand_setup_z.setText('1.4')
-            self.syst_range.setText('1.6')
+            if self.modality=="IMPT": self.syst_range.setText('1.6')
 
         self.recompute_margin()
 
@@ -276,7 +320,10 @@ class RobustnessSettingsDialog(QDialog):
         sigma_y = float(self.rand_setup_y.text())
         Sigma_z = float(self.syst_setup_z.text())
         sigma_z = float(self.rand_setup_z.text())
-        range_sigma = float(self.syst_range.text())
+        if hasattr(self,"syst_range"):
+            range_sigma = float(self.syst_range.text())
+        else:
+            range_sigma = 1
 
         if (self._strategyBox.currentText() == 'Reduced set'):
             margin_x = 1.0 * Sigma_x + 0.7 * sigma_x

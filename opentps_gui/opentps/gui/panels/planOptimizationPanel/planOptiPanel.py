@@ -15,7 +15,7 @@ from opentps.core.io.scannerReader import readScanner
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
 from opentps.core.processing.doseCalculation.photons.cccDoseCalculator import CCCDoseCalculator
 from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer, BoundConstraintsOptimizer
+from opentps.core.processing.planOptimization.planOptimization import BoundConstraintsOptimizer, IntensityModulationOptimizer
 from opentps.gui.panels.doseComputationPanel import DoseComputationPanel
 from opentps.gui.panels.patientDataWidgets import PatientDataComboBox
 from opentps.gui.panels.planOptimizationPanel.objectivesWindow import ObjectivesWindow
@@ -41,10 +41,9 @@ class doseCalculationWindow(QDialog):
         self._doseComputationPanel._mcsquareConfigWidget.hide()
 
         if self._beamlets:
-            self._doseComputationPanel._doseSpacingLabel.show()
             if self._radiationType == "PROTON":
+                self._doseComputationPanel._doseSpacingLabel.show()
                 self._doseComputationPanel._numProtons.setValue(5e4)
-                self._doseComputationPanel._numProtons.setDecimals(0)
             self._doseComputationPanel._cropBLBox.show()
             if not(self._doseComputationPanel._cropBLBox.isChecked()):
                 self._contours = None
@@ -97,6 +96,7 @@ class doseCalculationWindow(QDialog):
         else:
             beamlets = doseCalculator.computeBeamlets(self._doseComputationPanel.selectedCT,
                                                 self._doseComputationPanel.selectedPlan)
+            # TODO: test crop
             #beamlets = doseCalculator.computeBeamlets(self._doseComputationPanel.selectedCT,
             #                                    self._doseComputationPanel.selectedPlan, self._contours)
             self._doseComputationPanel.selectedPlan.planDesign.beamlets = beamlets    
@@ -175,6 +175,9 @@ class PlanOptiPanel(QWidget):
         self._configButton.clicked.connect(self._openConfig)
         self.layout.addWidget(self._configButton)
 
+        self._beamletGridBox = QCheckBox('Generate beamlet grid')
+        self._beamletGridBox.setChecked(True)
+        self.layout.addWidget(self._beamletGridBox)
         self._spotPlacementBox = QCheckBox('Place spots')
         self._spotPlacementBox.setChecked(True)
         self._beamletBox = QCheckBox('Compute beamlets')
@@ -215,10 +218,14 @@ class PlanOptiPanel(QWidget):
                 self._radiationType = "PROTON"
                 self._radiationLabel.setText("PROTON")
                 self._radiationLabel.setStyleSheet("background-color: red; color: black;")
+                self._beamletGridBox.hide()
+                self._spotPlacementBox.show()
             elif isinstance(self._objectivesWidget.planDesign,PhotonPlanDesign):
                 self._radiationType = "PHOTON"
                 self._radiationLabel.setText("PHOTON")
                 self._radiationLabel.setStyleSheet("background-color: yellow; color: black;")
+                self._beamletGridBox.show()
+                self._spotPlacementBox.hide()
             else: 
                 logger.error("Could not identify plan radiation type (planDesign object may be deprecated)")
 
@@ -349,7 +356,7 @@ class PlanOptiPanel(QWidget):
             if self._optiConfig['bounds']:
                 solver = BoundConstraintsOptimizer(method = method, plan = self._plan, bounds = self._optiConfig['bounds'], maxiter=self._optiConfig['maxIter'])
             else:
-                solver = IMPTPlanOptimizer(method=method, plan=self._plan, maxiter=self._optiConfig['maxIter'])
+                solver = IntensityModulationOptimizer(method=method, plan=self._plan, maxiter=self._optiConfig['maxIter'])
             # Optimize treatment plan
             doseImage, _ = solver.optimize()
             doseImage.patient = self._doseCalculationWindow._doseComputationPanel.selectedCT.patient

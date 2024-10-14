@@ -74,10 +74,9 @@ class IonPlanDesign(RTPlanDesign):
         # Spot placement
         from opentps.core.data.plan import IonPlan
         plan = IonPlan("NewPlan")
-        plan.SOPInstanceUID = pydicom.uid.generate_uid()
-        plan.seriesInstanceUID = plan.SOPInstanceUID + ".1"
+        plan.seriesInstanceUID = "1.2.840.10008.5.1.4.1.1.481.8"
         plan.modality = "RT Ion Plan IOD"
-        plan.radiationType = "Proton"
+        plan.radiationType = "PROTON"
         plan.scanMode = "MODULATED"
         plan.treatmentMachineName = "Unknown"
         logger.info('Building plan ...')
@@ -138,37 +137,3 @@ class IonPlanDesign(RTPlanDesign):
                                self.proximalLayers, self.distalLayers)
 
 
-class RobustnessIon(Robustness):
-    """
-    This class is used to compute the robustness of an ion plan.
-
-    Attributes
-    ----------
-    selectionStrategy : str
-        The selection strategy used to select the scenarios.
-        It can be "REDUCED_SET" or "ALL" or "DISABLED".
-    setupSystematicError : list (default = [1.6, 1.6, 1.6]) (mm)
-        The setup systematic error in mm.
-    setupRandomError : list (default = [1.4, 1.4, 1.4]) (mm, sigma)
-        The setup random error in mm.
-    rangeSystematicError : float (default = 1.6) (%)
-        The range systematic error in %.
-    numScenarios : int
-        The number of scenarios.
-    scenarios : list
-        The list of scenarios.
-    """
-    class Strategies(Enum):
-        DEFAULT = "DISABLED"
-        DISABLED = "DISABLED"
-        ALL = "ALL"
-        REDUCED_SET = "REDUCED_SET"
-        RANDOM = "RANDOM"
-
-    def __init__(self):
-        self.selectionStrategy = self.Strategies.DEFAULT
-        self.setupSystematicError = [1.6, 1.6, 1.6]  # mm
-        self.setupRandomError = [1.4, 1.4, 1.4]  # mm
-        self.rangeSystematicError = 1.6  # %
-        self.numScenarios = 0
-        self.scenarios = []

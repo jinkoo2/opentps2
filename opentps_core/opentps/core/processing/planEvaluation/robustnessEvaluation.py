@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class RobustnessEval:
     """
-    This class is used to compute the robustness of a plan.
+    This class is used to compute the robustness of a plan (evaluation).
 
     Attributes
     ----------
@@ -62,10 +62,6 @@ class RobustnessEval:
         REDUCED_SET = "REDUCED_SET"
         RANDOM = "RANDOM"
 
-    class Modality(Enum):
-        MINMAX = "MINMAX"
-        PRO = "PRO"
-
     def __init__(self):
         self.selectionStrategy = self.Strategies.DEFAULT
         self.setupSystematicError = [1.6, 1.6, 1.6]  # mm
@@ -79,7 +75,6 @@ class RobustnessEval:
         self.dvhBands = []
         self.doseDistributionType = ""
         self.doseDistribution = []
-        self.modality = self.Modality.MINMAX
 
     def setNominal(self, dose: DoseImage, contours: Union[ROIContour, ROIMask]):
         """
