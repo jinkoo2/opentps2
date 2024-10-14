@@ -74,10 +74,9 @@ class IonPlanDesign(RTPlanDesign):
         # Spot placement
         from opentps.core.data.plan import IonPlan
         plan = IonPlan("NewPlan")
-        plan.SOPInstanceUID = pydicom.uid.generate_uid()
-        plan.seriesInstanceUID = plan.SOPInstanceUID + ".1"
+        plan.seriesInstanceUID = "1.2.840.10008.5.1.4.1.1.481.8"
         plan.modality = "RT Ion Plan IOD"
-        plan.radiationType = "Proton"
+        plan.radiationType = "PROTON"
         plan.scanMode = "MODULATED"
         plan.treatmentMachineName = "Unknown"
         logger.info('Building plan ...')
