@@ -7,21 +7,19 @@ sys.path.append('..')
 
 from opentps.core.io.dicomIO import writeRTPlan, writeDicomCT, writeRTDose, writeRTStruct
 from opentps.core.processing.planOptimization.tools import evaluateClinical
-from opentps.core.data.images import CTImage, DoseImage
+from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan import ObjectivesList
 from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
-from opentps.core.data import RTStruct
 from opentps.core.data.plan import FidObjective
 from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
 from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
-from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D, resampleImage3D
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
+from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D
+from opentps.core.processing.planOptimization.planOptimization import IntensityModulationOptimizer
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +132,7 @@ def run(output_path=""):
     # plan.planDesign.objectives.addFidObjective(BODY, FidObjective.Metrics.DFALLOFF, weight=10, fallOffDistance=1, fallOffLowDoseLevel=0, fallOffHighDoseLevel=21)
     plan.numberOfFractionsPlanned = 30
 
-    solver = IMPTPlanOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=1000)
+    solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=1000)
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
     doseImage.patient = plan.patient

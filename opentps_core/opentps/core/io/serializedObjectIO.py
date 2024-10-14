@@ -2,7 +2,7 @@
 Made by damien (damien.dasnoy@uclouvain.be / damien.dasnoy@gmail.com)
 """
 import bz2
-import _pickle as cPickle
+import pickle as cPickle
 import pickle
 import os
 import logging

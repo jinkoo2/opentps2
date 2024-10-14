@@ -3,36 +3,24 @@ import logging
 import numpy as np
 from matplotlib import pyplot as plt
 import sys
+import copy
+from scipy.sparse import csc_matrix
 sys.path.append('..')
 
 from opentps.core.io.dicomIO import writeRTDose, writeDicomCT, writeRTPlan, writeRTStruct
 from opentps.core.processing.planOptimization.tools import evaluateClinical
-from opentps.core.data.images import CTImage, DoseImage
+from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
-from opentps.core.data import RTStruct
 from opentps.core.data.plan import FidObjective
-from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
-from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D, resampleImage3D
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
+from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D
+from opentps.core.processing.planOptimization.planOptimization import  IntensityModulationOptimizer
 from opentps.core.processing.doseCalculation.photons.cccDoseCalculator import CCCDoseCalculator
 from opentps.core.data.plan import PhotonPlanDesign
-import copy
-from scipy.sparse import csc_matrix
-
-def calculateDoseArray(beamlets,weights, numberOfFractionsPlanned):
-    doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
-    totalDose = np.reshape(doseArray, beamlets._gridSize, order='F')
-    totalDose = np.flip(totalDose, 0)
-    totalDose = np.flip(totalDose, 1)
-    return totalDose
 
 logger = logging.getLogger(__name__)
 
@@ -127,10 +115,10 @@ def run(output_path=""):
     
     plan.numberOfFractionsPlanned = 30
 
-    solver = IMPTPlanOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxit=1000)
+    solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxit=1000)
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
-    doseImage.imageArray  = calculateDoseArray(plan.planDesign.beamlets, plan.beamletMUs, plan.numberOfFractionsPlanned)
+
     # User input filename
     # writeRTDose(doseImage, output_path, outputFilename="BeamletTotalDose")
     # or default name

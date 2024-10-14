@@ -3,35 +3,26 @@ import logging
 import numpy as np
 from matplotlib import pyplot as plt
 import sys
+
+from opentps.core.processing.planOptimization.planOptimization import IntensityModulationOptimizer
 sys.path.append('..')
 
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
 from opentps.core.data.plan import FidObjective
+from opentps.core.data.plan import RobustnessPhoton
 from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import loadRTPlan, saveRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
 from opentps.core.processing.doseCalculation.photons.cccDoseCalculator import CCCDoseCalculator
 from opentps.core.data.plan import PhotonPlanDesign
 import copy
 from scipy.sparse import csc_matrix
-from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness as RobustnessPhotons
 from opentps.core.io.dicomIO import writeRTDose
-def calculateDoseArray(beamlets,weights, numberOfFractionsPlanned):
-    doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
-    totalDose = np.reshape(doseArray, beamlets._gridSize, order='F')
-    totalDose = np.flip(totalDose, 0)
-    totalDose = np.flip(totalDose, 1)
-    return totalDose
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +93,7 @@ def run(output_path=""):
         planDesign.xBeamletSpacing_mm = 5
         planDesign.yBeamletSpacing_mm = 5
         # Robustness settings
-        planDesign.robustness = RobustnessPhotons()
+        planDesign.robustness = RobustnessPhoton()
         planDesign.robustness.setupSystematicError = [1.6] * 3
         planDesign.robustness.setupRandomError = 0
         planDesign.robustness.sseNumberOfSamples = 1
@@ -127,12 +118,11 @@ def run(output_path=""):
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 20.0, 1.0, robust=True)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 20.5, 1.0, robust=True)
 
-    solver = IMPTPlanOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxit=50)
+    solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxit=50)
     # Optimize treatment plan
     doseInfluenceMatrix = copy.deepcopy(plan.planDesign.beamlets)
     doseImage, ps = solver.optimize()
 
-    doseImage.imageArray  = calculateDoseArray(doseInfluenceMatrix, plan.beamletMUs, plan.numberOfFractionsPlanned)
     # User input filename
     # writeRTDose(doseImage, output_path, outputFilename="BeamletTotalDose")
     # or default name
