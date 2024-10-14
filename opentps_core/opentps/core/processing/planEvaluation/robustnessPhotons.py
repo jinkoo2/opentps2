@@ -145,10 +145,10 @@ class Robustness:
             elif self.selectionStrategy == self.selectionStrategy.DISABLED :
                 self.scenarios.append(RobustScenario(sse = np.array([self.setupSystematicError[0]* self.numberOfSigmas, self.setupSystematicError[1]* self.numberOfSigmas, 
                                                                      self.setupSystematicError[2]* self.numberOfSigmas])))
-        else : #Add a nominal for the computation of the RandomSetupError
+        else : #Add a nominal for the computation of the RandomSetupError if it is the only error that we want to simulate
             if self.selectionStrategy == self.selectionStrategy.RANDOM :
                 for _ in range(self.NumScenarios):
-                    self.scenarios.append(RobustScenario(sse = np.array([0, 0, 0]))) #we can simulate n time the RSE
+                    self.scenarios.append(RobustScenario(sse = np.array([0, 0, 0]))) #we can simulate n time the sre
             else :
                 self.scenarios.append(RobustScenario(sse = np.array([0, 0, 0]))) #if ALL and Reduced, only one scenario
 
