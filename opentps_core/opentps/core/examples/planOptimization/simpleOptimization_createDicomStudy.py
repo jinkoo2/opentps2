@@ -23,7 +23,7 @@ from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
 from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D, resampleImage3D
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
+from opentps.core.processing.planOptimization.planOptimization import IntensityModulationOptimizer
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ def run(output_path=""):
     plan.frameOfReferenceUID = frameOfReferenceUID
     plan.rtPlanGeometry = "TREATMENT_DEVICE"
     
-    solver = IMPTPlanOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=1000)
+    solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=1000)
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
 
