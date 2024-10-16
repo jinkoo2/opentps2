@@ -25,6 +25,11 @@ from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsqu
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D, resampleImage3D
 from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
 
+"""
+In this example, we will create and optimize a simple Protons plan.
+"""
+
+
 logger = logging.getLogger(__name__)
 
 # Generic example: box of water with squared target
@@ -32,7 +37,7 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        output_path = os.path.join(os.getcwd(), 'Output', 'SimpleOptimizationProtons')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
         
@@ -202,6 +207,7 @@ def run(output_path=""):
     ax[2].grid(True)
 
     plt.show()
+    plt.savefig(os.path.join(output_path, 'Dose_SimpleOptimizationProtons.png'))
 
 
 if __name__ == "__main__":

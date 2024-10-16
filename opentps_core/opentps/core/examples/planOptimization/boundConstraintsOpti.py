@@ -22,6 +22,12 @@ from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsqu
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D, resampleImage3D
 from opentps.core.processing.planOptimization.planOptimization import BoundConstraintsOptimizer, IMPTPlanOptimizer
 
+"""
+In this example, we optimize an ion plan (Protons) using the BoundConstraintsOptimizer function.
+This function allows optimization with constraints on the Monitor Unit (MU) values of each spot.
+It helps to stay as close as possible to reality when certain machines cannot accept MU/spot values that are too high or too low.
+"""
+
 logger = logging.getLogger(__name__)
 
 # Generic example: box of water with squared target
@@ -29,7 +35,7 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        output_path = os.path.join(os.getcwd(), 'Output', 'BoundConstraintsOpti')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
@@ -148,8 +154,8 @@ def run(output_path=""):
     ax[1].set_ylabel("Volume (%)")
     plt.grid(True)
     plt.legend()
-
     plt.show()
+    plt.savefig(f'{output_path}/Dose_BoundContraintOpti.png', format = 'png')
 run()
 if __name__ == "__main__":
     run()
