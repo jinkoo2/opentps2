@@ -39,9 +39,9 @@ def run(output_path=""):
     ct.patient = patient
 
     huAir = -1024.
-    huWater = ctCalibration.convertRSP2HU(1.)
+    huWater = 0
     data = huAir * np.ones((ctSize, ctSize, ctSize))
-    data[:, 50:, :] = huWater
+    data[50:, 50:, :] = huWater
     ct.imageArray = data
 
     roi = ROIMask()

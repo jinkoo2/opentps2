@@ -51,7 +51,8 @@ def run(output_path=""):
     huAir = -1024.
     huWater = 0
     data = huAir * np.ones((ctSize, ctSize, ctSize))
-    data[:, 50:, :] = huWater
+    data[100:, 100:, :] = huWater
+    data[40:60, 40:60, :] = huWater
     ct.imageArray = data
 
     roi = ROIMask()
