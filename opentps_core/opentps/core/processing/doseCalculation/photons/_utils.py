@@ -3,12 +3,16 @@ import opentps.core.io.CCCdoseEngineIO as CCCdoseEngineIO
 import scipy.sparse as sp
 import logging
 logger = logging.getLogger(__name__)
+from scipy.ndimage import shift, gaussian_filter
 import scipy.sparse as sp
+from scipy.sparse import csc_matrix
+from opentps.core.data.images import DoseImage
 import ctypes
 import os
 import psutil
 import os
 from matplotlib import pyplot as plt
+from opentps.core.data.plan import PhotonPlan
 
 def getConvolveNonZeroElements(kernel_size, nonZeroIndexes, image_size):
     nonZeroIndexes_convolved = []
@@ -284,7 +288,7 @@ def gaussian_kernel_3d(size, sigma=1): ### Gaussian Kernel used to smooth the re
     return kernel_3D
 
 
-def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): #### it might not fit here
+def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): ### Shift beamlets according sse + apply gaussian filter one the dose array to simulate sre
     if scenario.sse is not None:
         shiftVoxels = np.array(scenario.sse) / np.array(imageSpacing)
         cumulativeNumberBeamlets = 0
@@ -301,7 +305,7 @@ def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): ###
             result = np.reshape(result, doseGridSize, order='F')
             result = np.flip(result, 0)
             result = np.flip(result, 1)
-            shiftVoxelsCorrected = np.round(correctShift(shiftVoxels, segment.gantryAngle_degree / 180 * np.pi),3) #only for axe of the beeam
+            shiftVoxelsCorrected = np.round(correctShift(shiftVoxels, segment.gantryAngle_degree / 180 * np.pi), 3) #only for axe of the beam
             dose +=  shift(result, shiftVoxelsCorrected, mode='constant', cval=0, order=1)
             cumulativeNumberBeamlets+=len(segment)
 

@@ -130,9 +130,15 @@ class PlanOptimizer:
         Initialize the dose fidelity objective function.
         """
         self.plan.planDesign.setScoringParameters()
+
         # crop on ROI
-        roiObjectives = np.ones(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
-        roiRobustObjectives = np.ones(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+        if self.plan.ROI_cropping == True:
+            roiObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+            roiRobustObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+        else : 
+            roiObjectives = np.ones(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+            roiRobustObjectives = np.ones(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+        
         robust = False
         for objective in self.plan.planDesign.objectives.fidObjList:
             if objective.robust:

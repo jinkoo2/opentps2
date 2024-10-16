@@ -8,6 +8,7 @@ import numpy as np
 import pickle
 import os
 
+import itertools
 
 from opentps.core.data._dvhBand import DVHBand
 from opentps.core.processing.imageProcessing import resampler3D
@@ -66,7 +67,8 @@ class RobustnessEval:
         self.selectionStrategy = self.Strategies.DEFAULT
         self.setupSystematicError = [1.6, 1.6, 1.6]  # mm
         self.setupRandomError = [1.4, 1.4, 1.4]  # mm
-        self.rangeSystematicError = 1.6  # %
+        self.rangeSystematicError = 1.6  # %  ## Only for Protons
+        self.numberOfSigmas = 2.5 # Number of sigmas in the normal distribution
         self.target = []
         self.targetPrescription = 60  # Gy
         self.nominal = RobustnessScenario()
@@ -75,6 +77,62 @@ class RobustnessEval:
         self.dvhBands = []
         self.doseDistributionType = ""
         self.doseDistribution = []
+
+    def generateRobustScenarios4Planning(self):
+        if self.setupSystematicError not in [None, 0, [0,0,0]]:
+            if self.selectionStrategy == self.selectionStrategy.RANDOM :
+                self.generateRandomScenarios()
+            elif self.selectionStrategy == self.selectionStrategy.REDUCED_SET :
+                self.generateReducedErrorSpacecenarios()
+            elif self.selectionStrategy == self.selectionStrategy.ALL :
+                self.generateAllErrorSpaceScenarios()
+            elif self.selectionStrategy == self.selectionStrategy.DISABLED :
+                self.scenarios.append(RobustnessScenario(sse = np.array([self.setupSystematicError[0]* self.numberOfSigmas, 
+                                                                         self.setupSystematicError[1]* self.numberOfSigmas, 
+                                                                         self.setupSystematicError[2]* self.numberOfSigmas])))
+        elif self.setupRandomError not in [None, 0, [0,0,0]]:
+            self.scenarios.append(RobustnessScenario(sse = np.array([0, 0, 0]), sre = self.setupRandomError))
+        else :
+            raise Exception("No evaluation strategy selected")
+        self.numScenarios = len(self.scenarios)
+
+    def generateReducedErrorSpacecenarios(self):  # From [a, b, c] to 6 scenarios [+-a, +-b, +-c]
+        for index, sse in enumerate(self.setupSystematicError):
+            for sign in [-1,1]:
+                array = np.zeros(3)
+                array[index] = sse * sign * self.numberOfSigmas
+                scenario = RobustnessScenario(sse = array, sre = self.setupRandomError)
+                self.scenarios.append(scenario)
+
+    def generateAllErrorSpaceScenarios(self):
+        # Point coordinates on hypersphere with two zero axes
+        R = self.setupSystematicError[0] * self.numberOfSigmas
+        for sign in [-1, 1]:
+            self.scenarios.append(RobustnessScenario(sse = np.round(np.array([sign * R, 0, 0]), 2), sre = self.setupRandomError))
+            self.scenarios.append(RobustnessScenario(sse = np.round(np.array([0, sign * R, 0]), 2), sre = self.setupRandomError))
+            self.scenarios.append(RobustnessScenario(sse = np.round(np.array([0, 0, sign * R]), 2), sre = self.setupRandomError))
+
+        # Coordinates of point on hypersphere with zero axis
+        sqrt2 = R / np.sqrt(2)
+        for sign1, sign2 in itertools.product([-1, 1], repeat=2):
+            self.scenarios.append(RobustnessScenario(sse = np.round(np.array([sign1 * sqrt2, sign2 * sqrt2, 0]), 2), sre = self.setupRandomError))
+            self.scenarios.append(RobustnessScenario(sse = np.round(np.array([sign1 * sqrt2, 0, sign2 * sqrt2]), 2), sre = self.setupRandomError))
+            self.scenarios.append(RobustnessScenario(sse = np.round(np.array([0, sign1 * sqrt2, sign2 * sqrt2]), 2), sre = self.setupRandomError))
+
+        # Coordinates of point on hypersphere without any zero axis (diagonals)
+        sqrt3 = R / np.sqrt(3)
+        for signs in itertools.product([-1, 1], repeat=3):
+            self.scenarios.append(RobustnessScenario(sse = np.round(np.array([signs[0] * sqrt3, signs[1] * sqrt3, signs[2] * sqrt3]), 2), sre = self.setupRandomError))
+
+
+    def generateRandomScenarios(self):
+        # Sample in gaussian
+        setupErrorSpace = self.setupSystematicError
+        for _ in range(self.NumScenarios):
+            SampleSetupError = [np.random.normal(0, sigma) for sigma in setupErrorSpace]
+            SampleSetupError = np.round(SampleSetupError, 2)
+            scenario = RobustnessScenario(sse = SampleSetupError, sre = self.setupRandomError)
+            self.scenarios.append(scenario)
 
     def setNominal(self, dose: DoseImage, contours: Union[ROIContour, ROIMask]):
         """
@@ -409,22 +467,33 @@ class RobustnessScenario:
         1 if the scenario is selected, 0 otherwise.
     """
 
-    def __init__(self):
+    def __init__(self, sse = None, sre = None, dilation_mm = {}):
         self.dose = []
         self.dvh = []
         self.targetD95 = 0
         self.targetD5 = 0
         self.targetMSE = 0
         self.selected = 0
+        self.sse = sse      # Setup Systematic Error
+        self.sre = sre      # Setup Random Error
+        self.dilation_mm = dilation_mm
 
     def printInfo(self):
         """
         Print the information of the scenario.
         """
+        logger.info('Setup Systematic Error:{} mm'.format(self.sse))
+        logger.info('Setup Random Error:{} mm'.format(self.sre))
         logger.info("Target_D95 = " + str(self.targetD95))
         logger.info("Target_D5 = " + str(self.targetD5))
         logger.info("Target_MSE = " + str(self.targetMSE))
         logger.info(" ")
+
+    def __str__(self):
+        str = 'Setup Systematic Error:{} mm\n'.format(self.sse) + 'Setup Random Error:{} mm\n'.format(self.sre)
+        for name, dilation in self.dilation_mm.items():
+            str += name + f' dilated {round(dilation,2)} mm \n'
+        return str
 
     def save(self, file_path):
         """

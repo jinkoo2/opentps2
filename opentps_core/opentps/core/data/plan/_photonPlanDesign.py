@@ -70,6 +70,7 @@ class PhotonPlanDesign(RTPlanDesign):
         plan.radiationType = "Photon"
         plan.scanMode = "MODULATED"
         plan.treatmentMachineName = "Unknown"
+        plan.ROI_cropping = True
         if self.isocenterPosition_mm is None:
             self.isocenterPosition_mm = self.targetMask.centerOfMass
             

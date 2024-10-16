@@ -1,13 +1,12 @@
+
 import os
 import logging
 import numpy as np
-from matplotlib import pyplot as plt
 import sys
+import scipy as sp
 
 from opentps.core.processing.planOptimization.planOptimization import IntensityModulationOptimizer
-import scipy as sp
-sys.path.append('..')
-
+from matplotlib import pyplot as plt
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
 from opentps.core.data import DVH
@@ -19,13 +18,12 @@ from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import loadRTPlan, saveRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
 from opentps.core.processing.doseCalculation.photons.cccDoseCalculator import CCCDoseCalculator
 from opentps.core.data.plan import PhotonPlanDesign
 import copy
 from scipy.sparse import csc_matrix
 from opentps.core.io.dicomIO import writeRTDose
-
+sys.path.append('..')
 
 def calculateDoseArray(beamlets, weights, numberOfFractionsPlanned):
     doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
@@ -101,13 +99,16 @@ def run(output_path=""):
         planDesign.calibration = ctCalibration
         planDesign.xBeamletSpacing_mm = 5
         planDesign.yBeamletSpacing_mm = 5
+
         # Robustness settings
         planDesign.robustness = RobustnessPhoton()
-        planDesign.robustness.setupSystematicError = [1.6] * 3
-        # planDesign.robustness.setupRandomError = 1.6
-        planDesign.robustness.sseNumberOfSamples = 1
-
+        planDesign.robustness.setupSystematicError = [1.6, 1.6, 1.6] # sigma (mm)
+        planDesign.robustness.setupRandomError = None # Random error can not be include in the optimization. But well in evaluation.
+        
+        # Strategy selection 
         planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.REDUCED_SET
+        # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.ALL
+        # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.RANDOM
         # planDesign.robustness.NumScenarios = 10
 
         planDesign.targetMargin = max(planDesign.robustness.setupSystematicError)
@@ -115,14 +116,13 @@ def run(output_path=""):
         plan = planDesign.buildPlan()  # Spot placement
         plan.PlanName = "RobustPlan"
 
-        ccc.computeRobustScenarioBeamlets(ct, plan, robustMode='Shift')
+        ccc.computeRobustScenarioBeamlets(ct, plan, robustMode='Shift') # 'Simulation' for total recomputation
         
-
-
     saveRTPlan(plan, plan_file, unloadBeamlets=False)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 20.0, 1.0, robust=True)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 20.5, 1.0, robust=True)
 
+    plan.ROI_cropping = False # Do not cropped allows 'shift' evaluation method to be used
     solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxit=50)
     # Optimize treatment plan
     doseInfluenceMatrix = copy.deepcopy(plan.planDesign.beamlets)
@@ -133,7 +133,11 @@ def run(output_path=""):
     # or default name
     writeRTDose(doseImage, output_path)
 
-    plan_file = os.path.join(output_path, "Plan_Photon_WaterPhantom_cropped_optimized.tps")
+    if plan.ROI_cropping == True :
+        plan_file = os.path.join(output_path, "Plan_Photon_WaterPhantom_cropped_optimized.tps")
+    else : 
+        plan_file = os.path.join(output_path, "Plan_Photon_WaterPhantom_notCropped_optimized.tps")
+
     saveRTPlan(plan, plan_file, unloadBeamlets=False)
 
     # Compute DVH
@@ -168,7 +172,7 @@ def run(output_path=""):
     plt.grid(True)
     plt.legend()
     plt.savefig(os.path.join(output_path, 'Dose_RobustOptimizationPhotons.png'))
-    # plt.show()
+    plt.show()
 
 if __name__ == "__main__":
     run()

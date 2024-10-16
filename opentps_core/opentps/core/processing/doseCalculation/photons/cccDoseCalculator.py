@@ -1,3 +1,4 @@
+
 import copy
 import logging
 import math
@@ -6,13 +7,15 @@ import platform
 import shutil
 import subprocess
 import scipy as sp
+import time
+import numpy as np
+
 from pathlib import Path
 from typing import Optional, Sequence, Union
 from matplotlib import pyplot as plt
 from scipy.sparse import csc_matrix
 from typing import Optional, Sequence, Union, Dict, Any
 
-import numpy as np
 from opentps.core.data.images import DoseImage
 from opentps.core.data import SparseBeamlets
 from opentps.core.processing.doseCalculation.abstractDoseCalculator import AbstractDoseCalculator
@@ -24,10 +27,10 @@ from opentps.core.data.images import ROIMask
 from opentps.core.data import ROIContour
 from opentps.core.data.plan._photonPlan import PhotonPlan
 import opentps.core.io.CCCdoseEngineIO as CCCdoseEngineIO
-from opentps.core.processing.doseCalculation.photons._utils import shiftBeamlets
+from opentps.core.processing.doseCalculation.photons._utils import shiftBeamlets, adjustDoseToScenario
 from opentps.core.data.plan._robustnessPhoton import RobustScenario
-import time
-# from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness
+from scipy.ndimage import gaussian_filter
+
 
 __all__ = ['CCCDoseCalculator']
 
@@ -166,7 +169,11 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         if not os.path.isfile(geometryFilePath):
             self.createGeometryFilePath()
         return geometryFilePath
-
+    
+    def _createFolderIfNotExists(self, folder):
+        folder = Path(folder)
+        if not folder.is_dir():
+            os.makedirs(folder)
     
     def writeExecuteCCCfile(self):
         for batch in range(self.batchSize):
@@ -296,7 +303,8 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         overRidingList: Sequence[Dict[str, Any]]
             It stores in every element of the sequence a dictionary with the keys 'Mask' and 'Value'. 'Mask' is the ROI mask and 'Value' is the value to override.
         robustMode: str ['Shift', 'Simulation']
-            It selects the type of robust scenarios to calculate. 'Shift' calculates the scenarios by shifting the beamlets, 'Simulation' calculates the scenarios by simulating the beamlets again per every scenario.
+            It selects the type of robust scenarios to calculate. 'Shift' calculates the scenarios by shifting the beamlets, 
+            'Simulation' calculates the scenarios by simulating the beamlets again per every scenario.
         computeNominal: bool
             If true, the nominal scenario is calculated and stored in plan.planDesign.robustness.nominal.sb
         """
@@ -319,7 +327,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             
             
         for number, scenario in enumerate(scenarios):
-            print('Calculating Scenario {}'.format(number))
+            print('Calculating Scenario {}'.format(number+1))
             print(scenario)
             self.ROFolder = 'Scenario_{}'.format(number)
             scenario.sb = self.calculateRobustBeamlets(scenario, origin, plan.planDesign.robustness.nominal.sb, mode = robustMode)
@@ -338,7 +346,8 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         nominal: SparseBeamlets
             nominal beamlets
         mode: str ['Shift', 'Simulation']
-            It selects the type of robust scenarios to calculate. 'Shift' calculates the scenarios by shifting the beamlets, 'Simulation' calculates the scenarios by simulating the beamlets again per every scenario.
+            It selects the type of robust scenarios to calculate. 'Shift' calculates the scenarios by shifting the beamlets, 
+            'Simulation' calculates the scenarios by simulating the beamlets again per every scenario.
         Returns
         -------
         beamletsScenario:SparseBeamlets
@@ -379,8 +388,17 @@ class CCCDoseCalculator(AbstractDoseCalculator):
 
         Parameters
         ----------
-
-
+        ct: CTImage
+            Treatment planning CT image
+        plan : PhotonPlan
+            RT plan
+        overRidingList: Sequence[Dict[str, Any]]
+            It stores in every element of the sequence a dictionary with the keys 'Mask' and 'Value'. 'Mask' is the ROI mask and 'Value' is the value to override.
+        robustMode: str ['Shift', 'Simulation']
+            It selects the type of robust scenarios to calculate. 'Shift' calculates the scenarios by shifting the beamlets, 
+            'Simulation' calculates the scenarios by simulating the beamlets again per every scenario.
+        computeNominal: bool
+            If true, the nominal scenario is calculated and stored in plan.planDesign.robustness.nominal.sb
         Returns
         -------
         scenarios:Robustness
@@ -388,22 +406,19 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         """
         self._plan = plan
         self._ct = self.fromHU2Densities(ct, roi)
-        self._ct = ct
         self._roi = roi
         self.batchSize = plan.numberOfBeamlets if plan.numberOfBeamlets / self.batchSize < 1 else self.batchSize
         origin = ct.origin
         plan.planDesign.robustnessEval.generateRobustScenarios4Planning()
         scenarios = plan.planDesign.robustnessEval.scenarios
 
+        plan.planDesign.robustnessEval.nominal.sb = plan.planDesign.robustness.nominal.sb
+        plan.planDesign.robustnessEval.nominal.sb.beamletWeights = plan.beamletMUs
+
         if computeNominal:
             print('Calculating Nominal Scenario')
             self.ROFolder = 'Nominal'
             dose = self.computeDose(self._ct, self._plan, roi)
-            #
-            plan.planDesign.robustnessEval.nominal.sb = plan.planDesign.robustness.nominal.sb
-            plan.planDesign.robustnessEval.nominal.sb.beamletWeights = plan.beamletMUs
-            nominal_sb = plan.planDesign.robustnessEval.nominal.sb
-            dose = self.calculateDoseArray(nominal_sb, nominal_sb.beamletWeights, 1)
             plan.planDesign.robustnessEval.nominal.dose = dose
         
         for number, scenario in enumerate(scenarios):
@@ -411,30 +426,14 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             print(scenario)
             self.ROFolder = 'Scenario_{}'.format(number)
 
-            scenario.sre = np.array(plan.planDesign.robustnessEval.setupRandomError)
             nominal_scenario = plan.planDesign.robustnessEval.nominal
-            plan.planDesign.robustnessEval.scenarios[number].sb = plan.planDesign.robustnessEval.nominal.sb
-            plan.planDesign.robustnessEval.scenarios[number].sb.beamletWeights = plan.planDesign.robustnessEval.nominal.sb.beamletWeights
+            plan.planDesign.robustnessEval.scenarios[number].sb = nominal_scenario.sb
+            plan.planDesign.robustnessEval.scenarios[number].sb.beamletWeights = nominal_scenario.sb.beamletWeights
             scenario.dose = self.computeRobustScenarioDose(scenario, origin, nominal_scenario, mode = robustMode)
 
         self._ct.origin = origin
 
         return plan.planDesign.robustnessEval
-
-    def calculateDoseArray(self, beamlets, weights, numberOfFractionsPlanned):
-        doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
-        totalDose = np.reshape(doseArray, beamlets._gridSize, order='F')
-        totalDose = np.flip(totalDose, 0)
-        totalDose = np.flip(totalDose, 1)
-        orientation = (1, 0, 0, 0, 1, 0, 0, 0, 1)
-        doseImage = DoseImage(imageArray=totalDose, origin=self._ct.origin, spacing=self._ct.spacing,
-                        angles=orientation)
-        return doseImage
-
-    def _createFolderIfNotExists(self, folder):
-        folder = Path(folder)
-        if not folder.is_dir():
-            os.makedirs(folder)
 
     def computeDose(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, roi: Optional[Sequence[ROIContour]] = None,  Density = False) -> SparseBeamlets:
         """
@@ -474,17 +473,38 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         return Dose
   
     def computeRobustScenarioDose(self, scenario, origin, nominal, mode = "Simulation"):
+        """
+        Compute the dose array for a given scenario
+
+        Parameters
+        ----------
+        scenario: RobustScenario
+            scenario to calculate the dose
+        origin : Sequence[float]
+            origin of the treatment planning CT image
+        nominal: SparseBeamlets
+            nominal beamlets
+        mode: str ['Shift', 'Simulation']
+            It selects the type of robust scenarios to calculate. 'Shift' calculates the scenarios by shifting the beamlets, 
+            'Simulation' calculates the scenarios by simulating the beamlets again per every scenario.
+        Returns
+        -------
+        beamletsScenario:SparseBeamlets
+            Dose with same grid size and spacing as the CT image
+        """
         t0 = time.time()
         self._ct.origin = origin + scenario.sse
         nominal.sb.spacing = self._ct.spacing
         scenario.sre = None if np.all(scenario.sre == [0,0,0]) else scenario.sre
 
         if mode == "Simulation":
-            print(origin, self._ct.origin)
+            print(f"CT origin shifted from {origin} to {self._ct.origin}")
             DoseScenario = self.computeDose(self._ct, self._plan, self._roi)
             DoseScenario.doseOrigin = origin
+            if np.all(scenario.sre) != None:
+                DoseScenario.imageArray = gaussian_filter(DoseScenario.imageArray.astype(float), sigma = scenario.sre, order=0, truncate=2)
 
-        elif mode == "Shift" or scenario.sre != None:
+        elif mode == "Shift":
             if nominal == None:
                 KeyError('To calculate the robust scenarios beamlets in precise mode it is necessary the nominal beamlets')
 
