@@ -25,13 +25,6 @@ from scipy.sparse import csc_matrix
 from opentps.core.io.dicomIO import writeRTDose
 sys.path.append('..')
 
-def calculateDoseArray(beamlets, weights, numberOfFractionsPlanned):
-    doseArray  = csc_matrix.dot(beamlets._sparseBeamlets, weights) * numberOfFractionsPlanned
-    totalDose = np.reshape(doseArray, beamlets._gridSize, order='F')
-    totalDose = np.flip(totalDose, 0)
-    totalDose = np.flip(totalDose, 1)
-    return totalDose
-
 logger = logging.getLogger(__name__)
 
 # Generic example: box of water with squared target
@@ -109,7 +102,7 @@ def run(output_path=""):
         planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.REDUCED_SET
         # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.ALL
         # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.RANDOM
-        # planDesign.robustness.NumScenarios = 10
+        # planDesign.robustness.NumScenarios = 10   # specify how many random scenarios to simulate, default = 100
 
         planDesign.targetMargin = max(planDesign.robustness.setupSystematicError)
         planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) # needs to be called prior spot placement

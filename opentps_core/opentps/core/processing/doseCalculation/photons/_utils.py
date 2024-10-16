@@ -14,23 +14,6 @@ import os
 from matplotlib import pyplot as plt
 from opentps.core.data.plan import PhotonPlan
 
-def getConvolveNonZeroElements(kernel_size, nonZeroIndexes, image_size):
-    nonZeroIndexes_convolved = []
-    for i in range(kernel_size):
-        for j in range(kernel_size):
-            for k in range(kernel_size):
-                nonZeroIndexes_convolved.append(nonZeroIndexes + CCCdoseEngineIO.convertTo1DcoordFortran([i - kernel_size//2, j - kernel_size//2, k - kernel_size//2], image_size))
-    return np.unique(nonZeroIndexes_convolved)
-
-def convolveVoxel(sparse,index,kernel, image_size):    
-    kernel_size = kernel.shape[0]
-    convolution = 0
-    for i in range(kernel_size):
-        for j in range(kernel_size):
-            for k in range(kernel_size):
-                index_shifted = index + CCCdoseEngineIO.convertTo1DcoordFortran([i - kernel_size//2, j - kernel_size//2, k - kernel_size//2], image_size)
-                convolution += sparse[index_shifted,0] * kernel[i,j,k]
-    return convolution
 
 def correctShift(setup, angle):
     """
@@ -275,17 +258,6 @@ def shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAng
 
 def dnorm(x, mu, sd):
     return 1 / (np.sqrt(2 * np.pi) * sd) * np.e ** (-np.power((x - mu) / sd, 2) / 2)
-
-def gaussian_kernel_3d(size, sigma=1): ### Gaussian Kernel used to smooth the result of the sigma smooth
-    if sigma==0:
-        sigma = 1e-6
-    kernel_1D = np.linspace(-(size // 2), size // 2, size)
-    for i in range(size):
-        kernel_1D[i] = dnorm(kernel_1D[i], 0, sigma)
-    kernel_2D = np.outer(kernel_1D.T, kernel_1D.T)
-    kernel_3D = np.einsum("ij,k->ijk", kernel_2D,kernel_1D)
-    kernel_3D = kernel_3D / np.sum(kernel_3D)
-    return kernel_3D
 
 
 def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): ### Shift beamlets according sse + apply gaussian filter one the dose array to simulate sre

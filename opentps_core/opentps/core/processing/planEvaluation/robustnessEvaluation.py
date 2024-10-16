@@ -90,7 +90,7 @@ class RobustnessEval:
                 self.scenarios.append(RobustnessScenario(sse = np.array([self.setupSystematicError[0]* self.numberOfSigmas, 
                                                                          self.setupSystematicError[1]* self.numberOfSigmas, 
                                                                          self.setupSystematicError[2]* self.numberOfSigmas])))
-        elif self.setupRandomError not in [None, 0, [0,0,0]]:
+        elif self.setupRandomError not in [None, 0, [0,0,0]]: # Difference with the optimization, here we add a scenarios for the setupRandomError
             self.scenarios.append(RobustnessScenario(sse = np.array([0, 0, 0]), sre = self.setupRandomError))
         else :
             raise Exception("No evaluation strategy selected")

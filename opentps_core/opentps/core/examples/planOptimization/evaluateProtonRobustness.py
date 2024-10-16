@@ -23,15 +23,14 @@ def run(output_path=""):
         output_path = output_path
     else:
         output_path = os.path.join(os.getcwd(), 'Output_Proton_Example')
-        output_path = '/home/colin/opentps/Proton_Robust_Output_Example'
         if not os.path.exists(output_path):
             os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
-    # Generic example: box of water with squared target
 
     ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)
     bdl = mcsquareIO.readBDL(DoseCalculationConfig().bdlFile)
-
+    
+    # Generic example: box of water with squared target
     patient = Patient()
     patient.name = 'Patient'
 
@@ -69,7 +68,6 @@ def run(output_path=""):
 
     # Load / Generate new plan
     plan_file = os.path.join(output_path, "Plan_Proton_WaterPhantom_cropped_optimized.tps")
-    plan_file = '/home/colin/opentps/Proton_Robust_Output_Example/Plan_Proton_WaterPhantom_cropped_optimized.tps'
 
     if os.path.isfile(plan_file):
         plan = loadRTPlan(plan_file)
@@ -102,12 +100,12 @@ def run(output_path=""):
 
         # Random scenario sampling  
         plan.planDesign.robustnessEval.selectionStrategy = plan.planDesign.robustnessEval.Strategies.RANDOM
-        plan.planDesign.robustnessEval.numScenarios = 2 # specify how many random scenarios to simulate, default = 100
+        plan.planDesign.robustnessEval.numScenarios = 30 # specify how many random scenarios to simulate, default = 100
         
         plan.patient = None
         # run MCsquare simulation
         scenarios = mc2.computeRobustScenario(ct, plan, [roi])
-        output_folder = os.path.join(output_path, "RobustnessTest_" + datetime.datetime.today().strftime("%b-%d-%Y_%H-%M-%S"))
+        output_folder = os.path.join(output_path, "RobustnessTest")
         scenarios.save(output_folder)
 
     # Robustness analysis

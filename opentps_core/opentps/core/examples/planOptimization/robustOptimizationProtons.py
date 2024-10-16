@@ -94,7 +94,7 @@ def run(output_path=""):
         planDesign.robustness.rangeSystematicError = 0.0  # %
 
         # Regular scenario sampling
-        planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.ALL
+        planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.REDUCED_SET
 
         # All scenarios (includes diagonals on sphere)
         # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.ALL
