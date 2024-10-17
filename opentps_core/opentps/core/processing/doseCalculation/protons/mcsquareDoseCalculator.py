@@ -13,7 +13,7 @@ import numpy as np
 
 from opentps.core.data.MCsquare import MCsquareConfig
 from opentps.core.data import SparseBeamlets
-from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
+from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEvalProton
 from opentps.core.processing.doseCalculation.abstractDoseInfluenceCalculator import AbstractDoseInfluenceCalculator
 from opentps.core.processing.doseCalculation.protons.abstractMCDoseCalculator import AbstractMCDoseCalculator
 from opentps.core.processing.imageProcessing import resampler3D
@@ -25,7 +25,7 @@ from opentps.core.data.images import LETImage
 from opentps.core.data.images import Image3D
 from opentps.core.data.images import ROIMask
 from opentps.core.data.MCsquare import BDL
-from opentps.core.data.plan import IonPlan,IonPlanDesign
+from opentps.core.data.plan import ProtonPlan,ProtonPlanDesign
 from opentps.core.data import ROIContour
 
 import opentps.core.io.mcsquareIO as mcsquareIO
@@ -89,7 +89,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         self._ctCalibration: Optional[AbstractCTCalibration] = None
         self._ct: Optional[Image3D] = None
-        self._plan: Optional[IonPlan] = None
+        self._plan: Optional[ProtonPlan] = None
         self._roi = None
         self._config = None
         self._mcsquareCTCalibration = None
@@ -268,7 +268,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
             self._subprocess.kill()
             self._subprocess = None
 
-    def computeDose(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[ROIContour]] = None) -> DoseImage:
+    def computeDose(self, ct: CTImage, plan: ProtonPlan, roi: Optional[Sequence[ROIContour]] = None) -> DoseImage:
         """
         Compute dose distribution in the patient using MCsquare
 
@@ -300,7 +300,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         mhdDose = self._importDose(plan)
         return mhdDose
 
-    def computeDoseAndLET(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[ROIContour]] = None) -> Tuple[DoseImage, LETImage]:
+    def computeDoseAndLET(self, ct: CTImage, plan: ProtonPlan, roi: Optional[Sequence[ROIContour]] = None) -> Tuple[DoseImage, LETImage]:
         """
         Compute dose and LET distribution in the patient using MCsquare
 
@@ -323,7 +323,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         let = self._importLET()
         return dose, let
 
-    def computeRobustScenario(self, ct: CTImage, plan: IonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> RobustnessEval:
+    def computeRobustScenario(self, ct: CTImage, plan: ProtonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> RobustnessEvalProton:
         """
         Compute robustness scenario using MCsquare
 
@@ -365,8 +365,8 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         logger.info("Simulation of error scenarios")
         self._startMCsquare()
         # Import dose results
-        for s in range(self._plan.planDesign.robustnessEval.numScenarios):
-            fileName = 'Dose_Scenario_' + str(s + 1) + '-' + str(self._plan.planDesign.robustnessEval.numScenarios) + '.mhd'
+        for s in range(self._plan.planDesign.robustnessEval.nScenarios):
+            fileName = 'Dose_Scenario_' + str(s + 1) + '-' + str(self._plan.planDesign.robustnessEval.nScenarios) + '.mhd'
             self._doseFilePath = os.path.join(self._workDir, fileName)
             if os.path.isfile(self._doseFilePath):
                 dose = self._importDose(plan)
@@ -374,7 +374,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return scenarios
 
-    def computeBeamlets(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
+    def computeBeamlets(self, ct: CTImage, plan: ProtonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
         """
         Compute beamlets using MCsquare
 
@@ -401,7 +401,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         self._plan.simplify(threshold=None) # make sure no spot duplicates
 
         if not self._plan.planDesign: # external plan
-            planDesign = IonPlanDesign()
+            planDesign = ProtonPlanDesign()
             planDesign.ct = ct
             planDesign.targetMask = roi
             planDesign.scoringVoxelSpacing = self.scoringVoxelSpacing
@@ -446,7 +446,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         beamletDose.doseGridSize = self.scoringGridSize
         return beamletDose
 
-    def computeBeamletsAndLET(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> Tuple[SparseBeamlets, SparseBeamlets]:
+    def computeBeamletsAndLET(self, ct: CTImage, plan: ProtonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> Tuple[SparseBeamlets, SparseBeamlets]:
         """
         Compute beamlets and LET using MCsquare
 
@@ -473,7 +473,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return beamletDose, beamletLET
 
-    def computeRobustScenarioBeamlets(self, ct:CTImage, plan:IonPlan, \
+    def computeRobustScenarioBeamlets(self, ct:CTImage, plan:ProtonPlan, \
                                       roi:Optional[Sequence[Union[ROIContour, ROIMask]]]=None, storePath:Optional[str] = None) \
             -> Tuple[SparseBeamlets, Sequence[SparseBeamlets]]:
         """
@@ -516,7 +516,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return nominal, scenarios
 
-    def optimizeBeamletFree(self, ct: CTImage, plan: IonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> DoseImage:
+    def optimizeBeamletFree(self, ct: CTImage, plan: ProtonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> DoseImage:
         """
         Optimize weights using beamlet free optimization
 
@@ -618,7 +618,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
                 raise Exception('MCsquare subprocess killed by caller.')
             self._subprocess = None
 
-    def _importDose(self, plan:IonPlan = None) -> DoseImage:
+    def _importDose(self, plan:ProtonPlan = None) -> DoseImage:
         """
         Import dose from MCsquare simulation
 
@@ -796,34 +796,34 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         
         if self._plan.planDesign.robustnessEval.selectionStrategy == self._plan.planDesign.robustnessEval.Strategies.ALL:
             config["Scenario_selection"] == "All"
-            self._plan.planDesign.robustnessEval.numScenarios = 81
-            if(config["Systematic_Setup_Error"][0] == 0.0): self._plan.planDesign.robustnessEval.numScenarios/=3
-            if(config["Systematic_Setup_Error"][1] == 0.0): self._plan.planDesign.robustnessEval.numScenarios/=3
-            if(config["Systematic_Setup_Error"][2] == 0.0): self._plan.planDesign.robustnessEval.numScenarios/=3
-            if(config["Systematic_Range_Error"] == 0.0): self._plan.planDesign.robustnessEval.numScenarios/=3
+            self._plan.planDesign.robustnessEval.nScenarios = 81
+            if(config["Systematic_Setup_Error"][0] == 0.0): self._plan.planDesign.robustnessEval.nScenarios/=3
+            if(config["Systematic_Setup_Error"][1] == 0.0): self._plan.planDesign.robustnessEval.nScenarios/=3
+            if(config["Systematic_Setup_Error"][2] == 0.0): self._plan.planDesign.robustnessEval.nScenarios/=3
+            if(config["Systematic_Range_Error"] == 0.0): self._plan.planDesign.robustnessEval.nScenarios/=3
 
         elif self._plan.planDesign.robustnessEval.selectionStrategy == self._plan.planDesign.robustnessEval.Strategies.REDUCED_SET:
             config["Scenario_selection"] = "ReducedSet"  
-            self._plan.planDesign.robustnessEval.numScenarios = 21
-            if(config["Systematic_Setup_Error"][0] == 0.0): self._plan.planDesign.robustnessEval.numScenarios-= 6
-            if(config["Systematic_Setup_Error"][1] == 0.0): self._plan.planDesign.robustnessEval.numScenarios-= 6
-            if(config["Systematic_Setup_Error"][2] == 0.0): self._plan.planDesign.robustnessEval.numScenarios-=6
-            if(config["Systematic_Range_Error"] == 0.0): self._plan.planDesign.robustnessEval.numScenarios/= 3
+            self._plan.planDesign.robustnessEval.nScenarios = 21
+            if(config["Systematic_Setup_Error"][0] == 0.0): self._plan.planDesign.robustnessEval.nScenarios-= 6
+            if(config["Systematic_Setup_Error"][1] == 0.0): self._plan.planDesign.robustnessEval.nScenarios-= 6
+            if(config["Systematic_Setup_Error"][2] == 0.0): self._plan.planDesign.robustnessEval.nScenarios-=6
+            if(config["Systematic_Range_Error"] == 0.0): self._plan.planDesign.robustnessEval.nScenarios/= 3
 
         elif self._plan.planDesign.robustnessEval.selectionStrategy == self._plan.planDesign.robustnessEval.Strategies.RANDOM:
             config["Scenario_selection"] = "Random" 
-            if self._plan.planDesign.robustnessEval.numScenarios > 0: 
-                config["Num_Random_Scenarios"] = self._plan.planDesign.robustnessEval.numScenarios # random
+            if self._plan.planDesign.robustnessEval.nScenarios > 0: 
+                config["Num_Random_Scenarios"] = self._plan.planDesign.robustnessEval.nScenarios # random
             else: config["Num_Random_Scenarios"] = 100 # Default
-            self._plan.planDesign.robustnessEval.numScenarios = config["Num_Random_Scenarios"]
+            self._plan.planDesign.robustnessEval.nScenarios = config["Num_Random_Scenarios"]
         else:
             logger.error("No scenario selection strategy was configured. Pick between [ALL,REDUCED_SET,RANDOM]")
         
         # Remove duplicate of nominal scenario if no random set up errors in ALL and REDUCED_SET scenarios 
         if np.sum(config["Random_Setup_Error"])==0 and config["Scenario_selection"] != "Random":
-            self._plan.planDesign.robustnessEval.numScenarios-=1
+            self._plan.planDesign.robustnessEval.nScenarios-=1
         
-        self._plan.planDesign.robustnessEval.numScenarios = int(self._plan.planDesign.robustnessEval.numScenarios) # handle float output
+        self._plan.planDesign.robustnessEval.nScenarios = int(self._plan.planDesign.robustnessEval.nScenarios) # handle float output
         
         return config
 

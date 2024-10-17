@@ -7,9 +7,9 @@ from opentps.core.io.sitkIO import exportImageSitk
 import numpy as np
 from opentps.core.data.images import ROIMask
 from opentps.core.data.plan import PhotonPlanDesign
-from opentps.core.processing.planEvaluation.robustnessPhotons import Robustness as RobustnessPhotons
+from opentps.core.data.plan import RobustnessPhoton
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
+from opentps.core.processing.planOptimization.planOptimization import IntensityModulationOptimizer
 import pickle
 import glob
 import copy
@@ -123,7 +123,7 @@ planInit.beamNames = ["Beam{}".format(i) for i in range(len(planInit.gantryAngle
 planInit.calibration = ctCalibration
 planInit.xBeamletSpacing_mm = 5
 planInit.yBeamletSpacing_mm = 5
-planInit.robustness = RobustnessPhotons()
+planInit.robustness = RobustnessPhoton()
 planInit.robustness.setupSystematicError = [1.6] * 3
 planInit.robustness.setupRandomError = 0
 planInit.robustness.sseNumberOfSamples = 1
@@ -150,7 +150,7 @@ plan.planDesign.objectives.addFidObjective(targetMask, 'DMax', 70, 10, robust = 
 plan.planDesign.objectives.addFidObjective(targetMask, 'DMin', 70.5, 10, robust = True)
 plan.planDesign.objectives.addFidObjective(phantomMask, 'DMax', 0, 0.1, robust = False)
 
-solver = IMPTPlanOptimizer(method = 'Scipy-LBFGS', plan=plan,
+solver = IntensityModulationOptimizer(method = 'Scipy-LBFGS', plan=plan,
                             maxit = 200,
                             ftol = 1e-6,
                             gtol = 1e-6)

@@ -22,7 +22,7 @@ except:
     cupy_available = False
 from opentps.core.data.plan._photonPlan import PhotonPlan
 from opentps.core.data.plan._rtPlan import RTPlan
-from opentps.core.data.plan._ionPlan import IonPlan
+from opentps.core.data.plan._protonPlan import ProtonPlan
 from opentps.core.processing.planOptimization.solvers import sparcling, \
     beamletFree
 from opentps.core.processing.planOptimization.solvers import scipyOpt, bfgs, localSearch
@@ -62,7 +62,7 @@ class PlanOptimizer:
 
         self.solver = scipyOpt.ScipyOpt('L-BFGS-B')
         
-        if isinstance(plan, IonPlan):
+        if isinstance(plan, ProtonPlan):
             planPreprocessing.extendPlanLayers(plan)
         self.plan = plan
         self.opti_params = kwargs
@@ -130,9 +130,15 @@ class PlanOptimizer:
         Initialize the dose fidelity objective function.
         """
         self.plan.planDesign.setScoringParameters()
+
         # crop on ROI
-        roiObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
-        roiRobustObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+        if self.plan.planDesign.ROI_cropping == True:
+            roiObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+            roiRobustObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+        else : 
+            roiObjectives = np.ones(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+            roiRobustObjectives = np.ones(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+        
         robust = False
         for objective in self.plan.planDesign.objectives.fidObjList:
             if objective.robust:
@@ -174,7 +180,7 @@ class PlanOptimizer:
         assert self.plan.planDesign.beamlets._sparseBeamlets is not None
 
         beamlets = self.plan.planDesign.beamlets
-        if isinstance(self.plan, IonPlan):
+        if isinstance(self.plan, ProtonPlan):
             weights = np.array(self.plan.spotMUs, dtype=np.float32)
         elif isinstance(self.plan, PhotonPlan):
             weights = np.array(self.plan.beamletMUs, dtype=np.float32)
@@ -274,14 +280,14 @@ class PlanOptimizer:
             MUs = np.square(self.weights).astype(np.float32) / self.plan.numberOfFractionsPlanned
         else:
             MUs = self.weights.astype(np.float32) / self.plan.numberOfFractionsPlanned
-        if isinstance(self.plan,IonPlan):
+        if isinstance(self.plan,ProtonPlan):
             self.plan.spotMUs = MUs
         elif isinstance(self.plan,PhotonPlan): 
             self.plan.beamletMUs = MUs
         MU_before_simplify = MUs.copy()
         self.plan.simplify(threshold=self.thresholdSpotRemoval) # remove spots below self.thresholdSpotRemoval
         
-        if isinstance(self.plan,IonPlan):
+        if isinstance(self.plan,ProtonPlan):
             if self.plan.planDesign.beamlets.shape[1] != len(self.plan.spotMUs):
                 # Beamlet matrix has not removed zero weight column
                 ind_to_keep = MU_before_simplify > self.thresholdSpotRemoval

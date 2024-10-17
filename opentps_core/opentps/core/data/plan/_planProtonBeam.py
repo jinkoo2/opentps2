@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-__all__ = ['PlanIonBeam']
+__all__ = ['PlanProtonBeam']
 
 import copy
 from typing import Optional, Sequence, Union
@@ -11,13 +11,13 @@ import numpy as np
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from opentps.core.data.plan._planIonLayer import PlanIonLayer
+    from opentps.core.data.plan._planProtonLayer import PlanProtonLayer
     from opentps.core.data.plan._rangeShifter import RangeShifter
 
 
-class PlanIonBeam:
+class PlanProtonBeam:
     """
-    This class is used to store the information of an ion beam.
+    This class is used to store the information of a proton beam.
 
     Attributes
     ----------
@@ -54,7 +54,7 @@ class PlanIonBeam:
     """
 
     def __init__(self):
-        self._layers: Sequence[PlanIonLayer] = []
+        self._layers: Sequence[PlanProtonLayer] = []
 
         self.name = ""
         self.isocenterPosition = [0, 0, 0]
@@ -66,7 +66,7 @@ class PlanIonBeam:
         self.seriesInstanceUID = ""
         self.approxSpotsPeakPosList = None
 
-    def __getitem__(self, layerNb) -> PlanIonLayer:
+    def __getitem__(self, layerNb) -> PlanProtonLayer:
         """
         Get the layer at the given index.
 
@@ -110,11 +110,11 @@ class PlanIonBeam:
         return s
 
     @property
-    def layers(self) -> Sequence[PlanIonLayer]:
+    def layers(self) -> Sequence[PlanProtonLayer]:
         # For backwards compatibility but we can now access each layer with indexing brackets
         return [layer for layer in self._layers]
 
-    def appendLayer(self, layer: PlanIonLayer):
+    def appendLayer(self, layer: PlanProtonLayer):
         """
         Append a layer to the list of layers.
 
@@ -125,7 +125,7 @@ class PlanIonBeam:
         """
         self._layers.append(layer)
 
-    def removeLayer(self, layer: Union[PlanIonLayer, Sequence[PlanIonLayer]]):
+    def removeLayer(self, layer: Union[PlanProtonLayer, Sequence[PlanProtonLayer]]):
         """
         Remove a layer from the list of layers.
 
@@ -313,22 +313,22 @@ class PlanIonBeam:
 
 class PlanIonLayerBeamCase(unittest.TestCase):
     def testFusionDuplicates(self):
-        from opentps.core.data.plan import PlanIonLayer
+        from opentps.core.data.plan import PlanProtonLayer
 
-        beam = PlanIonBeam()
+        beam = PlanProtonBeam()
         beam.gantryAngle = 0
         beam.couchAngle = 0
-        layer = PlanIonLayer(nominalEnergy=100.)
+        layer = PlanProtonLayer(nominalEnergy=100.)
         x = [0, 2, 1, 3]
         y = [1, 2, 2, 0]
         mu = [0.2, 0.5, 0.3, 0.1]
         layer.appendSpot(x, y, mu)
         beam.appendLayer(layer)
 
-        layer2 = PlanIonLayer(nominalEnergy=110.)
+        layer2 = PlanProtonLayer(nominalEnergy=110.)
         beam.appendLayer(layer2)
 
-        layer3 = PlanIonLayer(nominalEnergy=100.)
+        layer3 = PlanProtonLayer(nominalEnergy=100.)
         x = [1, 3, 2, 4]
         y = [2, 3, 3, 1]
         mu = [0.3, 0.6, 0.4, 0.2]

@@ -1,8 +1,8 @@
 
-__all__ = ['PlanIonSpot']
+__all__ = ['PlanProtonSpot']
 
 
-class PlanIonSpot:
+class PlanProtonSpot:
     """
     A single ion spot in a layer of a beam.
 
@@ -30,7 +30,7 @@ class PlanIonSpot:
         Spot timing.
     """
     def __init__(self):
-        super(PlanIonSpot, self).__init__()
+        super(PlanProtonSpot, self).__init__()
         self.spotXY = []
         self.id = 0
         self.beamID, layerID = 0, 0
