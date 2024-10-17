@@ -51,7 +51,9 @@ def run(output_path=""):
     huAir = -1024.
     huWater = 0
     data = huAir * np.ones((ctSize, ctSize, ctSize))
-    data[:, 50:, :] = huWater
+    data[80:, 80:, :] = huWater
+    data[100:120, 30:45, :] = huWater
+    data[30:45, 100:120, :] = huWater
     ct.imageArray = data
 
     roi = ROIMask()
@@ -115,7 +117,7 @@ def run(output_path=""):
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 20.0, 1.0, robust=True)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 20.5, 1.0, robust=True)
 
-    plan.ROI_cropping = False # Do not cropped allows 'shift' evaluation method to be used
+    plan.planDesign.ROI_cropping = False # Do not cropped allows 'shift' evaluation method to be used
     solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxit=50)
     # Optimize treatment plan
     doseInfluenceMatrix = copy.deepcopy(plan.planDesign.beamlets)

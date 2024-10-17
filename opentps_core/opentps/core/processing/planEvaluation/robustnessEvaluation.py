@@ -477,8 +477,8 @@ class RobustnessEvalPhoton(RobustnessEval,RobustnessPhoton):
         self.numberOfSigmas = 2.5
         super().__init__()
     
-    def generateRobustScenarios4Planning(self):
-        super().generateRobustScenarios4Planning()
+    def generateRobustScenarios(self):
+        super().generateRobustScenarios()
         # Add logic to handle the random error case
         if self.setupRandomError not in [None, 0, [0, 0, 0]]:
             self.scenarios.append(RobustnessScenario(

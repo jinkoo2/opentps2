@@ -132,7 +132,7 @@ class PlanOptimizer:
         self.plan.planDesign.setScoringParameters()
 
         # crop on ROI
-        if self.plan.ROI_cropping == True:
+        if self.plan.planDesign.ROI_cropping == True:
             roiObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
             roiRobustObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
         else : 

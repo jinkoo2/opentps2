@@ -409,7 +409,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         self._roi = roi
         self.batchSize = plan.numberOfBeamlets if plan.numberOfBeamlets / self.batchSize < 1 else self.batchSize
         origin = ct.origin
-        plan.planDesign.robustnessEval.generateRobustScenarios4Planning()
+        plan.planDesign.robustnessEval.generateRobustScenarios()
         scenarios = plan.planDesign.robustnessEval.scenarios
 
         plan.planDesign.robustnessEval.nominal.sb = plan.planDesign.robustness.nominal.sb
