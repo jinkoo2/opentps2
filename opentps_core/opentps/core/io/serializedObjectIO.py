@@ -15,7 +15,7 @@ from opentps.core.data.dynamicData._dynamic3DModel import Dynamic3DModel
 from opentps.core.data.dynamicData._dynamic3DSequence import Dynamic3DSequence
 from opentps.core.data.images._ctImage import CTImage
 from opentps.core.data.images._vectorField3D import VectorField3D
-from opentps.core.data._patient import Patient
+
 
 
 
@@ -284,7 +284,7 @@ def dictionarizeData(data):
 
     print('Dictionarize data -', data.getTypeAsString())
     newDict = {}
-
+    from opentps.core.data._patient import Patient
     if isinstance(data, Patient):
 
         patientDataDictList = []

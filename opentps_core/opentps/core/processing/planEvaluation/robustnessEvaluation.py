@@ -41,7 +41,7 @@ class RobustnessEval:
         The target prescription in Gy.
     nominal : RobustnessScenario
         The nominal scenario.
-    numScenarios : int
+    nScenarios : int
         The number of scenarios.
     scenarios : list
         The list of scenarios.
@@ -70,7 +70,7 @@ class RobustnessEval:
         self.target = []
         self.targetPrescription = 60  # Gy
         self.nominal = RobustnessScenario()
-        self.numScenarios = 0
+        self.nScenarios = 0
         self.scenarios = []
         self.dvhBands = []
         self.doseDistributionType = ""
@@ -240,7 +240,7 @@ class RobustnessEval:
             allDmean.append([])
 
         # generate DVH-band
-        for s in range(self.numScenarios):
+        for s in range(self.nScenarios):
             self.scenarios[s].selected = 1
             if self.doseDistributionType == "Voxel wise minimum":
                 self.doseDistribution.imageArray = np.minimum(self.doseDistribution.imageArray, self.scenarios[s].dose.imageArray)
@@ -288,8 +288,8 @@ class RobustnessEval:
         elif metric == "MSE":
             self.scenarios.sort(key=(lambda scenario: scenario.targetMSE))
 
-        start = round(self.numScenarios * (100 - CI) / 100)
-        if start == self.numScenarios: start -= 1
+        start = round(self.nScenarios * (100 - CI) / 100)
+        if start == self.nScenarios: start -= 1
 
         # initialize dose distribution
         if self.doseDistributionType == "Nominal":
@@ -305,7 +305,7 @@ class RobustnessEval:
             selectedDmean.append([])
 
         # select scenarios
-        for s in range(self.numScenarios):
+        for s in range(self.nScenarios):
             if s < start:
                 self.scenarios[s].selected = 0
             else:
@@ -356,7 +356,7 @@ class RobustnessEval:
         if not os.path.isdir(folder_path):
             os.mkdir(folder_path)
 
-        for s in range(self.numScenarios):
+        for s in range(self.nScenarios):
             file_path = os.path.join(folder_path, "Scenario_" + str(s) + ".tps")
             self.scenarios[s].save(file_path)
 
@@ -384,7 +384,7 @@ class RobustnessEval:
             tmp = pickle.load(fid)
         self.__dict__.update(tmp)
 
-        for s in range(self.numScenarios):
+        for s in range(self.nScenarios):
             file_path = os.path.join(folder_path, "Scenario_" + str(s) + ".tps")
             scenario = RobustnessScenario()
             scenario.load(file_path)
@@ -486,8 +486,8 @@ class RobustnessEvalPhoton(RobustnessEval,RobustnessPhoton):
                 sre=self.setupRandomError
             ))
 
-        # Update numScenarios if needed (in case the random error adds a new scenario)
-        self.numScenarios = len(self.scenarios)
+        # Update nScenarios if needed (in case the random error adds a new scenario)
+        self.nScenarios = len(self.scenarios)
 
 class RobustnessEvalProton(RobustnessEval):
     """

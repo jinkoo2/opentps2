@@ -315,7 +315,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         self._overRidingList = overRidingList
         self.batchSize = plan.numberOfBeamlets if plan.numberOfBeamlets / self.batchSize < 1 else self.batchSize
         origin = ct.origin
-        plan.planDesign.robustness.generateRobustScenarios4Planning()
+        plan.planDesign.robustness.generateRobustScenarios()
         scenarios = plan.planDesign.robustness.scenarios
         if computeNominal:
             print('Calculating Nominal Scenario')

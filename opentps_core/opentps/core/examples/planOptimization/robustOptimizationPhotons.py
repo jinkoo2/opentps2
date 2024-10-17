@@ -128,7 +128,7 @@ def run(output_path=""):
     # or default name
     writeRTDose(doseImage, output_path)
 
-    if plan.ROI_cropping == True :
+    if plan.planDesign.ROI_cropping == True :
         plan_file = os.path.join(output_path, "Plan_Photon_WaterPhantom_cropped_optimized.tps")
     else : 
         plan_file = os.path.join(output_path, "Plan_Photon_WaterPhantom_notCropped_optimized.tps")
