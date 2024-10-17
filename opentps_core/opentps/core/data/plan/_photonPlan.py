@@ -23,7 +23,6 @@ class PhotonPlan(RTPlan):
         self.sopInstanceUID = "1.2.840.10008.5.1.4.1.1.481.5"
         self.radiationType = "PHOTON"
         self.modality = "RT Plan IOD"
-        self.ROI_cropping = True
     
     @property
     def numberOfBeamlets(self) -> int:

@@ -78,7 +78,16 @@ class RobustnessEval:
         self.doseDistributionType = ""
         self.doseDistribution = []
 
-    def generateRobustScenarios4Planning(self):
+    def generateRobustScenarios(self):
+        """
+        Generates robust scenarios according to the strategies :
+        -Random : Sample n scenarios in gaussian distribution of the sse
+        -Reduced set : From sse [a, b, c] to 6 scenarios [+-a, +-b, +-c]
+        -All : From sse [a, b, c] to 26 scenarios in the error hypersphere
+        -Disable : From sse [a,b,c] to 1 scenario [a,b,c]* number of sigma
+        sre if also add to the scenario
+        If no systematic setup error, create a single scenario to take account of the random error. 
+        """
         if self.setupSystematicError not in [None, 0, [0,0,0]]:
             if self.selectionStrategy == self.selectionStrategy.RANDOM :
                 self.generateRandomScenarios()
@@ -96,7 +105,11 @@ class RobustnessEval:
             raise Exception("No evaluation strategy selected")
         self.numScenarios = len(self.scenarios)
 
-    def generateReducedErrorSpacecenarios(self):  # From [a, b, c] to 6 scenarios [+-a, +-b, +-c]
+    def generateReducedErrorSpacecenarios(self): 
+        """
+        Generates robust scenarios according to the strategie :
+        -Reduced set : From sse [a, b, c] to 6 scenarios [+-a, +-b, +-c]
+        """
         for index, sse in enumerate(self.setupSystematicError):
             for sign in [-1,1]:
                 array = np.zeros(3)
@@ -105,6 +118,10 @@ class RobustnessEval:
                 self.scenarios.append(scenario)
 
     def generateAllErrorSpaceScenarios(self):
+        """
+        Generates robust scenarios according to the strategie :
+        -All : From sse [a, b, c] to 26 scenarios in the error hypersphere
+        """
         # Point coordinates on hypersphere with two zero axes
         R = self.setupSystematicError[0] * self.numberOfSigmas
         for sign in [-1, 1]:
@@ -126,6 +143,10 @@ class RobustnessEval:
 
 
     def generateRandomScenarios(self):
+        """
+        Generates robust scenarios according to the strategie :
+        -Random : Sample n scenarios in gaussian distribution of the setup systematic error
+        """
         # Sample in gaussian
         setupErrorSpace = self.setupSystematicError
         for _ in range(self.NumScenarios):
