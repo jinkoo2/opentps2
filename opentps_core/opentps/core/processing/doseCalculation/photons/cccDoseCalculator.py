@@ -206,7 +206,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         return beamletDose
 
     def _importDose(self):
-        beamletDose = CCCdoseEngineIO.computeDose(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._plan.beamletMUs, self._roi)
+        beamletDose = CCCdoseEngineIO.readDose(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._plan.beamletMUs, self._roi)
         return beamletDose
 
     def fromHU2Densities(self, ct : CTImage, overRidingList : Sequence[Dict[str, Any]] = None):

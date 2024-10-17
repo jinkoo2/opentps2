@@ -236,7 +236,7 @@ def readBeamlets(CTheaderfile_path, outputDir, batchSize, roi: Optional[Sequence
     return beamletDose
 
 
-def computeDose(CTheaderfile_path, outputDir, batchSize, Mu, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None): 
+def readDose(CTheaderfile_path, outputDir, batchSize, Mu, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None): 
     if (not CTheaderfile_path.endswith('.txt')):
         raise NameError('File ', CTheaderfile_path, ' is not a valid sparse matrix header')
 
