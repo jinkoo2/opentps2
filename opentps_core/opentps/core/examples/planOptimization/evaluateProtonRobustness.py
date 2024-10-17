@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
+from opentps.core.data.plan._protonPlanDesign import ProtonPlanDesign
 from opentps.core.data import Patient
 from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner

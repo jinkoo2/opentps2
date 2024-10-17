@@ -25,7 +25,7 @@ from opentps.core.data.images import LETImage
 from opentps.core.data.images import Image3D
 from opentps.core.data.images import ROIMask
 from opentps.core.data.MCsquare import BDL
-from opentps.core.data.plan import IonPlan,IonPlanDesign
+from opentps.core.data.plan import ProtonPlan,ProtonPlanDesign
 from opentps.core.data import ROIContour
 
 import opentps.core.io.mcsquareIO as mcsquareIO
@@ -89,7 +89,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         self._ctCalibration: Optional[AbstractCTCalibration] = None
         self._ct: Optional[Image3D] = None
-        self._plan: Optional[IonPlan] = None
+        self._plan: Optional[ProtonPlan] = None
         self._roi = None
         self._config = None
         self._mcsquareCTCalibration = None
@@ -268,7 +268,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
             self._subprocess.kill()
             self._subprocess = None
 
-    def computeDose(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[ROIContour]] = None) -> DoseImage:
+    def computeDose(self, ct: CTImage, plan: ProtonPlan, roi: Optional[Sequence[ROIContour]] = None) -> DoseImage:
         """
         Compute dose distribution in the patient using MCsquare
 
@@ -300,7 +300,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         mhdDose = self._importDose(plan)
         return mhdDose
 
-    def computeDoseAndLET(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[ROIContour]] = None) -> Tuple[DoseImage, LETImage]:
+    def computeDoseAndLET(self, ct: CTImage, plan: ProtonPlan, roi: Optional[Sequence[ROIContour]] = None) -> Tuple[DoseImage, LETImage]:
         """
         Compute dose and LET distribution in the patient using MCsquare
 
@@ -323,7 +323,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         let = self._importLET()
         return dose, let
 
-    def computeRobustScenario(self, ct: CTImage, plan: IonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> RobustnessEvalProton:
+    def computeRobustScenario(self, ct: CTImage, plan: ProtonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> RobustnessEvalProton:
         """
         Compute robustness scenario using MCsquare
 
@@ -374,7 +374,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return scenarios
 
-    def computeBeamlets(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
+    def computeBeamlets(self, ct: CTImage, plan: ProtonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
         """
         Compute beamlets using MCsquare
 
@@ -401,7 +401,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         self._plan.simplify(threshold=None) # make sure no spot duplicates
 
         if not self._plan.planDesign: # external plan
-            planDesign = IonPlanDesign()
+            planDesign = ProtonPlanDesign()
             planDesign.ct = ct
             planDesign.targetMask = roi
             planDesign.scoringVoxelSpacing = self.scoringVoxelSpacing
@@ -446,7 +446,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         beamletDose.doseGridSize = self.scoringGridSize
         return beamletDose
 
-    def computeBeamletsAndLET(self, ct: CTImage, plan: IonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> Tuple[SparseBeamlets, SparseBeamlets]:
+    def computeBeamletsAndLET(self, ct: CTImage, plan: ProtonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> Tuple[SparseBeamlets, SparseBeamlets]:
         """
         Compute beamlets and LET using MCsquare
 
@@ -473,7 +473,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return beamletDose, beamletLET
 
-    def computeRobustScenarioBeamlets(self, ct:CTImage, plan:IonPlan, \
+    def computeRobustScenarioBeamlets(self, ct:CTImage, plan:ProtonPlan, \
                                       roi:Optional[Sequence[Union[ROIContour, ROIMask]]]=None, storePath:Optional[str] = None) \
             -> Tuple[SparseBeamlets, Sequence[SparseBeamlets]]:
         """
@@ -516,7 +516,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return nominal, scenarios
 
-    def optimizeBeamletFree(self, ct: CTImage, plan: IonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> DoseImage:
+    def optimizeBeamletFree(self, ct: CTImage, plan: ProtonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> DoseImage:
         """
         Optimize weights using beamlet free optimization
 
@@ -618,7 +618,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
                 raise Exception('MCsquare subprocess killed by caller.')
             self._subprocess = None
 
-    def _importDose(self, plan:IonPlan = None) -> DoseImage:
+    def _importDose(self, plan:ProtonPlan = None) -> DoseImage:
         """
         Import dose from MCsquare simulation
 

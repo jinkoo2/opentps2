@@ -2,7 +2,7 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import Qt
 from opentps.core.data.plan import Robustness
-from opentps.core.data.plan._robustnessIon import RobustnessIon
+from opentps.core.data.plan._robustnessProton import RobustnessProton
 from opentps.core.data.plan._robustnessPhoton import RobustnessPhoton
 
 class RobustnessSettings(QWidget):
@@ -34,7 +34,7 @@ class RobustnessSettings(QWidget):
 
     def _openRobustnessSettings(self):
         if self.modality.upper() == 'IMPT':
-            self._robustParam = RobustnessIon()        
+            self._robustParam = RobustnessProton()        
         elif self.modality.upper() == 'IMRT':
             self._robustParam = RobustnessPhoton()
         else:
@@ -90,7 +90,7 @@ class RobustnessSettingsDialog(QDialog):
         if self.modality == "IMRT":
             self._robustParam = RobustnessPhoton()
         elif self.modality == "IMPT":
-            self._robustParam = RobustnessIon()
+            self._robustParam = RobustnessProton()
         else:
             raise ValueError("Unsupported modality selected")
         

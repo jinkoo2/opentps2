@@ -5,7 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QDoubleSpinBox, QListWidget, \
     QHBoxLayout, QMenu, QAction, QComboBox
 
-from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
+from opentps.core.data.plan._protonPlanDesign import ProtonPlanDesign
 from opentps.core.data._patient import Patient
 from opentps.core.data.plan._photonPlanDesign import PhotonPlanDesign
 from opentps.core.io import mcsquareIO
@@ -217,7 +217,7 @@ class PlanDesignPanel(QWidget):
             planDesign.xBeamletSpacing_mm = self._xBeamletSpacing.value()
             planDesign.yBeamletSpacing_mm = self._yBeamletSpacing.value()
         elif self.selectedModality == "IMPT":
-            planDesign = IonPlanDesign()
+            planDesign = ProtonPlanDesign()
             planDesign.spotSpacing = self._spacingSpin.value()
             planDesign.layerSpacing = self._layerSpin.value()
             

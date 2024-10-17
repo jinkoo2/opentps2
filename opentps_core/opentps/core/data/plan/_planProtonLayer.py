@@ -1,5 +1,5 @@
 
-__all__ = ['PlanIonLayer']
+__all__ = ['PlanProtonLayer']
 
 
 import copy
@@ -9,10 +9,10 @@ import numpy as np
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from opentps.core.data.plan._planIonSpot import PlanIonSpot
+    from opentps.core.data.plan._planProtonSpot import PlanProtonSpot
 
 
-class PlanIonLayer:
+class PlanProtonLayer:
     """
     This class is used to store the layer of a ionBeam.
 
@@ -53,7 +53,7 @@ class PlanIonLayer:
     """
     def __init__(self, nominalEnergy: float = 0.0):
 
-        self._spots: Sequence[PlanIonSpot] = []
+        self._spots: Sequence[PlanProtonSpot] = []
         self._x = np.array([])
         self._y = np.array([])
         self._mu = np.array([])
@@ -541,7 +541,7 @@ class RangeShifterSettings:
 
 class PlanIonLayerTestCase(unittest.TestCase):
     def testAppendSpot(self):
-        layer = PlanIonLayer()
+        layer = PlanProtonLayer()
 
         x = 0
         y = 0
@@ -554,7 +554,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         self.assertRaises(Exception, lambda: layer.appendSpot(x, y, mu))
 
     def testAppendSpotWithTiming(self):
-        layer = PlanIonLayer()
+        layer = PlanProtonLayer()
 
         x = 0
         y = 0
@@ -569,7 +569,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         self.assertRaises(Exception, lambda: layer.appendSpot(x, y, mu, startTime))
 
     def testSetSpot(self):
-        layer = PlanIonLayer()
+        layer = PlanProtonLayer()
 
         x = 0
         y = 0
@@ -584,7 +584,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         np.testing.assert_array_equal(layer.spotMUs, [0])
 
     def testSetSpotWithTiming(self):
-        layer = PlanIonLayer()
+        layer = PlanProtonLayer()
 
         x = 0
         y = 0
@@ -602,7 +602,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         np.testing.assert_array_equal(layer.spotTimings, [0])
 
     def testRemoveSpot(self):
-        layer = PlanIonLayer()
+        layer = PlanProtonLayer()
 
         x = 0
         y = 0
@@ -626,7 +626,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         np.testing.assert_array_equal(layer.spotTimings, [0])
 
     def testSpotDefinedInXY(self):
-        layer = PlanIonLayer()
+        layer = PlanProtonLayer()
 
         x = 0
         y = 0
@@ -645,7 +645,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         self.assertIsNone(where)
 
     def testReorderSpots(self):
-        layer = PlanIonLayer()
+        layer = PlanProtonLayer()
         x = [0, 2, 1, 3]
         y = [1, 2, 2, 0]
         mu = [0.2, 0.5, 0.3, 0.1]
@@ -656,7 +656,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         np.testing.assert_array_equal(layer.spotY, [0, 1, 2, 2])
         np.testing.assert_array_almost_equal(layer.spotMUs, np.array([0.1, 0.2, 0.3, 0.5]))
 
-        layer = PlanIonLayer()
+        layer = PlanProtonLayer()
         x = [0, 1, 2, 3]
         y = [1, 2, 2, 0]
         mu = [0.2, 0.5, 0.3, 0.1]
@@ -669,7 +669,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(layer.spotTimings, np.array([2, 3, 5, 6]))
 
     def testFusionDuplicates(self):
-        layer = PlanIonLayer(nominalEnergy=100.)
+        layer = PlanProtonLayer(nominalEnergy=100.)
         x = [0, 2, 1, 3, 10, 4]
         y = [1, 2, 2, 0, 2, 5]
         mu = [0.2, 0.5, 0.3, 0.1, 0.2, 0.4]
@@ -682,7 +682,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         np.testing.assert_array_equal(layer.spotY, np.array([1, 2, 2, 0, 5]))
         np.testing.assert_array_almost_equal(layer.spotMUs, np.array([0.2, 0.7, 0.3, 0.1, 0.4]))
 
-        layer = PlanIonLayer(nominalEnergy=100.)
+        layer = PlanProtonLayer(nominalEnergy=100.)
         x = [0, 2, 1, 3, 10, 4]
         y = [1, 2, 2, 0, 2, 5]
         mu = [0.2, 0.5, 0.3, 0.1, 0.2, 0.4]
@@ -697,7 +697,7 @@ class PlanIonLayerTestCase(unittest.TestCase):
         np.testing.assert_array_equal(layer.spotMUs, np.array([0.2, 0.7, 0.3, 0.1, 0.4]))
         np.testing.assert_array_almost_equal(layer.spotTimings, np.array([1, 2, 3, 4, 6]))
 
-        layer = PlanIonLayer(nominalEnergy=100.)
+        layer = PlanProtonLayer(nominalEnergy=100.)
         x = [0, 2, 1, 3, 10, 3, 2, 30]
         y = [1, 2, 2, 0, 2, 3, 3, 0]
         mu = [0.2, 0.5, 0.3, 0.1, 0.3, 0.6, 0.4, 0.2]

@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Union, Sequence
 from opentps.core.data._patientData import PatientData
 
 if TYPE_CHECKING:
-    from opentps.core.data.plan._planIonBeam import PlanIonBeam
+    from opentps.core.data.plan._planProtonBeam import PlanProtonBeam
     from opentps.core.data.plan._planPhotonBeam import PlanPhotonBeam
-    from opentps.core.data.plan._ionPlan import IonPlan
+    from opentps.core.data.plan._protonPlan import ProtonPlan
     from opentps.core.data.plan._photonPlan import PhotonPlan   
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ class RTPlan(PatientData):
 
         super().__init__(name=name, patient=patient)
 
-    def __getitem__(self, beamNb) -> PlanIonBeam:
+    def __getitem__(self, beamNb) -> PlanProtonBeam:
         return self._beams[beamNb]
 
     def __len__(self):
@@ -69,14 +69,14 @@ class RTPlan(PatientData):
         return s
 
     @property
-    def beams(self) -> Sequence[Union[PlanIonBeam, PlanPhotonBeam]]:
+    def beams(self) -> Sequence[Union[PlanProtonBeam, PlanPhotonBeam]]:
         # For backwards compatibility but we can now access each beam with indexing brackets
         return [beam for beam in self._beams]
 
-    def appendBeam(self, beam: Union[PlanIonBeam, PlanPhotonBeam]):
+    def appendBeam(self, beam: Union[PlanProtonBeam, PlanPhotonBeam]):
         self._beams.append(beam)
 
-    def removeBeam(self, beam: Union[PlanIonBeam, PlanPhotonBeam]):
+    def removeBeam(self, beam: Union[PlanProtonBeam, PlanPhotonBeam]):
         self._beams.remove(beam)
 
     @property
@@ -94,6 +94,6 @@ class RTPlan(PatientData):
         if radiationType.upper() == "PHOTON":
             return PhotonPlan()
         elif radiationType.upper() == "ION":
-            return IonPlan()
+            return ProtonPlan()
         else:
             return RTPlan(radiationType)

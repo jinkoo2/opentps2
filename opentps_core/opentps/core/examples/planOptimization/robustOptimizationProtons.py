@@ -7,8 +7,8 @@ sys.path.append('..')
 
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
-from opentps.core.data.plan import RobustnessIon
+from opentps.core.data.plan._protonPlanDesign import ProtonPlanDesign
+from opentps.core.data.plan import RobustnessProton
 from opentps.core.data import DVH
 from opentps.core.data import Patient
 from opentps.core.data.plan import FidObjective
@@ -81,14 +81,14 @@ def run(output_path=""):
         plan = loadRTPlan(plan_file)
         logger.info('Plan loaded')
     else:
-        planDesign = IonPlanDesign()
+        planDesign = ProtonPlanDesign()
         planDesign.ct = ct
         planDesign.gantryAngles = gantryAngles
         planDesign.beamNames = beamNames
         planDesign.couchAngles = couchAngles
         planDesign.calibration = ctCalibration
         # Robustness settings
-        planDesign.robustness = RobustnessIon()
+        planDesign.robustness = RobustnessProton()
         planDesign.robustness.setupSystematicError = [5.0, 5.0, 5.0]  # mm
         planDesign.robustness.setupRandomError = [0.0, 0.0, 0.0]  # mm (sigma)
         planDesign.robustness.rangeSystematicError = 0.0  # %

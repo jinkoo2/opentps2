@@ -9,7 +9,7 @@ from opentps.core.processing.planOptimization.tools import evaluateClinical
 sys.path.append('..')
 import numpy as np
 
-from opentps.core.data.plan import IonPlan, RTPlan
+from opentps.core.data.plan import ProtonPlan, RTPlan
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import loadRTPlan, saveRTPlan
 from opentps.core.io.dicomIO import readDicomDose, readDicomPlan
@@ -20,8 +20,8 @@ from opentps.core.data._dvh import DVH
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
 from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.io.mhdIO import exportImageMHD
-from opentps.core.data.plan import PlanIonBeam
-from opentps.core.data.plan import PlanIonLayer
+from opentps.core.data.plan import PlanProtonBeam
+from opentps.core.data.plan import PlanProtonLayer
 from opentps.core.data.images import CTImage, DoseImage
 from opentps.core.data import RTStruct
 from opentps.core.data import Patient
@@ -40,13 +40,13 @@ def run(output_path=""):
     logger.info('Files will be stored in {}'.format(output_path))
 
     # Create plan from scratch
-    plan = IonPlan()
-    plan.appendBeam(PlanIonBeam())
-    plan.appendBeam(PlanIonBeam())
+    plan = ProtonPlan()
+    plan.appendBeam(PlanProtonBeam())
+    plan.appendBeam(PlanProtonBeam())
     plan.beams[1].gantryAngle = 120.
-    plan.beams[0].appendLayer(PlanIonLayer(100))
-    plan.beams[0].appendLayer(PlanIonLayer(90))
-    plan.beams[1].appendLayer(PlanIonLayer(80))
+    plan.beams[0].appendLayer(PlanProtonLayer(100))
+    plan.beams[0].appendLayer(PlanProtonLayer(90))
+    plan.beams[1].appendLayer(PlanProtonLayer(80))
     plan[0].layers[0].appendSpot([-1,0,1], [1,2,3], [0.1,0.2,0.3])
     plan[0].layers[1].appendSpot([0,1], [2,3], [0.2,0.3])
     plan[1].layers[0].appendSpot(1, 1, 0.5)

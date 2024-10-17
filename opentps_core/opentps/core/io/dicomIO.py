@@ -9,9 +9,9 @@ from opentps.core.data import Patient
 from opentps.core.data.plan._rangeShifter import RangeShifter
 
 from opentps.core.data.plan._rtPlan import RTPlan
-from opentps.core.data.plan._ionPlan import IonPlan
-from opentps.core.data.plan._planIonBeam import PlanIonBeam
-from opentps.core.data.plan._planIonLayer import PlanIonLayer
+from opentps.core.data.plan._protonPlan import ProtonPlan
+from opentps.core.data.plan._planProtonBeam import PlanProtonBeam
+from opentps.core.data.plan._planProtonLayer import PlanProtonLayer
 from opentps.core.data.images._ctImage import CTImage
 from opentps.core.data.images._mrImage import MRImage
 from opentps.core.data.images._doseImage import DoseImage
@@ -1208,7 +1208,7 @@ def readDicomPlan(dcmFile) -> RTPlan:
 
     ##### ION PLAN
     elif dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.481.8":
-        plan = IonPlan(name=name, patient = patient)
+        plan = ProtonPlan(name=name, patient = patient)
         plan.modality = "RT Ion Plan IOD"
 
         if dcm.IonBeamSequence[0].RadiationType == "PROTON":
@@ -1242,7 +1242,7 @@ def readDicomPlan(dcmFile) -> RTPlan:
 
             first_layer = dcm_beam.IonControlPointSequence[0]
 
-            beam = PlanIonBeam()
+            beam = PlanProtonBeam()
             beam.seriesInstanceUID = plan.seriesInstanceUID
             beam.name = dcm_beam.BeamName
             beam.isocenterPosition = [float(first_layer.IsocenterPosition[0]), float(first_layer.IsocenterPosition[1]),
@@ -1315,7 +1315,7 @@ def readDicomPlan(dcmFile) -> RTPlan:
                 if sum_weights == 0.0:
                     continue
 
-                layer = PlanIonLayer()
+                layer = PlanProtonLayer()
                 layer.seriesInstanceUID = plan.seriesInstanceUID
 
                 if hasattr(dcm_layer, 'SnoutPosition'):

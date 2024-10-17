@@ -1,7 +1,7 @@
 from opentps.core.data.plan._robustness import Robustness
 
 
-class RobustnessIon(Robustness):
+class RobustnessProton(Robustness):
     """
     This class creates an object that stores the robustness parameters of an ion plan and robust scenarios (optimization).
 

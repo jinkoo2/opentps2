@@ -4,17 +4,17 @@ import logging
 import copy
 from typing import Sequence
 logger = logging.getLogger(__name__)
-__all__ = ['IonPlan']
+__all__ = ['ProtonPlan']
 
 from typing import TYPE_CHECKING
 from opentps.core.data.plan._rtPlan import RTPlan
 
 # if TYPE_CHECKING:
-from opentps.core.data.plan._planIonBeam import PlanIonBeam
-from opentps.core.data.plan._planIonLayer import PlanIonLayer
+from opentps.core.data.plan._planProtonBeam import PlanProtonBeam
+from opentps.core.data.plan._planProtonLayer import PlanProtonLayer
 
 
-class IonPlan(RTPlan):
+class ProtonPlan(RTPlan):
     """
         Class for storing the data of a single IonPlan. Inherits from RTPlan.
 
@@ -44,7 +44,7 @@ class IonPlan(RTPlan):
             Number of spots in the plan.
     """
     def __init__(self, *args, **kwargs):
-        super(IonPlan, self).__init__(*args, **kwargs)
+        super(ProtonPlan, self).__init__(*args, **kwargs)
         self.deliveredProtons = None
         self.sopInstanceUID = "1.2.840.10008.5.1.4.1.1.481.8"
         self.radiationType = "PROTON"
@@ -52,7 +52,7 @@ class IonPlan(RTPlan):
 
 
     @property
-    def layers(self) -> Sequence[PlanIonLayer]:
+    def layers(self) -> Sequence[PlanProtonLayer]:
         layers = []
         for beam in self.beams:
             layers.extend(beam.layers)
@@ -229,7 +229,7 @@ class IonPlan(RTPlan):
                                 ind += 1
 
 
-    def appendSpot(self, beam: PlanIonBeam, layer: PlanIonLayer, spot_index: int):
+    def appendSpot(self, beam: PlanProtonBeam, layer: PlanProtonLayer, spot_index: int):
         """
         Assign a particular spot (beam, layer, spot_index) to plan
 
@@ -268,7 +268,7 @@ class IonPlan(RTPlan):
                                                                 layer._mu[spot_index], t, d)
 
 
-    def appendLayer(self, beam: PlanIonBeam, layer: PlanIonLayer):
+    def appendLayer(self, beam: PlanProtonBeam, layer: PlanProtonLayer):
         """
         Assign a particular layer (beam, layer) to plan
 
@@ -309,11 +309,11 @@ class IonPlan(RTPlan):
 
 class PlanIonLayerTestCase(unittest.TestCase):
         def testLen(self):
-                from opentps.core.data.plan import PlanIonBeam, PlanIonLayer
+                from opentps.core.data.plan import PlanProtonBeam, PlanProtonLayer
 
-                plan = IonPlan()
-                beam = PlanIonBeam()
-                layer = PlanIonLayer(nominalEnergy=100.)
+                plan = ProtonPlan()
+                beam = PlanProtonBeam()
+                layer = PlanProtonLayer(nominalEnergy=100.)
                 layer.appendSpot(0, 0, 1)
 
                 beam.appendLayer(layer)
@@ -325,11 +325,11 @@ class PlanIonLayerTestCase(unittest.TestCase):
                 self.assertEqual(len(plan), 0)
 
         def testLenWithTimings(self):
-                from opentps.core.data.plan import PlanIonBeam, PlanIonLayer
+                from opentps.core.data.plan import PlanProtonBeam, PlanProtonLayer
 
-                plan = IonPlan()
-                beam = PlanIonBeam()
-                layer = PlanIonLayer(nominalEnergy=100.)
+                plan = ProtonPlan()
+                beam = PlanProtonBeam()
+                layer = PlanProtonLayer(nominalEnergy=100.)
                 layer.appendSpot(0, 0, 1, 0.5)
 
                 beam.appendLayer(layer)
@@ -341,18 +341,18 @@ class PlanIonLayerTestCase(unittest.TestCase):
                 self.assertEqual(len(plan), 0)
 
         def testReorderPlan(self):
-                from opentps.core.data.plan import PlanIonBeam, PlanIonLayer
+                from opentps.core.data.plan import PlanProtonBeam, PlanProtonLayer
 
-                plan = IonPlan()
-                beam = PlanIonBeam()
-                layer = PlanIonLayer(nominalEnergy=100.)
+                plan = ProtonPlan()
+                beam = PlanProtonBeam()
+                layer = PlanProtonLayer(nominalEnergy=100.)
                 x = [0, 2, 1, 3]
                 y = [1, 2, 2, 0]
                 mu = [0.2, 0.5, 0.3, 0.1]
                 layer.appendSpot(x, y, mu)
                 beam.appendLayer(layer)
 
-                layer2 = PlanIonLayer(nominalEnergy=120.)
+                layer2 = PlanProtonLayer(nominalEnergy=120.)
                 x2 = [0, 2, 1, 3]
                 y2 = [3, 3, 5, 0]
                 mu2 = [0.2, 0.5, 0.3, 0.1]
@@ -376,13 +376,13 @@ class PlanIonLayerTestCase(unittest.TestCase):
                 np.testing.assert_array_almost_equal(layer0.spotMUs, np.array([0.1, 0.2, 0.5, 0.3]))
 
         def testFusionDuplicates(self):
-                from opentps.core.data.plan import PlanIonBeam, PlanIonLayer
+                from opentps.core.data.plan import PlanProtonBeam, PlanProtonLayer
 
-                plan = IonPlan()
-                beam1 = PlanIonBeam()
+                plan = ProtonPlan()
+                beam1 = PlanProtonBeam()
                 beam1.gantryAngle = 0
                 beam1.couchAngle = 0
-                layer = PlanIonLayer(nominalEnergy=100.)
+                layer = PlanProtonLayer(nominalEnergy=100.)
                 x = [0, 2, 1, 3]
                 y = [1, 2, 2, 0]
                 mu = [0.2, 0.5, 0.3, 0.1]
@@ -390,14 +390,14 @@ class PlanIonLayerTestCase(unittest.TestCase):
                 beam1.appendLayer(layer)
                 plan.appendBeam(beam1)
 
-                beam2 = PlanIonBeam()
+                beam2 = PlanProtonBeam()
                 beam2.gantryAngle = 90
                 beam2.couchAngle = 45
                 plan.appendBeam(beam2)
-                beam3 = PlanIonBeam()
+                beam3 = PlanProtonBeam()
                 beam3.gantryAngle = 0
                 beam3.couchAngle = 0
-                layer3 = PlanIonLayer(nominalEnergy=100.)
+                layer3 = PlanProtonLayer(nominalEnergy=100.)
                 x = [1, 3, 2, 4]
                 y = [2, 3, 3, 1]
                 mu = [0.3, 0.6, 0.4, 0.2]
@@ -416,13 +416,13 @@ class PlanIonLayerTestCase(unittest.TestCase):
                 np.testing.assert_array_almost_equal(plan._beams[0]._layers[1].spotMUs, np.array([0.3, 0.6, 0.4, 0.2]))
 
         def testSimplify(self):
-                from opentps.core.data.plan import PlanIonBeam, PlanIonLayer
+                from opentps.core.data.plan import PlanProtonBeam, PlanProtonLayer
 
-                plan = IonPlan()
-                beam1 = PlanIonBeam()
+                plan = ProtonPlan()
+                beam1 = PlanProtonBeam()
                 beam1.gantryAngle = 0
                 beam1.couchAngle = 0
-                layer = PlanIonLayer(nominalEnergy=100.)
+                layer = PlanProtonLayer(nominalEnergy=100.)
                 x = [0, 2, 1, 3]
                 y = [1, 2, 2, 0]
                 mu = [0.2, 0.5, 0.3, 0.1]
@@ -430,14 +430,14 @@ class PlanIonLayerTestCase(unittest.TestCase):
                 beam1.appendLayer(layer)
                 plan.appendBeam(beam1)
 
-                beam2 = PlanIonBeam()
+                beam2 = PlanProtonBeam()
                 beam2.gantryAngle = 90
                 beam2.couchAngle = 45
                 plan.appendBeam(beam2)  # empty beam
-                beam3 = PlanIonBeam()
+                beam3 = PlanProtonBeam()
                 beam3.gantryAngle = 0
                 beam3.couchAngle = 0
-                layer3 = PlanIonLayer(nominalEnergy=99.97)
+                layer3 = PlanProtonLayer(nominalEnergy=99.97)
                 x = [1, 3, 2, 3, 10]
                 y = [2, 3, 3, 0, 10]
                 mu = [0.3, 0.6, 0.4, 0.2, 0.]

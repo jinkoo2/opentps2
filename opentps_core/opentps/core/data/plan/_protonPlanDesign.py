@@ -1,5 +1,5 @@
 
-__all__ = ['IonPlanDesign']
+__all__ = ['ProtonPlanDesign']
 
 import logging
 import time
@@ -9,7 +9,7 @@ import numpy as np
 
 from opentps.core.data.CTCalibrations._abstractCTCalibration import AbstractCTCalibration
 from opentps.core.data.plan._rangeShifter import RangeShifter
-from opentps.core.data.plan._robustnessIon import RobustnessIon
+from opentps.core.data.plan._robustnessProton import RobustnessProton
 from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEvalProton
 from opentps.core.processing.planOptimization.planInitializer import PlanInitializer
 from opentps.core.data.plan._rtPlanDesign import RTPlanDesign
@@ -17,7 +17,7 @@ from opentps.core.data.plan._rtPlanDesign import RTPlanDesign
 logger = logging.getLogger(__name__)
 
 
-class IonPlanDesign(RTPlanDesign):
+class ProtonPlanDesign(RTPlanDesign):
     """
     This class is used to store the plan design. It inherits from PatientData.
 
@@ -52,7 +52,7 @@ class IonPlanDesign(RTPlanDesign):
 
         self.beamletsLET = []
 
-        self.robustness = RobustnessIon()
+        self.robustness = RobustnessProton()
         self.robustnessEval = RobustnessEvalProton()
 
 
@@ -63,13 +63,13 @@ class IonPlanDesign(RTPlanDesign):
 
         Returns
         --------
-        IonPlan
+        ProtonPlan
             plan
         """
         start = time.time()
         # Spot placement
-        from opentps.core.data.plan import IonPlan
-        plan = IonPlan("NewPlan")
+        from opentps.core.data.plan import ProtonPlan
+        plan = ProtonPlan("NewPlan")
         plan.seriesInstanceUID = "1.2.840.10008.5.1.4.1.1.481.8"
         plan.modality = "RT Ion Plan IOD"
         plan.radiationType = "PROTON"
@@ -99,9 +99,9 @@ class IonPlanDesign(RTPlanDesign):
         for beam in plan:
             plan.removeBeam(beam)
 
-        from opentps.core.data.plan import PlanIonBeam
+        from opentps.core.data.plan import PlanProtonBeam
         for i, gantryAngle in enumerate(self.gantryAngles):
-            beam = PlanIonBeam()
+            beam = PlanProtonBeam()
             beam.gantryAngle = gantryAngle
             beam.couchAngle = self.couchAngles[i]
             beam.isocenterPosition = self.targetMask.centerOfMass
