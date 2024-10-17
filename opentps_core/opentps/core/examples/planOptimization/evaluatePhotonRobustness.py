@@ -41,9 +41,7 @@ def run(output_path=""):
     huAir = -1024.
     huWater = 0
     data = huAir * np.ones((ctSize, ctSize, ctSize))
-    data[80:, 80:, :] = huWater
-    data[100:120, 30:45, :] = huWater
-    data[30:45, 100:120, :] = huWater
+    data[:, 50:, :] = huWater
     ct.imageArray = data
 
     roi = ROIMask()
@@ -74,7 +72,7 @@ def run(output_path=""):
         exit()
 
     # Load / Generate scenarios
-    scenario_folder = '/home/colin/opentps/Photon_Robust_Output_Example/RobustnessTest'
+    scenario_folder = os.path.join(output_path, "RobustnessTest")
     if os.path.isdir(scenario_folder):
         scenarios = RobustnessEvalPhoton()
         scenarios.selectionStrategy = RobustnessEvalPhoton.Strategies.DEFAULT
