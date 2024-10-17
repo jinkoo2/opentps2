@@ -365,8 +365,8 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         logger.info("Simulation of error scenarios")
         self._startMCsquare()
         # Import dose results
-        for s in range(self._plan.planDesign.robustnessEval.numScenarios):
-            fileName = 'Dose_Scenario_' + str(s + 1) + '-' + str(self._plan.planDesign.robustnessEval.numScenarios) + '.mhd'
+        for s in range(self._plan.planDesign.robustnessEval.nScenarios):
+            fileName = 'Dose_Scenario_' + str(s + 1) + '-' + str(self._plan.planDesign.robustnessEval.nScenarios) + '.mhd'
             self._doseFilePath = os.path.join(self._workDir, fileName)
             if os.path.isfile(self._doseFilePath):
                 dose = self._importDose(plan)
@@ -796,34 +796,34 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         
         if self._plan.planDesign.robustnessEval.selectionStrategy == self._plan.planDesign.robustnessEval.Strategies.ALL:
             config["Scenario_selection"] == "All"
-            self._plan.planDesign.robustnessEval.numScenarios = 81
-            if(config["Systematic_Setup_Error"][0] == 0.0): self._plan.planDesign.robustnessEval.numScenarios/=3
-            if(config["Systematic_Setup_Error"][1] == 0.0): self._plan.planDesign.robustnessEval.numScenarios/=3
-            if(config["Systematic_Setup_Error"][2] == 0.0): self._plan.planDesign.robustnessEval.numScenarios/=3
-            if(config["Systematic_Range_Error"] == 0.0): self._plan.planDesign.robustnessEval.numScenarios/=3
+            self._plan.planDesign.robustnessEval.nScenarios = 81
+            if(config["Systematic_Setup_Error"][0] == 0.0): self._plan.planDesign.robustnessEval.nScenarios/=3
+            if(config["Systematic_Setup_Error"][1] == 0.0): self._plan.planDesign.robustnessEval.nScenarios/=3
+            if(config["Systematic_Setup_Error"][2] == 0.0): self._plan.planDesign.robustnessEval.nScenarios/=3
+            if(config["Systematic_Range_Error"] == 0.0): self._plan.planDesign.robustnessEval.nScenarios/=3
 
         elif self._plan.planDesign.robustnessEval.selectionStrategy == self._plan.planDesign.robustnessEval.Strategies.REDUCED_SET:
             config["Scenario_selection"] = "ReducedSet"  
-            self._plan.planDesign.robustnessEval.numScenarios = 21
-            if(config["Systematic_Setup_Error"][0] == 0.0): self._plan.planDesign.robustnessEval.numScenarios-= 6
-            if(config["Systematic_Setup_Error"][1] == 0.0): self._plan.planDesign.robustnessEval.numScenarios-= 6
-            if(config["Systematic_Setup_Error"][2] == 0.0): self._plan.planDesign.robustnessEval.numScenarios-=6
-            if(config["Systematic_Range_Error"] == 0.0): self._plan.planDesign.robustnessEval.numScenarios/= 3
+            self._plan.planDesign.robustnessEval.nScenarios = 21
+            if(config["Systematic_Setup_Error"][0] == 0.0): self._plan.planDesign.robustnessEval.nScenarios-= 6
+            if(config["Systematic_Setup_Error"][1] == 0.0): self._plan.planDesign.robustnessEval.nScenarios-= 6
+            if(config["Systematic_Setup_Error"][2] == 0.0): self._plan.planDesign.robustnessEval.nScenarios-=6
+            if(config["Systematic_Range_Error"] == 0.0): self._plan.planDesign.robustnessEval.nScenarios/= 3
 
         elif self._plan.planDesign.robustnessEval.selectionStrategy == self._plan.planDesign.robustnessEval.Strategies.RANDOM:
             config["Scenario_selection"] = "Random" 
-            if self._plan.planDesign.robustnessEval.numScenarios > 0: 
-                config["Num_Random_Scenarios"] = self._plan.planDesign.robustnessEval.numScenarios # random
+            if self._plan.planDesign.robustnessEval.nScenarios > 0: 
+                config["Num_Random_Scenarios"] = self._plan.planDesign.robustnessEval.nScenarios # random
             else: config["Num_Random_Scenarios"] = 100 # Default
-            self._plan.planDesign.robustnessEval.numScenarios = config["Num_Random_Scenarios"]
+            self._plan.planDesign.robustnessEval.nScenarios = config["Num_Random_Scenarios"]
         else:
             logger.error("No scenario selection strategy was configured. Pick between [ALL,REDUCED_SET,RANDOM]")
         
         # Remove duplicate of nominal scenario if no random set up errors in ALL and REDUCED_SET scenarios 
         if np.sum(config["Random_Setup_Error"])==0 and config["Scenario_selection"] != "Random":
-            self._plan.planDesign.robustnessEval.numScenarios-=1
+            self._plan.planDesign.robustnessEval.nScenarios-=1
         
-        self._plan.planDesign.robustnessEval.numScenarios = int(self._plan.planDesign.robustnessEval.numScenarios) # handle float output
+        self._plan.planDesign.robustnessEval.nScenarios = int(self._plan.planDesign.robustnessEval.nScenarios) # handle float output
         
         return config
 

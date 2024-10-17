@@ -22,7 +22,7 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Output_Proton_Example')
+        output_path = os.path.join(os.getcwd(), 'Proton_Robust_Output_Example')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
@@ -76,7 +76,7 @@ def run(output_path=""):
         print("You need to design and optimize a plan first - See SimpleOptimization or robustOptimization script.")
 
     # Load / Generate scenarios
-    scenario_folder = os.path.join(output_path,'RobustnessTest_Jul-17-2024_15-16-10_')
+    scenario_folder = os.path.join(output_path,'RobustnessTest')
     if os.path.isdir(scenario_folder):
         scenarios = RobustnessEvalProton()
         scenarios.selectionStrategy = RobustnessEvalProton.Strategies.ALL
@@ -100,7 +100,7 @@ def run(output_path=""):
 
         # Random scenario sampling  
         plan.planDesign.robustnessEval.selectionStrategy = plan.planDesign.robustnessEval.Strategies.RANDOM
-        plan.planDesign.robustnessEval.numScenarios = 30 # specify how many random scenarios to simulate, default = 100
+        plan.planDesign.robustnessEval.nScenarios = 30 # specify how many random scenarios to simulate, default = 100
         
         plan.patient = None
         # run MCsquare simulation

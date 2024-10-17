@@ -110,6 +110,8 @@ class RobustnessEval:
         from opentps.core.data._dvh import DVH
         scenario = RobustnessScenario()
         scenario.dose = dose
+        scenario.sse = self.setupSystematicError
+        scenario.sre = self.setupRandomError
         # Need to set patient to None for memory, est-ce que ca va poser probleme ?
         scenario.dose.patient = None
         scenario.dvh.clear()
