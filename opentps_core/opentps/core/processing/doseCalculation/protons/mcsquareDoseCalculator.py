@@ -13,7 +13,7 @@ import numpy as np
 
 from opentps.core.data.MCsquare import MCsquareConfig
 from opentps.core.data import SparseBeamlets
-from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
+from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEvalProton
 from opentps.core.processing.doseCalculation.abstractDoseInfluenceCalculator import AbstractDoseInfluenceCalculator
 from opentps.core.processing.doseCalculation.protons.abstractMCDoseCalculator import AbstractMCDoseCalculator
 from opentps.core.processing.imageProcessing import resampler3D
@@ -323,7 +323,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         let = self._importLET()
         return dose, let
 
-    def computeRobustScenario(self, ct: CTImage, plan: IonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> RobustnessEval:
+    def computeRobustScenario(self, ct: CTImage, plan: IonPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> RobustnessEvalProton:
         """
         Compute robustness scenario using MCsquare
 

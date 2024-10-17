@@ -489,7 +489,7 @@ class RobustnessEvalPhoton(RobustnessEval,RobustnessPhoton):
         # Update numScenarios if needed (in case the random error adds a new scenario)
         self.numScenarios = len(self.scenarios)
 
-class RobustnessEvalIon(RobustnessEval):
+class RobustnessEvalProton(RobustnessEval):
     """
     This class is used to compute the robustness of an ion plan (evaluation).
 

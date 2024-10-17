@@ -11,7 +11,7 @@ from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
+from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEvalPhoton
 from opentps.core.processing.doseCalculation.photons.cccDoseCalculator import CCCDoseCalculator
 
 
@@ -76,14 +76,14 @@ def run(output_path=""):
     # Load / Generate scenarios
     scenario_folder = '/home/colin/opentps/Photon_Robust_Output_Example/RobustnessTest'
     if os.path.isdir(scenario_folder):
-        scenarios = RobustnessEval()
-        scenarios.selectionStrategy = RobustnessEval.Strategies.DEFAULT
+        scenarios = RobustnessEvalPhoton()
+        scenarios.selectionStrategy = RobustnessEvalPhoton.Strategies.DEFAULT
         scenarios.setupSystematicError = plan.planDesign.robustnessEval.setupSystematicError
         scenarios.setupRandomError = plan.planDesign.robustnessEval.setupRandomError
         scenarios.load(scenario_folder)
     else:
-        # MCsquare config for scenario dose computation
-        plan.planDesign.robustnessEval = RobustnessEval()
+        # Robust config for scenario dose computation
+        plan.planDesign.robustnessEval = RobustnessEvalPhoton()
         plan.planDesign.robustnessEval.setupSystematicError = [1.6, 1.6, 1.6] #sigma (mm)
         plan.planDesign.robustnessEval.setupRandomError = [1.4, 1.4, 1.4] #sigma (mm)
 

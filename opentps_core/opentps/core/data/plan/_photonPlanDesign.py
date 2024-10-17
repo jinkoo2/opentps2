@@ -9,7 +9,9 @@ import numpy as np
 import pydicom
 
 from opentps.core.data.plan import PhotonPlan
+from opentps.core.data.plan._robustnessPhoton import RobustnessPhoton
 from opentps.core.data.plan._rtPlanDesign import RTPlanDesign
+from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEvalPhoton
 from opentps.core.processing.planOptimization.planInitializer_Photons import PhotonPlanInitializer
 
 logger = logging.getLogger(__name__)
@@ -32,6 +34,9 @@ class PhotonPlanDesign(RTPlanDesign):
 
         self.isocenterPosition_mm = None
         self.ROI_cropping = True
+
+        self.robustness = RobustnessPhoton()
+        self.robustnessEval = RobustnessEvalPhoton()
 
     @property
     def scoringVoxelSpacing(self) -> Sequence[float]:

@@ -1,23 +1,16 @@
 
 __all__ = ['IonPlanDesign']
 
-from enum import Enum
 import logging
 import time
-from typing import Optional, Sequence, Union
+from typing import  Sequence
 
 import numpy as np
-import pydicom
 
 from opentps.core.data.CTCalibrations._abstractCTCalibration import AbstractCTCalibration
-from opentps.core.data.images._ctImage import CTImage
-from opentps.core.data.images._roiMask import ROIMask
 from opentps.core.data.plan._rangeShifter import RangeShifter
-from opentps.core.processing.imageProcessing import resampler3D
-from opentps.core.data._patientData import PatientData
-from opentps.core.data.plan._objectivesList import ObjectivesList
-from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
-from opentps.core.data.plan._rtPlanDesign import Robustness
+from opentps.core.data.plan._robustnessIon import RobustnessIon
+from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEvalProton
 from opentps.core.processing.planOptimization.planInitializer import PlanInitializer
 from opentps.core.data.plan._rtPlanDesign import RTPlanDesign
 
@@ -58,6 +51,9 @@ class IonPlanDesign(RTPlanDesign):
         self.rangeShifters: Sequence[RangeShifter] = []
 
         self.beamletsLET = []
+
+        self.robustness = RobustnessIon()
+        self.robustnessEval = RobustnessEvalProton()
 
 
 

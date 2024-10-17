@@ -110,7 +110,7 @@ class RobustnessPhoton(Robustness):
         scenario = RobustScenario(sb, sse , sre)
         self.scenarios.append(scenario)
     
-    def generateRobustScenarios4Planning(self):
+    def generateRobustScenarios(self):
         if self.setupSystematicError not in [None, 0, [0,0,0]]:
             if self.selectionStrategy == self.selectionStrategy.RANDOM :
                 self.generateRandomScenarios()
