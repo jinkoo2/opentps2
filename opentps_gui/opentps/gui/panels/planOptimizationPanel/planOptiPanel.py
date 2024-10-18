@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QComboBox, QLabel, QPushButton
 from PyQt5.QtCore import Qt
 from opentps.core.data.images import CTImage
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan import IonPlanDesign,Robustness
+from opentps.core.data.plan import ProtonPlanDesign,Robustness
 from opentps.core.data._patient import Patient
 from opentps.core.data.plan._photonPlanDesign import PhotonPlanDesign
 from opentps.core.data.plan._rtPlanDesign import RTPlanDesign
@@ -214,7 +214,7 @@ class PlanOptiPanel(QWidget):
     def _handlePlanStructure(self, selectedPlanStructure):
         self._objectivesWidget.planDesign = selectedPlanStructure
         if  selectedPlanStructure is not None:
-            if isinstance(self._objectivesWidget.planDesign,IonPlanDesign):
+            if isinstance(self._objectivesWidget.planDesign,ProtonPlanDesign):
                 self._radiationType = "PROTON"
                 self._radiationLabel.setText("PROTON")
                 self._radiationLabel.setStyleSheet("background-color: red; color: black;")

@@ -12,7 +12,7 @@ from opentps.core.processing.planOptimization.tools import evaluateClinical
 from opentps.core.data.images import CTImage, DoseImage
 from opentps.core.data.images import ROIMask
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
+from opentps.core.data.plan._protonPlanDesign import ProtonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
 from opentps.core.data import RTStruct
@@ -107,7 +107,7 @@ def run(output_path=""):
         plan = loadRTPlan(plan_file)
         logger.info('Plan loaded')
     else:
-        planDesign = IonPlanDesign()
+        planDesign = ProtonPlanDesign()
         planDesign.ct = ct
         planDesign.targetMask = roi
         planDesign.gantryAngles = gantryAngles

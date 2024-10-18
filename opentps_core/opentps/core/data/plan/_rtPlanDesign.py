@@ -59,6 +59,7 @@ class RTPlanDesign(PatientData):
         self.gantryAngles = []
         self.couchAngles = []
         self._scoringVoxelSpacing = None
+        self.ROI_cropping = True
 
         self.objectives = ObjectivesList()
         self.beamlets = None

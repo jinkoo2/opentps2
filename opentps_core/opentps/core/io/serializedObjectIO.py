@@ -8,14 +8,14 @@ import os
 import logging
 import matplotlib.pyplot as plt
 
-from opentps.core.data.plan._ionPlan import IonPlan
+from opentps.core.data.plan._protonPlan import ProtonPlan
 from opentps.core.data.plan._photonPlan import PhotonPlan
 from opentps.core.data.plan._rtPlan import RTPlan
 from opentps.core.data.dynamicData._dynamic3DModel import Dynamic3DModel
 from opentps.core.data.dynamicData._dynamic3DSequence import Dynamic3DSequence
 from opentps.core.data.images._ctImage import CTImage
 from opentps.core.data.images._vectorField3D import VectorField3D
-from opentps.core.data._patient import Patient
+
 
 
 
@@ -167,8 +167,8 @@ def saveRTPlan(plan, file_path, unloadBeamlets=True):
     if plan.planDesign and unloadBeamlets:
         if plan.planDesign.beamlets:
             plan.planDesign.beamlets.unload()
-        from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
-        if isinstance(plan.planDesign, IonPlanDesign) and plan.planDesign.beamletsLET:
+        from opentps.core.data.plan._protonPlanDesign import ProtonPlanDesign
+        if isinstance(plan.planDesign, ProtonPlanDesign) and plan.planDesign.beamletsLET:
             plan.planDesign.beamletsLET.unload()
 
         for scenario in plan.planDesign.robustness.scenarios:
@@ -196,7 +196,7 @@ def loadRTPlan(file_path, radiationType="Proton"):
         tmp = pickle.load(fid)
     
     if radiationType.upper() == "PROTON":
-        plan = IonPlan()
+        plan = ProtonPlan()
     elif radiationType.upper() == "PHOTON":
         plan = PhotonPlan()
     else:
@@ -284,7 +284,7 @@ def dictionarizeData(data):
 
     print('Dictionarize data -', data.getTypeAsString())
     newDict = {}
-
+    from opentps.core.data._patient import Patient
     if isinstance(data, Patient):
 
         patientDataDictList = []

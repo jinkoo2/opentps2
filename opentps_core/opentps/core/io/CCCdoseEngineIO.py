@@ -16,6 +16,7 @@ from opentps.core.data.images._image3D import Image3D
 from typing import Optional, Sequence, Union
 from opentps.core.data import ROIContour
 from opentps.core.data.images import ROIMask
+from matplotlib import pyplot as plt
 
 logger = logging.getLogger(__name__)
 

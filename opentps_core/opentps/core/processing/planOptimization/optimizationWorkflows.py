@@ -4,8 +4,8 @@ import numpy as np
 
 from opentps.core.data.images._doseImage import DoseImage
 from opentps.core.data.images._roiMask import ROIMask
-from opentps.core.data.plan._planIonBeam import PlanIonBeam
-from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
+from opentps.core.data.plan._planProtonBeam import PlanProtonBeam
+from opentps.core.data.plan._protonPlanDesign import ProtonPlanDesign
 from opentps.core.data.plan._rtPlan import RTPlan
 from opentps.core.io import scannerReader, mcsquareIO
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
@@ -18,7 +18,7 @@ from opentps.core.processing.planOptimization.planOptimizationConfig import Plan
 
 logger = logging.getLogger(__name__)
 
-def optimizeIMPT(plan:RTPlan, planStructure:IonPlanDesign):
+def optimizeIMPT(plan:RTPlan, planStructure:ProtonPlanDesign):
     """
     Optimizes an IMPT plan
 
@@ -45,7 +45,7 @@ def optimizeIMPT(plan:RTPlan, planStructure:IonPlanDesign):
 
     finalDose.patient = plan.patient
 
-def _defineTargetMaskAndPrescription(planStructure:IonPlanDesign):
+def _defineTargetMaskAndPrescription(planStructure:ProtonPlanDesign):
     from opentps.core.data._roiContour import ROIContour
 
     targetMask = None
@@ -75,12 +75,12 @@ def _defineTargetMaskAndPrescription(planStructure:IonPlanDesign):
 
     planStructure.targetMask = targetMask
 
-def _createBeams(plan:RTPlan, planStructure:IonPlanDesign):
+def _createBeams(plan:RTPlan, planStructure:ProtonPlanDesign):
     for beam in plan:
         plan.removeBeam(beam)
 
     for i, gantryAngle in enumerate(planStructure.gantryAngles):
-        beam = PlanIonBeam()
+        beam = PlanProtonBeam()
         beam.gantryAngle = gantryAngle
         beam.couchAngle = planStructure.couchAngles[i]
         beam.isocenterPosition = planStructure.targetMask.centerOfMass
@@ -89,7 +89,7 @@ def _createBeams(plan:RTPlan, planStructure:IonPlanDesign):
 
         plan.appendBeam(beam)
 
-def _initializeBeams(plan:RTPlan, planStructure:IonPlanDesign):
+def _initializeBeams(plan:RTPlan, planStructure:ProtonPlanDesign):
     dcConfig = DoseCalculationConfig()
     ctCalibration = scannerReader.readScanner(dcConfig.scannerFolder)
 
@@ -100,7 +100,7 @@ def _initializeBeams(plan:RTPlan, planStructure:IonPlanDesign):
     initializer.targetMask = planStructure.targetMask
     initializer.initializePlan(planStructure.spotSpacing, planStructure.layerSpacing, planStructure.targetMargin)
 
-def _computeBeamlets(plan:RTPlan, planStructure:IonPlanDesign):
+def _computeBeamlets(plan:RTPlan, planStructure:ProtonPlanDesign):
     dcConfig = DoseCalculationConfig()
     optimizationSettings = PlanOptimizationConfig()
 
@@ -116,7 +116,7 @@ def _computeBeamlets(plan:RTPlan, planStructure:IonPlanDesign):
 
     planStructure.beamlets = mc2.computeBeamlets(planStructure.ct, plan)
 
-def _optimizePlan(plan:RTPlan, planStructure:IonPlanDesign):
+def _optimizePlan(plan:RTPlan, planStructure:ProtonPlanDesign):
     optimizationSettings = PlanOptimizationConfig()
 
     beamletMatrix = planStructure.beamlets.toSparseMatrix()

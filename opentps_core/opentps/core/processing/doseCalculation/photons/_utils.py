@@ -3,11 +3,16 @@ import opentps.core.io.CCCdoseEngineIO as CCCdoseEngineIO
 import scipy.sparse as sp
 import logging
 logger = logging.getLogger(__name__)
+from scipy.ndimage import shift, gaussian_filter
 import scipy.sparse as sp
+from scipy.sparse import csc_matrix
+from opentps.core.data.images import DoseImage
 import ctypes
 import os
 import psutil
 import os
+from matplotlib import pyplot as plt
+from opentps.core.data.plan import PhotonPlan
 
 
 def correctShift(setup, angle):
@@ -254,3 +259,38 @@ def shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAng
 def dnorm(x, mu, sd):
     return 1 / (np.sqrt(2 * np.pi) * sd) * np.e ** (-np.power((x - mu) / sd, 2) / 2)
 
+
+def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): ### Shift beamlets according sse + apply gaussian filter one the dose array to simulate sre
+    if scenario.sse is not None:
+        shiftVoxels = np.array(scenario.sse) / np.array(imageSpacing)
+        cumulativeNumberBeamlets = 0
+        weights = nominal.sb.beamletWeights
+        doseGridSize = nominal.sb.doseGridSize
+        dose = np.zeros(doseGridSize)
+        sizeImage = nominal.sb._sparseBeamlets.shape[0]
+        nofBeamlets = nominal.sb._sparseBeamlets.shape[1]
+        assert nofBeamlets==len(plan.beamlets), f"The number of beamlets in the dose influece matrix is {nofBeamlets} but the number of beamlets in the treatment plan is {len(plan.beamlets)}"
+        for segment in plan.beamSegments:
+            beamletsSegment = nominal.sb._sparseBeamlets[:, cumulativeNumberBeamlets: cumulativeNumberBeamlets + len(segment)]
+            weightsSegment = weights[cumulativeNumberBeamlets: cumulativeNumberBeamlets + len(segment)]
+            result = csc_matrix.dot(beamletsSegment, weightsSegment).reshape(sizeImage,1)
+            result = np.reshape(result, doseGridSize, order='F')
+            result = np.flip(result, 0)
+            result = np.flip(result, 1)
+            shiftVoxelsCorrected = np.round(correctShift(shiftVoxels, segment.gantryAngle_degree / 180 * np.pi), 3) #only for axe of the beam
+            dose +=  shift(result, shiftVoxelsCorrected, mode='constant', cval=0, order=1)
+            cumulativeNumberBeamlets+=len(segment)
+
+        dose = DoseImage(imageArray=dose, origin=nominal.sb.doseOrigin, spacing=nominal.sb.doseSpacing,
+                              angles=(1, 0, 0, 0, 1, 0, 0, 0, 1))
+    else:
+        dose = nominal.sb.toDoseImage()
+
+    doseArray = dose.imageArray
+    if np.all(scenario.sre) != None:
+        doseArray = gaussian_filter(doseArray.astype(float), sigma = scenario.sre, order=0, truncate=2)
+    else:
+        return dose
+    dose.imageArray = doseArray
+
+    return dose

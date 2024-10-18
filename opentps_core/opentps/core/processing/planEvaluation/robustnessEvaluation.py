@@ -8,9 +8,9 @@ import numpy as np
 import pickle
 import os
 
-
 from opentps.core.data._dvhBand import DVHBand
 from opentps.core.processing.imageProcessing import resampler3D
+from opentps.core.data.plan._robustnessPhoton import RobustnessPhoton
 
 from typing import TYPE_CHECKING
 
@@ -41,7 +41,7 @@ class RobustnessEval:
         The target prescription in Gy.
     nominal : RobustnessScenario
         The nominal scenario.
-    numScenarios : int
+    nScenarios : int
         The number of scenarios.
     scenarios : list
         The list of scenarios.
@@ -66,15 +66,16 @@ class RobustnessEval:
         self.selectionStrategy = self.Strategies.DEFAULT
         self.setupSystematicError = [1.6, 1.6, 1.6]  # mm
         self.setupRandomError = [1.4, 1.4, 1.4]  # mm
-        self.rangeSystematicError = 1.6  # %
+        
         self.target = []
         self.targetPrescription = 60  # Gy
         self.nominal = RobustnessScenario()
-        self.numScenarios = 0
+        self.nScenarios = 0
         self.scenarios = []
         self.dvhBands = []
         self.doseDistributionType = ""
         self.doseDistribution = []
+
 
     def setNominal(self, dose: DoseImage, contours: Union[ROIContour, ROIMask]):
         """
@@ -109,6 +110,8 @@ class RobustnessEval:
         from opentps.core.data._dvh import DVH
         scenario = RobustnessScenario()
         scenario.dose = dose
+        scenario.sse = self.setupSystematicError
+        scenario.sre = self.setupRandomError
         # Need to set patient to None for memory, est-ce que ca va poser probleme ?
         scenario.dose.patient = None
         scenario.dvh.clear()
@@ -239,7 +242,7 @@ class RobustnessEval:
             allDmean.append([])
 
         # generate DVH-band
-        for s in range(self.numScenarios):
+        for s in range(self.nScenarios):
             self.scenarios[s].selected = 1
             if self.doseDistributionType == "Voxel wise minimum":
                 self.doseDistribution.imageArray = np.minimum(self.doseDistribution.imageArray, self.scenarios[s].dose.imageArray)
@@ -287,8 +290,8 @@ class RobustnessEval:
         elif metric == "MSE":
             self.scenarios.sort(key=(lambda scenario: scenario.targetMSE))
 
-        start = round(self.numScenarios * (100 - CI) / 100)
-        if start == self.numScenarios: start -= 1
+        start = round(self.nScenarios * (100 - CI) / 100)
+        if start == self.nScenarios: start -= 1
 
         # initialize dose distribution
         if self.doseDistributionType == "Nominal":
@@ -304,7 +307,7 @@ class RobustnessEval:
             selectedDmean.append([])
 
         # select scenarios
-        for s in range(self.numScenarios):
+        for s in range(self.nScenarios):
             if s < start:
                 self.scenarios[s].selected = 0
             else:
@@ -355,7 +358,7 @@ class RobustnessEval:
         if not os.path.isdir(folder_path):
             os.mkdir(folder_path)
 
-        for s in range(self.numScenarios):
+        for s in range(self.nScenarios):
             file_path = os.path.join(folder_path, "Scenario_" + str(s) + ".tps")
             self.scenarios[s].save(file_path)
 
@@ -383,7 +386,7 @@ class RobustnessEval:
             tmp = pickle.load(fid)
         self.__dict__.update(tmp)
 
-        for s in range(self.numScenarios):
+        for s in range(self.nScenarios):
             file_path = os.path.join(folder_path, "Scenario_" + str(s) + ".tps")
             scenario = RobustnessScenario()
             scenario.load(file_path)
@@ -409,22 +412,33 @@ class RobustnessScenario:
         1 if the scenario is selected, 0 otherwise.
     """
 
-    def __init__(self):
+    def __init__(self, sse = None, sre = None, dilation_mm = {}):
         self.dose = []
         self.dvh = []
         self.targetD95 = 0
         self.targetD5 = 0
         self.targetMSE = 0
         self.selected = 0
+        self.sse = sse      # Setup Systematic Error
+        self.sre = sre      # Setup Random Error
+        self.dilation_mm = dilation_mm
 
     def printInfo(self):
         """
         Print the information of the scenario.
         """
+        logger.info('Setup Systematic Error:{} mm'.format(self.sse))
+        logger.info('Setup Random Error:{} mm'.format(self.sre))
         logger.info("Target_D95 = " + str(self.targetD95))
         logger.info("Target_D5 = " + str(self.targetD5))
         logger.info("Target_MSE = " + str(self.targetMSE))
         logger.info(" ")
+
+    def __str__(self):
+        str = 'Setup Systematic Error:{} mm\n'.format(self.sse) + 'Setup Random Error:{} mm\n'.format(self.sre)
+        for name, dilation in self.dilation_mm.items():
+            str += name + f' dilated {round(dilation,2)} mm \n'
+        return str
 
     def save(self, file_path):
         """
@@ -451,3 +465,41 @@ class RobustnessScenario:
             tmp = pickle.load(fid)
 
         self.__dict__.update(tmp)
+
+class RobustnessEvalPhoton(RobustnessEval,RobustnessPhoton):
+    """
+    This class is used to compute the robustness of a photon plan (evaluation).
+
+    Attributes
+    ----------
+    numberOfSigmas : float (default = 2.5)
+        Number of sigmas in the normal distribution
+    """
+    def __init__(self):
+        self.numberOfSigmas = 2.5
+        super().__init__()
+    
+    def generateRobustScenarios(self):
+        super().generateRobustScenarios()
+        # Add logic to handle the random error case
+        if self.setupRandomError not in [None, 0, [0, 0, 0]]:
+            self.scenarios.append(RobustnessScenario(
+                sse=np.array([0, 0, 0]),
+                sre=self.setupRandomError
+            ))
+
+        # Update nScenarios if needed (in case the random error adds a new scenario)
+        self.nScenarios = len(self.scenarios)
+
+class RobustnessEvalProton(RobustnessEval):
+    """
+    This class is used to compute the robustness of an ion plan (evaluation).
+
+    Attributes
+    ----------
+    rangeSystematicError : float (default = 1.6)
+        The range systematic error in %.
+    """
+    def __init__(self):
+        self.rangeSystematicError = 1.6
+        super().__init__()

@@ -9,7 +9,7 @@ from opentps.core.io.dicomIO import writeRTPlan, writeDicomCT, writeRTDose, writ
 from opentps.core.processing.planOptimization.tools import evaluateClinical
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan._ionPlanDesign import IonPlanDesign
+from opentps.core.data.plan._protonPlanDesign import ProtonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
 from opentps.core.data.plan import FidObjective
@@ -96,7 +96,7 @@ def run(output_path=""):
         plan = loadRTPlan(plan_file)
         logger.info('Plan loaded')
     else:
-        planDesign = IonPlanDesign()
+        planDesign = ProtonPlanDesign()
         planDesign.ct = ct
         planDesign.gantryAngles = gantryAngles
         planDesign.beamNames = beamNames
