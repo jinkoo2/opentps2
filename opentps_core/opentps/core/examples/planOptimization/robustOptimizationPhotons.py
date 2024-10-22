@@ -102,14 +102,17 @@ def run(output_path=""):
         planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.REDUCED_SET
         # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.ALL
         # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.RANDOM
-        # planDesign.robustness.NumScenarios = 10   # specify how many random scenarios to simulate, default = 100
+        # planDesign.robustness.numScenarios = 10   # specify how many random scenarios to simulate, default = 100
 
         planDesign.targetMargin = max(planDesign.robustness.setupSystematicError)
         planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) # needs to be called prior spot placement
         plan = planDesign.buildPlan()  # Spot placement
         plan.PlanName = "RobustPlan"
 
-        ccc.computeRobustScenarioBeamlets(ct, plan, robustMode='Shift') # 'Simulation' for total recomputation
+        nominal, scenarios = ccc.computeRobustScenarioBeamlets(ct, plan, robustMode='Shift') # 'Simulation' for total recomputation
+        plan.planDesign.beamlets = nominal
+        plan.planDesign.robustness.scenarios = scenarios
+        plan.planDesign.robustness.numScenarios = len(scenarios)
         
     saveRTPlan(plan, plan_file, unloadBeamlets=False)
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMAX, 20.0, 1.0, robust=True)

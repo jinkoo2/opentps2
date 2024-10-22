@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import logging
 from enum import Enum
 from typing import Union
@@ -41,7 +42,7 @@ class RobustnessEval:
         The target prescription in Gy.
     nominal : RobustnessScenario
         The nominal scenario.
-    nScenarios : int
+    numScenarios : int
         The number of scenarios.
     scenarios : list
         The list of scenarios.
@@ -70,7 +71,7 @@ class RobustnessEval:
         self.target = []
         self.targetPrescription = 60  # Gy
         self.nominal = RobustnessScenario()
-        self.nScenarios = 0
+        self.numScenarios = 0
         self.scenarios = []
         self.dvhBands = []
         self.doseDistributionType = ""
@@ -114,7 +115,7 @@ class RobustnessEval:
         scenario.sre = self.setupRandomError
         # Need to set patient to None for memory, est-ce que ca va poser probleme ?
         scenario.dose.patient = None
-        scenario.dvh.clear()
+        scenario.dvh.clear()     
         for contour in contours:
             contour.patient = None
             myDVH = DVH(contour, scenario.dose)
@@ -176,7 +177,6 @@ class RobustnessEval:
         for contour in contours:
             myDVH = DVH(contour, self.nominal.dose)
             self.nominal.dvh.append(myDVH)
-
         for scenario in self.scenarios:
             scenario.dvh.clear()
             for contour in contours:
@@ -242,7 +242,7 @@ class RobustnessEval:
             allDmean.append([])
 
         # generate DVH-band
-        for s in range(self.nScenarios):
+        for s in range(self.numScenarios):
             self.scenarios[s].selected = 1
             if self.doseDistributionType == "Voxel wise minimum":
                 self.doseDistribution.imageArray = np.minimum(self.doseDistribution.imageArray, self.scenarios[s].dose.imageArray)
@@ -290,8 +290,8 @@ class RobustnessEval:
         elif metric == "MSE":
             self.scenarios.sort(key=(lambda scenario: scenario.targetMSE))
 
-        start = round(self.nScenarios * (100 - CI) / 100)
-        if start == self.nScenarios: start -= 1
+        start = round(self.numScenarios * (100 - CI) / 100)
+        if start == self.numScenarios: start -= 1
 
         # initialize dose distribution
         if self.doseDistributionType == "Nominal":
@@ -307,7 +307,7 @@ class RobustnessEval:
             selectedDmean.append([])
 
         # select scenarios
-        for s in range(self.nScenarios):
+        for s in range(self.numScenarios):
             if s < start:
                 self.scenarios[s].selected = 0
             else:
@@ -358,7 +358,7 @@ class RobustnessEval:
         if not os.path.isdir(folder_path):
             os.mkdir(folder_path)
 
-        for s in range(self.nScenarios):
+        for s in range(self.numScenarios):
             file_path = os.path.join(folder_path, "Scenario_" + str(s) + ".tps")
             self.scenarios[s].save(file_path)
 
@@ -386,7 +386,7 @@ class RobustnessEval:
             tmp = pickle.load(fid)
         self.__dict__.update(tmp)
 
-        for s in range(self.nScenarios):
+        for s in range(self.numScenarios):
             file_path = os.path.join(folder_path, "Scenario_" + str(s) + ".tps")
             scenario = RobustnessScenario()
             scenario.load(file_path)
@@ -413,7 +413,7 @@ class RobustnessScenario:
     """
 
     def __init__(self, sse = None, sre = None, dilation_mm = {}):
-        self.dose = []
+        self.dose = None
         self.dvh = []
         self.targetD95 = 0
         self.targetD5 = 0
@@ -477,19 +477,50 @@ class RobustnessEvalPhoton(RobustnessEval,RobustnessPhoton):
     """
     def __init__(self):
         self.numberOfSigmas = 2.5
-        super().__init__()
+        RobustnessPhoton.__init__(self)  
+        RobustnessEval.__init__(self)
+        
     
     def generateRobustScenarios(self):
         super().generateRobustScenarios()
         # Add logic to handle the random error case
         if self.setupRandomError not in [None, 0, [0, 0, 0]]:
-            self.scenarios.append(RobustnessScenario(
+            self.scenariosConfig.append(RobustnessScenario(
                 sse=np.array([0, 0, 0]),
                 sre=self.setupRandomError
             ))
+        # Update numScenarios if needed (in case the random error adds a new scenario)
+        self.numScenarios = len(self.scenariosConfig)
 
-        # Update nScenarios if needed (in case the random error adds a new scenario)
-        self.nScenarios = len(self.scenarios)
+
+    def addScenario(self, dose: DoseImage, scenarioIdx:int, contours: Union[ROIContour, ROIMask]):
+        """
+        Add a scenario.
+
+        Parameters
+        ----------
+        dose : DoseImage
+            The dose image.
+        contours : list[ROIContour]
+            The list of contours.
+        """
+        from opentps.core.data._dvh import DVH
+        scenario = RobustnessScenario()
+        scenario.dose = dose
+        scenario.sse = self.scenariosConfig[scenarioIdx].sse
+        scenario.sre = self.scenariosConfig[scenarioIdx].sre
+        # Need to set patient to None for memory, est-ce que ca va poser probleme ?
+        scenario.dose.patient = None
+        scenario.dvh.clear()     
+        for contour in contours:
+            contour.patient = None
+            myDVH = DVH(contour, scenario.dose)
+            scenario.dvh.append(myDVH)
+        scenario.dose.imageArray = scenario.dose.imageArray.astype(
+            np.float16)  # can be reduced to float16 because all metrics are already computed and it's only used for display
+
+        self.scenarios.append(scenario)
+        
 
 class RobustnessEvalProton(RobustnessEval):
     """

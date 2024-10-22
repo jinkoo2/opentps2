@@ -267,7 +267,7 @@ def readDose(CTheaderfile_path, outputDir, batchSize, Mu, roi: Optional[Sequence
     doseImage = DoseImage(imageArray=totalDose, origin=header["Origin_cm"] * 10, spacing=header["Spacing_cm"] * 10,
                             angles=orientation) ### The TPS works with mm
 
-    if not(roi is None) or (roi is list and not(len(roi)==0)):
-        doseImage = doseImage[mergeContours(roi, flatAndFlip = False)]
-        
+    '''if not(roi is None) or (roi is list and not(len(roi)==0)):
+        doseImage.imageArray = doseImage.imageArray[mergeContours(roi, flatAndFlip = False)]
+     '''   
     return doseImage

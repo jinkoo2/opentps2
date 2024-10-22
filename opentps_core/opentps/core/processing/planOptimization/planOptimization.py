@@ -109,7 +109,7 @@ class PlanOptimizer:
             The weights.
         """
         # Total Dose calculation
-        totalDose = self.computeDose().imageArray ### Isn't it easier to do the following line? This crash with the new definition of Treatment plan for photons. Shall we remove spotMUs from the proton plan? just use MUs?
+        totalDose = self.computeDose().imageArray 
         maxDose = np.max(totalDose)
         try:
             x0 = self.opti_params['init_weights']
@@ -293,13 +293,18 @@ class PlanOptimizer:
                 ind_to_keep = MU_before_simplify > self.thresholdSpotRemoval
                 assert np.sum(ind_to_keep) == len(self.plan.spotMUs)
                 self.plan.planDesign.beamlets.setUnitaryBeamlets(self.plan.planDesign.beamlets._sparseBeamlets[:, ind_to_keep])
-        elif isinstance(self.plan,PhotonPlan): 
+                self.plan.planDesign.beamlets._weights = self.plan.spotMUs
+            else:
+                self.plan.planDesign.beamlets._weights = self.plan.spotMUs
+        elif isinstance(self.plan,PhotonPlan):        
             if self.plan.planDesign.beamlets.shape[1] != len(self.plan.beamletMUs):
                 # Beamlet matrix has not removed zero weight column
                 ind_to_keep = MU_before_simplify > self.thresholdSpotRemoval
                 assert np.sum(ind_to_keep) == len(self.plan.beamletMUs)
                 self.plan.planDesign.beamlets.setUnitaryBeamlets(self.plan.planDesign.beamlets._sparseBeamlets[:, ind_to_keep])
-
+                self.plan.planDesign.beamlets._weights = self.plan.beamletMUs
+            else:
+                self.plan.planDesign.beamlets._weights = self.plan.beamletMUs
         totalDose = self.computeDose()
         logger.info('Optimization done.')
 

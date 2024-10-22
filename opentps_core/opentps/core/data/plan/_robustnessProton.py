@@ -9,12 +9,9 @@ class RobustnessProton(Robustness):
     ----------
     rangeSystematicError : float (default = 1.6) (%)
         The range systematic error in %.
-    numScenarios : int
-        The number of scenarios.
     """
 
     def __init__(self):
         self.rangeSystematicError = 1.6  # %
-        self.numScenarios = 0
 
         super().__init__()

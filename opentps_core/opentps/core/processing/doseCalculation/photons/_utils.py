@@ -260,18 +260,19 @@ def dnorm(x, mu, sd):
     return 1 / (np.sqrt(2 * np.pi) * sd) * np.e ** (-np.power((x - mu) / sd, 2) / 2)
 
 
-def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): ### Shift beamlets according sse + apply gaussian filter one the dose array to simulate sre
+def adjustDoseToScenario(scenario, nominal, plan: PhotonPlan): ### Shift beamlets according sse + apply gaussian filter one the dose array to simulate sre
     if scenario.sse is not None:
-        shiftVoxels = np.array(scenario.sse) / np.array(imageSpacing)
+        logger.info(scenario.sse)
+        shiftVoxels = np.array(scenario.sse) / np.array(nominal.doseSpacing)
         cumulativeNumberBeamlets = 0
-        weights = nominal.sb.beamletWeights
-        doseGridSize = nominal.sb.doseGridSize
+        weights = nominal._weights
+        doseGridSize = nominal.doseGridSize
         dose = np.zeros(doseGridSize)
-        sizeImage = nominal.sb._sparseBeamlets.shape[0]
-        nofBeamlets = nominal.sb._sparseBeamlets.shape[1]
+        sizeImage = nominal._sparseBeamlets.shape[0]
+        nofBeamlets = nominal._sparseBeamlets.shape[1]
         assert nofBeamlets==len(plan.beamlets), f"The number of beamlets in the dose influece matrix is {nofBeamlets} but the number of beamlets in the treatment plan is {len(plan.beamlets)}"
         for segment in plan.beamSegments:
-            beamletsSegment = nominal.sb._sparseBeamlets[:, cumulativeNumberBeamlets: cumulativeNumberBeamlets + len(segment)]
+            beamletsSegment = nominal._sparseBeamlets[:, cumulativeNumberBeamlets: cumulativeNumberBeamlets + len(segment)]
             weightsSegment = weights[cumulativeNumberBeamlets: cumulativeNumberBeamlets + len(segment)]
             result = csc_matrix.dot(beamletsSegment, weightsSegment).reshape(sizeImage,1)
             result = np.reshape(result, doseGridSize, order='F')
@@ -281,10 +282,10 @@ def adjustDoseToScenario(scenario, nominal, imageSpacing, plan: PhotonPlan): ###
             dose +=  shift(result, shiftVoxelsCorrected, mode='constant', cval=0, order=1)
             cumulativeNumberBeamlets+=len(segment)
 
-        dose = DoseImage(imageArray=dose, origin=nominal.sb.doseOrigin, spacing=nominal.sb.doseSpacing,
+        dose = DoseImage(imageArray=dose, origin=nominal.doseOrigin, spacing=nominal.doseSpacing,
                               angles=(1, 0, 0, 0, 1, 0, 0, 0, 1))
     else:
-        dose = nominal.sb.toDoseImage()
+        dose = nominal.toDoseImage()
 
     doseArray = dose.imageArray
     if np.all(scenario.sre) != None:

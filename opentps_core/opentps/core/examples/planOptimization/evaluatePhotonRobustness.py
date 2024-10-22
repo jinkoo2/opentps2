@@ -66,9 +66,9 @@ def run(output_path=""):
 
     if os.path.isfile(plan_file):
         plan = loadRTPlan(plan_file, 'photon')
-        print('Plan loaded')
+        logger.info('Plan loaded')
     else:
-        print("You need to design and optimize a plan first - See SimpleOptimization or robustOptimization script.")
+        logger.info("You need to design and optimize a plan first - See SimpleOptimization or robustOptimization script.")
         exit()
 
     # Load / Generate scenarios
@@ -80,6 +80,7 @@ def run(output_path=""):
         scenarios.setupRandomError = plan.planDesign.robustnessEval.setupRandomError
         scenarios.load(scenario_folder)
     else:
+        
         # Robust config for scenario dose computation
         plan.planDesign.robustnessEval = RobustnessEvalPhoton()
         plan.planDesign.robustnessEval.setupSystematicError = [1.6, 1.6, 1.6] #sigma (mm)
@@ -96,7 +97,7 @@ def run(output_path=""):
         plan.patient = None
 
         # run MCsquare simulation
-        scenarios = ccc.computeRobustScenario(ct, plan, robustMode = "Shift") # 'Simulation' for total recomputation
+        scenarios = ccc.computeRobustScenario(ct, plan, roi = [roi], robustMode = "Shift") # 'Simulation' for total recomputation
         output_folder = os.path.join(output_path, "RobustnessTest")
         scenarios.save(output_folder)
 

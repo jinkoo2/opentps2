@@ -241,7 +241,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         return ct
 
 
-    def computeBeamlets(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, roi: Sequence[Union[ROIContour, ROIMask]] = None) -> SparseBeamlets:
+    def computeBeamlets(self, ct: CTImage, plan: PhotonPlan, roi: Sequence[Union[ROIContour, ROIMask]] = None, overRidingList: Sequence[Dict[str, Any]] = None) -> SparseBeamlets:
         """
         Compute beamlets using Collapse Cone Convolution algorithm
 
@@ -283,14 +283,15 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         if beamletDose.shape[1] != len(beamletsMU):
             print('ERROR: The beamlets imported from the dose engine don\'t have the same number as the beamlets in the plan')
             return
-        if plan.planDesign.beamlets is not None:
-            beamletDose.beamletWeights = plan.planDesign.beamlets.beamletWeights
+        if plan.planDesign.beamlets is not None and plan.planDesign.beamlets._weights is not None:
+            beamletDose._weights = plan.planDesign.beamlets._weights
         else:
-            beamletDose.beamletWeights = beamletsMU
+            beamletDose._weights = beamletsMU
+
         return beamletDose
 
 
-    def computeRobustScenarioBeamlets(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, roi: Sequence[Union[ROIContour, ROIMask]] = None, robustMode = "Shift", computeNominal = True) -> SparseBeamlets:
+    def computeRobustScenarioBeamlets(self, ct: CTImage, plan: PhotonPlan, roi: Sequence[Union[ROIContour, ROIMask]] = None, overRidingList: Sequence[Dict[str, Any]] = None, robustMode = "Shift", computeNominal = True, storePath:Optional[str] = None) -> SparseBeamlets:
         """
         Compute beamlets for different scenarios using Collapse Cone Convolution algorithm. The beamlets are saved in plan.planDesign.robustness
 
@@ -315,23 +316,35 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         self._overRidingList = overRidingList
         self.batchSize = plan.numberOfBeamlets if plan.numberOfBeamlets / self.batchSize < 1 else self.batchSize
         origin = ct.origin
+
         plan.planDesign.robustness.generateRobustScenarios()
-        scenarios = plan.planDesign.robustness.scenarios
+        scenarios = plan.planDesign.robustness.scenariosConfig
+
         if computeNominal:
-            print('Calculating Nominal Scenario')
+            logger.info('Calculating Nominal Scenario')
             self.ROFolder = 'Nominal'
-            plan.planDesign.robustness.nominal.sb = self.computeBeamlets(self._ct, self._plan, overRidingList)   
-            plan.planDesign.beamlets = plan.planDesign.robustness.nominal.sb 
+            nominal = self.computeBeamlets(self._ct, self._plan, overRidingList=overRidingList)   
+            if not (storePath is None):
+                outputBeamletFile = os.path.join(storePath, "BeamletMatrix_" + plan.seriesInstanceUID + "_Nominal.blm")
+                nominal.storeOnFS(outputBeamletFile)
         else:
-            plan.planDesign.robustness.nominal.sb = plan.planDesign.beamlets 
+            plan.planDesign.robustness.nominal = plan.planDesign.beamlets 
             
-            
-        for number, scenario in enumerate(scenarios):
-            print('Calculating Scenario {}'.format(number+1))
-            print(scenario)
-            self.ROFolder = 'Scenario_{}'.format(number)
-            scenario.sb = self.calculateRobustBeamlets(scenario, origin, plan.planDesign.robustness.nominal.sb, mode = robustMode)
+        scenariosDoses = []
+        for s, scenario in enumerate(scenarios):
+            logger.info('Calculating Scenario {}'.format(s+1))
+            logger.info(scenario)
+            self.ROFolder = 'Scenario_{}'.format(s)
+            scenario = self.calculateRobustBeamlets(scenario, origin, nominal, mode = robustMode)
+            if not (storePath is None):
+                outputBeamletFile = os.path.join(storePath,
+                                                    "BeamletMatrix_" + plan.seriesInstanceUID + "_Scenario_" + str(
+                                                        s + 1) + "-" + str(self._plan.planDesign.robustness.numScenarios) + ".blm")
+                scenario.storeOnFS(outputBeamletFile)
+            scenariosDoses.append(scenario)
         self._ct.origin = origin
+
+        return nominal, scenariosDoses
 
     def calculateRobustBeamlets(self, scenario: RobustScenario, origin: Sequence[float], nominal:SparseBeamlets = None, mode = "Simulation"):
         """
@@ -358,7 +371,6 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         scenario.sre = None if scenario.sre == [0,0,0] else scenario.sre 
 
         if mode == "Simulation":
-            print(origin, self._ct.origin)
             beamletsScenario = self.computeBeamlets(self._ct, self._plan, self._overRidingList, self._roi)
             beamletsScenario.doseOrigin = origin
         elif mode == "Shift" or scenario.sre != None:
@@ -376,13 +388,13 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             beamletsScenario.doseOrigin = nominal.doseOrigin
             beamletsScenario.doseSpacing = nominal.doseSpacing
             beamletsScenario.doseGridSize = nominal.doseGridSize
-            beamletsScenario.beamletWeights = nominal.beamletWeights
+            beamletsScenario._weights = nominal._weights
         else:
             KeyError('The only modes available to calculate the setup scenarios are "Simulation" or "Shift"')
-        print('The scenario runned in ',time.time()-t0)
+        logger.info('The scenario runned in {:.2f}'.format(time.time()-t0))
         return beamletsScenario
     
-    def computeRobustScenario(self, ct: CTImage, plan: PhotonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None, robustMode = "Shift", computeNominal = True):
+    def computeRobustScenario(self, ct: CTImage, plan: PhotonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None, overRidingList: Sequence[Dict[str, Any]] = None, robustMode = "Shift", computeNominal = True):
         """
         Compute robustness scenario using Collapse Cone Convolution
 
@@ -404,38 +416,36 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         scenarios:Robustness
             Robustness with nominal and error scenarios
         """
+        logger.info("Prepare CCC Dose calculation")
+        robustEval = plan.planDesign.robustnessEval
+        self._ct = self.fromHU2Densities(ct, overRidingList)
         self._plan = plan
-        self._ct = self.fromHU2Densities(ct, roi)
         self._roi = roi
+        # CCC config
         self.batchSize = plan.numberOfBeamlets if plan.numberOfBeamlets / self.batchSize < 1 else self.batchSize
         origin = ct.origin
         plan.planDesign.robustnessEval.generateRobustScenarios()
-        scenarios = plan.planDesign.robustnessEval.scenarios
-
-        plan.planDesign.robustnessEval.nominal.sb = plan.planDesign.robustness.nominal.sb
-        plan.planDesign.robustnessEval.nominal.sb.beamletWeights = plan.beamletMUs
-
-        if computeNominal:
-            print('Calculating Nominal Scenario')
-            self.ROFolder = 'Nominal'
-            dose = self.computeDose(self._ct, self._plan, roi)
-            plan.planDesign.robustnessEval.nominal.dose = dose
+        scenarios = plan.planDesign.robustnessEval.scenariosConfig
         
+        if computeNominal:
+            logger.info("Simulation of nominal scenario")
+            self.ROFolder = 'Nominal'
+            nominalBL = self.computeBeamlets(self._ct, self._plan,roi=self._roi)
+            robustEval.setNominal(nominalBL.toDoseImage(),self._roi)
+        
+        logger.info("Simulation of error scenarios")
         for number, scenario in enumerate(scenarios):
-            print('Calculating Scenario {}'.format(number))
-            print(scenario)
+            logger.info('Calculating Scenario {}'.format(number))
+            logger.info(scenario)
             self.ROFolder = 'Scenario_{}'.format(number)
-
-            nominal_scenario = plan.planDesign.robustnessEval.nominal
-            plan.planDesign.robustnessEval.scenarios[number].sb = nominal_scenario.sb
-            plan.planDesign.robustnessEval.scenarios[number].sb.beamletWeights = nominal_scenario.sb.beamletWeights
-            scenario.dose = self.computeRobustScenarioDose(scenario, origin, nominal_scenario, mode = robustMode)
-
+            dose = self.computeRobustScenarioDose(scenario, nominalBL, origin, mode = robustMode)
+            logger.info(dose.origin)
+            robustEval.addScenario(dose, number, self._roi)
         self._ct.origin = origin
 
-        return plan.planDesign.robustnessEval
+        return robustEval
 
-    def computeDose(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None, roi: Optional[Sequence[ROIContour]] = None,  Density = False) -> SparseBeamlets:
+    def computeDose(self, ct: CTImage, plan: PhotonPlan, overRidingList: Sequence[Dict[str, Any]] = None,  Density = False) -> DoseImage:
         """
         Compute dose distribution in the patient using Collapse Cone Convolution algorithm
 
@@ -456,13 +466,12 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         logger.info("Prepare Collapse Cone Convolution Beamlet calculation")
         self._ct = ct
         self._plan = plan
-        self._roi = roi
 
         self._cleanDir(self.outputDir)
         self._cleanDir(self._executableDir)
         self._cleanDir(self._beamDirectory)
         if not Density:
-            self._ct = self.fromHU2Densities(self._ct, overRidingList) 
+            self._ct = self.fromHU2Densities(self._ct, overRidingList=overRidingList) 
         self._writeFilesToSimuDir()
         self.writeExecuteCCCfile()
         self._startCCC()
@@ -472,7 +481,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         Dose.imageArray *= self._plan.numberOfFractionsPlanned
         return Dose
   
-    def computeRobustScenarioDose(self, scenario, origin, nominal, mode = "Simulation"):
+    def computeRobustScenarioDose(self, scenario, nominal, origin, mode = "Simulation", overRidingList: Sequence[Dict[str, Any]] = None):
         """
         Compute the dose array for a given scenario
 
@@ -482,8 +491,6 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             scenario to calculate the dose
         origin : Sequence[float]
             origin of the treatment planning CT image
-        nominal: SparseBeamlets
-            nominal beamlets
         mode: str ['Shift', 'Simulation']
             It selects the type of robust scenarios to calculate. 'Shift' calculates the scenarios by shifting the beamlets, 
             'Simulation' calculates the scenarios by simulating the beamlets again per every scenario.
@@ -494,25 +501,23 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         """
         t0 = time.time()
         self._ct.origin = origin + scenario.sse
-        nominal.sb.spacing = self._ct.spacing
+ 
         scenario.sre = None if np.all(scenario.sre == [0,0,0]) else scenario.sre
 
         if mode == "Simulation":
-            print(f"CT origin shifted from {origin} to {self._ct.origin}")
-            DoseScenario = self.computeDose(self._ct, self._plan, self._roi)
-            DoseScenario.doseOrigin = origin
+            logger.info(f"CT origin shifted from {origin} to {self._ct.origin}")
+            DoseScenario = self.computeDose(self._ct, self._plan, overRidingList)
+            DoseScenario.origin = origin
             if np.all(scenario.sre) != None:
                 DoseScenario.imageArray = gaussian_filter(DoseScenario.imageArray.astype(float), sigma = scenario.sre, order=0, truncate=2)
 
         elif mode == "Shift":
-            if nominal == None:
-                KeyError('To calculate the robust scenarios beamlets in precise mode it is necessary the nominal beamlets')
-
-            nbOfBeamlets = nominal.sb._sparseBeamlets.shape[1]
+            nominal.doseSpacing = self._ct.spacing
+            nbOfBeamlets = nominal._sparseBeamlets.shape[1]
             assert(nbOfBeamlets==len(self._plan.beamlets))
-            DoseScenario = adjustDoseToScenario(scenario, nominal, nominal.sb.spacing, self._plan)
+            DoseScenario = adjustDoseToScenario(scenario, nominal, self._plan)
 
         else:
             KeyError('The only modes available to calculate the setup scenarios are "Simulation" or "Shift"')
-        print('The scenario runned in ',time.time()-t0)
+        logger.info('The scenario runned in {}'.format(time.time()-t0))
         return DoseScenario
