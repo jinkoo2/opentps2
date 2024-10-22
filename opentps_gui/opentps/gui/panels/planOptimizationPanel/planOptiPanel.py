@@ -95,10 +95,7 @@ class doseCalculationWindow(QDialog):
             self._doseComputationPanel.selectedPlan.planDesign.robustness.numScenarios = len(scenarios)
         else:
             beamlets = doseCalculator.computeBeamlets(self._doseComputationPanel.selectedCT,
-                                                self._doseComputationPanel.selectedPlan)
-            # TODO: test crop
-            #beamlets = doseCalculator.computeBeamlets(self._doseComputationPanel.selectedCT,
-            #                                    self._doseComputationPanel.selectedPlan, self._contours)
+                                                self._doseComputationPanel.selectedPlan, self._contours)
             self._doseComputationPanel.selectedPlan.planDesign.beamlets = beamlets    
 
         self.accept()

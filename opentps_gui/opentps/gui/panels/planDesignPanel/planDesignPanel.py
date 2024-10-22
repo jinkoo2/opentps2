@@ -185,8 +185,6 @@ class PlanDesignPanel(QWidget):
             self.yBeamletSpacingLabel.show()
             self._yBeamletSpacing.show()
 
-            self._robustSettings.setDisabled(True) #TODO: connect to robust opti
-
         elif modality == "IMPT":
             self._mcsquareConfigWidget._txt2.show()
             self._spacingLabel.show()
