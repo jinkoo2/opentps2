@@ -1,8 +1,6 @@
 __all__ = ['RobustnessPhoton','RobustScenario']
 
-import copy
 import itertools
-import pickle
 import logging
 import numpy as np
 from opentps.core.data._sparseBeamlets import SparseBeamlets
@@ -43,7 +41,6 @@ class RobustnessPhoton(Robustness):
     def __init__(self):
         self.numberOfSigmas = 2.5
         self.scenariosConfig:list[RobustScenario] = []
-        #self.nominal = RobustScenario()  
         
         super().__init__()
     
@@ -104,9 +101,3 @@ class RobustnessPhoton(Robustness):
         sse_sampled = list(np.random.normal([0]*len(self.setupSystematicError),self.setupSystematicError)) if self.setupSystematicError != None else None
         sre_sampled = np.random.uniform([self.setupRandomError,0]) if self.setupRandomError != None else None
         return RobustScenario(sb = None, sse = sse_sampled, sre = sre_sampled)
-    
-
-    def setBeamWeights(self, spotMUs):
-        self.nominal._weights = spotMUs
-        for scenario in self.scenariosConfig:
-            scenario._weights = spotMUs
