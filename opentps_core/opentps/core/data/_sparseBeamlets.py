@@ -5,7 +5,6 @@ import pickle
 from typing import Sequence, Optional
 
 import numpy as np
-import sparse_dot_mkl
 
 from opentps.core.io.serializedObjectIO import saveData
 from scipy.sparse import csc_matrix
