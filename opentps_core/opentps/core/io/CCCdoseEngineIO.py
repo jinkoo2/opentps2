@@ -8,11 +8,9 @@ from scipy.sparse import csc_matrix
 from opentps.core.data.images import CTImage
 from opentps.core.data.plan._photonPlan import PhotonPlan
 import math
-from pathlib import Path
 from opentps.core.data import SparseBeamlets
 import math
 from opentps.core.data.images._doseImage import DoseImage
-from opentps.core.data.images._image3D import Image3D
 from typing import Optional, Sequence, Union
 from opentps.core.data import ROIContour
 from opentps.core.data.images import ROIMask
@@ -237,7 +235,7 @@ def readBeamlets(CTheaderfile_path, outputDir, batchSize, roi: Optional[Sequence
     return beamletDose
 
 
-def readDose(CTheaderfile_path, outputDir, batchSize, Mu, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None): 
+def readDose(CTheaderfile_path, outputDir, batchSize, Mu): 
     if (not CTheaderfile_path.endswith('.txt')):
         raise NameError('File ', CTheaderfile_path, ' is not a valid sparse matrix header')
 
@@ -267,7 +265,5 @@ def readDose(CTheaderfile_path, outputDir, batchSize, Mu, roi: Optional[Sequence
     doseImage = DoseImage(imageArray=totalDose, origin=header["Origin_cm"] * 10, spacing=header["Spacing_cm"] * 10,
                             angles=orientation) ### The TPS works with mm
 
-    '''if not(roi is None) or (roi is list and not(len(roi)==0)):
-        doseImage.imageArray = doseImage.imageArray[mergeContours(roi, flatAndFlip = False)]
-     '''   
+
     return doseImage
