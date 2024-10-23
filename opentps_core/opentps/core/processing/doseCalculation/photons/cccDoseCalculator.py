@@ -12,8 +12,6 @@ import numpy as np
 
 from pathlib import Path
 from typing import Optional, Sequence, Union
-from matplotlib import pyplot as plt
-from scipy.sparse import csc_matrix
 from typing import Optional, Sequence, Union, Dict, Any
 
 from opentps.core.data.images import DoseImage
@@ -218,7 +216,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         return beamletDose
 
     def _importDose(self):
-        beamletDose = CCCdoseEngineIO.readDose(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._plan.beamletMUs, self._roi)
+        beamletDose = CCCdoseEngineIO.readDose(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._plan.beamletMUs)
         return beamletDose
 
     def fromHU2Densities(self, ct : CTImage, overRidingList : Sequence[Dict[str, Any]] = None):
@@ -410,7 +408,7 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             It selects the type of robust scenarios to calculate. 'Shift' calculates the scenarios by shifting the beamlets, 
             'Simulation' calculates the scenarios by simulating the beamlets again per every scenario.
         computeNominal: bool
-            If true, the nominal scenario is calculated and stored in plan.planDesign.robustness.nominal.sb
+            If true, the nominal scenario is calculated and stored in plan.planDesign.robustnessEval.nominal
         Returns
         -------
         scenarios:Robustness

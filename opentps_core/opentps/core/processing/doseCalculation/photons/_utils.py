@@ -11,7 +11,6 @@ import ctypes
 import os
 import psutil
 import os
-from matplotlib import pyplot as plt
 from opentps.core.data.plan import PhotonPlan
 
 
