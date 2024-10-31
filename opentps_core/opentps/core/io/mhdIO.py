@@ -99,8 +99,6 @@ def generateDefaultMetaData():
         "DimSize": (0,0,0),
         "ElementSpacing": (1.0, 1.0, 1.0),
         "Offset": (0.0, 0.0, 0.0),
-        "TransformMatrix": (1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0),
-        "CenterOfRotation": (0.0, 0.0, 0.0),
         "BinaryData": True,
         "CompressedData": False,
         "ElementByteOrderMSB": False,
@@ -258,12 +256,15 @@ def readBinaryMHD(inputPath, metaData=None):
             raise NotImplementedError(f'Method not implemented for image of size {metaData["DimSize"]}')
     else:
         if metaData["NDims"]==4:
-            data = data.reshape(np.append(metaData["DimSize"][:-1], [metaData["ElementNumberOfChannels"],metaData["DimSize"][-1]]), order='F')
+            # data = data.reshape(np.append(metaData["DimSize"][:-1], [metaData["ElementNumberOfChannels"],metaData["DimSize"][-1]]), order='F')
+            data = data.reshape(np.append(metaData["ElementNumberOfChannels"], metaData["DimSize"]), order='F')
+            data = np.moveaxis(data, 0,3)
             image = []
             for d in range(data.shape[4]):
                 image.append(VectorField3D(imageArray=data[:,:,:,:,d], name=fileName, origin=metaData["Offset"][:-1], spacing=metaData["ElementSpacing"][:-1]))
         elif metaData["NDims"]==3:
-            data = data.reshape(np.append(metaData["DimSize"], metaData["ElementNumberOfChannels"]), order='F')
+            data = data.reshape(np.append(metaData["ElementNumberOfChannels"],metaData["DimSize"]), order='F')
+            data = np.moveaxis(data, 0,3)
             image = VectorField3D(imageArray=data, name=fileName, origin=metaData["Offset"], spacing=metaData["ElementSpacing"])
         else:
             raise NotImplementedError(f'Method not implemented for vector field of size {metaData["DimSize"]}')
@@ -351,6 +352,9 @@ def writeBinaryMHD(outputPath, data, metaData=None):
       data = np.copy(data).astype("float32")
     elif metaData["ElementType"] == "MET_BOOL" and data.dtype != "bool":
       data = np.copy(data).astype("bool")
+
+    if metaData["ElementNumberOfChannels"]==3: # VectorField3D
+        data = np.moveaxis(data, 3, 0)
     
     if data.dtype.byteorder == '>':
       data.byteswap() 
