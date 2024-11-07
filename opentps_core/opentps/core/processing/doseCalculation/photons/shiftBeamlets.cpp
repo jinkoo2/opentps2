@@ -104,6 +104,13 @@ void pushToSparseMatrix(const float* imageShifted, int size, float* nonZeroValue
     }
 }
 
+void shiftWithoutInterpolation(const float* nonZeroValues, float* nonZeroValuesShifted, const int* indexes, int* nonZeroIndexesShifted, int beamletStart, int beamletSize, int shift, int jump) {
+    for (int i = 0; i < beamletSize; ++i) {
+        nonZeroIndexesShifted[beamletStart * 2 * jump + i] = indexes[beamletStart + i] + shift;
+        nonZeroValuesShifted[beamletStart * 2 * jump + i] = nonZeroValues[beamletStart + i];
+    }
+}
+
 /**
  * @brief Shifts beamlets based on setup shifts and beamlet angles.
  *
@@ -128,7 +135,7 @@ void shiftBeamlets(const float* nonZeroValues, float* nonZeroValuesShifted, cons
         std::array<double, 3> shiftSmallVoxel = elementWiseRest(correctedShift , truncateToIntegers(correctedShift));
         float shiftSmallVoxelAbsSum = elementWiseSumAbs(shiftSmallVoxel);
         float* imageShifted = new float[gridSize[0]*gridSize[1]*gridSize[2]]();
-        if (elementWiseSum(shiftSmallVoxel)!=0){
+        if (shiftSmallVoxelAbsSum!=0){
             int j = 0;
             for (double& shift : shiftSmallVoxel){
                 if (shift != 0){
@@ -147,10 +154,13 @@ void shiftBeamlets(const float* nonZeroValues, float* nonZeroValuesShifted, cons
                     j+=1;
                 }   
             }
+            pushToSparseMatrix(imageShifted, gridSize[0]*gridSize[1]*gridSize[2], nonZeroValuesShifted, nonZeroIndexesShifted, beamletStart, 3);
+            delete[] imageShifted;
+            imageShifted = nullptr; 
         }
-        pushToSparseMatrix(imageShifted, gridSize[0]*gridSize[1]*gridSize[2], nonZeroValuesShifted, nonZeroIndexesShifted, beamletStart, 3);
-        delete[] imageShifted;
-        imageShifted = nullptr; 
+        else{
+            shiftWithoutInterpolation(nonZeroValues, nonZeroValuesShifted, indexes, nonZeroIndexesShifted, beamletStart, numberOfElementsInBeamlet, shiftTrunctated, 3);
+        }
     }
 }
 
