@@ -53,7 +53,7 @@ class PlanOptimizer:
         The threshold weight below which spots are removed from the plan and beamlet matrix.
     xSquared : bool
         If True, the weights are squared. True by default to avoid negative weights.
-    acceleration : str
+    hardwareAcceleration : str
         The acceleration method. It can be one of the following:
         - 'GPU' : use the GPU for the optimization.
         - 'MKL' : use the MKL library for the optimization with the maximum number of threads available.
@@ -62,7 +62,7 @@ class PlanOptimizer:
         - 'MKL-DEBUG' : use the MKL library for the optimization with the debug mode.
 
     """
-    def __init__(self, plan:RTPlan,acceleration:str=None, **kwargs):
+    def __init__(self, plan:RTPlan, hardwareAcceleration:str=None, **kwargs):
 
         self.solver = scipyOpt.ScipyOpt('L-BFGS-B')
         planPreprocessing.extendPlanLayers(plan)
@@ -74,14 +74,14 @@ class PlanOptimizer:
         # beamlet matrix
         self.GPU_acceleration = False
         self.MKL_acceleration = False
-        if acceleration is not None:
-            if acceleration == 'GPU':
+        if hardwareAcceleration is not None:
+            if hardwareAcceleration == 'GPU':
                 self.use_GPU_acceleration()
-            elif acceleration[:3] == 'MKL':
-                if acceleration == 'MKL':
+            elif hardwareAcceleration[:3] == 'MKL':
+                if hardwareAcceleration == 'MKL':
                     self.use_MKL_acceleration()
                 else:
-                    args = acceleration.split('-')
+                    args = hardwareAcceleration.split('-')
                     if args[1].isdigit():
                         n_threads = int(args[1])
                         if len(args) > 2:
@@ -91,7 +91,7 @@ class PlanOptimizer:
                     elif args[1] == 'DEBUG':
                         self.use_MKL_acceleration(debug=True)
             else:
-                logger.warning('Unknown acceleration method. No acceleration will be used')
+                logger.warning('Unknown hardware acceleration method. No hardware acceleration will be used')
 
 
     @property
@@ -155,12 +155,12 @@ class PlanOptimizer:
             self.MKL_acceleration = True
             logger.info('MKL acceleration activated')
 
-        def stop_MKL_acceleration(self):
-            """
-            stop the use of MKL acceleration
-            """
-            self.MKL_acceleration = False
-            logger.info('MKL acceleration deactivated')
+    def stop_MKL_acceleration(self):
+        """
+        stop the use of MKL acceleration
+        """
+        self.MKL_acceleration = False
+        logger.info('MKL acceleration deactivated')
 
 
     def initializeWeights(self):
@@ -403,8 +403,8 @@ class IMPTPlanOptimizer(PlanOptimizer):
     dict
         The optimization parameters, depending on the selected method.
     """
-    def __init__(self, method, plan:RTPlan,acceleration:str=None, **kwargs):
-        super().__init__(plan,acceleration, **kwargs)
+    def __init__(self, method, plan:RTPlan, hardwareAcceleration:str=None, **kwargs):
+        super().__init__(plan, hardwareAcceleration, **kwargs)
         self.method = method
         if "Scipy" in self.method:
             algo = self.method.split('_')[1]
@@ -451,8 +451,8 @@ class BoundConstraintsOptimizer(PlanOptimizer):
     dict
         The optimization parameters for the SciPy methods.
     """
-    def __init__(self, plan: RTPlan,acceleration:str=None, method='Scipy_L-BFGS-B', bounds=(0.02, 250), **kwargs):
-        super().__init__(plan,acceleration, **kwargs)
+    def __init__(self, plan: RTPlan, hardwareAcceleration:str=None, method='Scipy_L-BFGS-B', bounds=(0.02, 250), **kwargs):
+        super().__init__(plan, hardwareAcceleration, **kwargs)
         self.bounds = bounds
         if method == 'Scipy_L-BFGS-B':
             self.method = method
