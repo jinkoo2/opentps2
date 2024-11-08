@@ -43,7 +43,7 @@ python -m pip install --upgrade pip
 
 :: Install required Python packages
 pip install pydicom
-pip install numpy
+pip install numpy>=1.24.0
 pip install scipy
 pip install matplotlib
 pip install Pillow

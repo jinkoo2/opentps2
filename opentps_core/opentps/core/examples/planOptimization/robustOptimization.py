@@ -20,6 +20,12 @@ from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsqu
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D
 from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
 
+""""
+In this example, we create and optimize a robust proton plan. 
+The setup and range errors are configurable.
+"""
+
+
 logger = logging.getLogger(__name__)
 
 # Generic example: box of water with squared target
@@ -27,7 +33,7 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        output_path = os.path.join(os.getcwd(), 'Output', 'RobustOptimizationProtons')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
@@ -166,8 +172,8 @@ def run(output_path=""):
     ax[1].set_ylabel("Volume (%)")
     plt.grid(True)
     plt.legend()
-
     plt.show()
+    plt.savefig(os.path.join(output_path, 'Dose_RobustOptimizationProtons.png'))
 
 if __name__ == "__main__":
     run()

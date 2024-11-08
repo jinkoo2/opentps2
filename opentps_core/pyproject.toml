@@ -2,7 +2,7 @@
 [tool.poetry]
 name = "opentps-core"
 homepage = "http://opentps.org/"
-version = "1.0.7"
+version = "1.1.2"
 readme = "README.md"
 license = "Apache-2.0"
 description = "Open source TPS for advanced proton therapy"
@@ -19,7 +19,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "~3.9"
 cachecontrol = "*"
-numpy = "^1.23.5"
+numpy = "^1.24.0"
 Pillow = "^9.4.0"
 pydicom = "^2.4.1"
 SimpleITK = "^2.2.1"

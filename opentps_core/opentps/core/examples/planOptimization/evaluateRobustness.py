@@ -16,13 +16,18 @@ from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCa
 from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
 
+"""
+In this example, we evaluate an optimized ion plan. 
+It is possible to assess range and setup errors and generate DVHs.
+"""
+
 logger = logging.getLogger(__name__)
 
 def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        output_path = os.path.join(os.getcwd(), 'Output', 'EvaluateRobustness')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
@@ -74,6 +79,7 @@ def run(output_path=""):
         print('Plan loaded')
     else:
         print("You need to design and optimize a plan first - See SimpleOptimization or robustOptimization script.")
+        exit()
 
     # Load / Generate scenarios
     scenario_folder = os.path.join(output_path,'RobustnessTest_Jul-17-2024_15-16-10_')
@@ -126,7 +132,7 @@ def run(output_path=""):
     ax.set_ylabel("Volume (%)")
     plt.grid(True)
     plt.legend()
-
+    plt.savefig(f'{output_path}/EvaluateRobustness.png', format = 'png')
     plt.show()
 if __name__ == "__main__":
     run()

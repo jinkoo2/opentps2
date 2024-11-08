@@ -152,13 +152,13 @@ def resampleImage3D(image:Image3D, spacing:Sequence[float]=None, gridSize:Sequen
     if trySITK:
         if not(image.imageArray.dtype=='bool'):
             # anti-aliasing filter
-            sigma = [0, 0, 0]
-            if (spacing[0] > image.spacing[0]): sigma[0] = 0.4 * (spacing[0] / image.spacing[0])
-            if (spacing[1] > image.spacing[1]): sigma[1] = 0.4 * (spacing[1] / image.spacing[1])
-            if (spacing[2] > image.spacing[2]): sigma[2] = 0.4 * (spacing[2] / image.spacing[2])
-            if (sigma != [0, 0, 0]):
+            sigma = [0] * len(image.spacing)
+            for i in range(len(image.spacing)):
+                if spacing[i] > image.spacing[i]: sigma[i] = 0.4 * (spacing[i] / image.spacing[i])
+                
+            if any(s != 0 for s in sigma):
                 logger.info("data is filtered before downsampling")
-                image.imageArray[:, :, :] = imageFilter3D.gaussConv(image.imageArray[:, :, :], sigma)
+                image.imageArray = imageFilter3D.gaussConv(image.imageArray, sigma)
         try:
             from opentps.core.processing.imageProcessing import sitkImageProcessing
             sitkImageProcessing.resize(image, spacing, origin, gridSize, fillValue=fillValue)
