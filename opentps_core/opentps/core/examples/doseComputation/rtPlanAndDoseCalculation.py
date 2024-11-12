@@ -62,7 +62,7 @@ def run(output_path=""):
     # Load DICOM plan
     dicomPath = os.path.join(Path(os.getcwd()).parent.absolute(),'opentps','testData','Phantom')
     dataList = readData(dicomPath, maxDepth=1)
-    plan3 = [d for d in dataList if isinstance(d, RTPlan)][0]
+    #plan3 = [d for d in dataList if isinstance(d, RTPlan)][0]
     # or provide path to RTPlan and read it
     # plan_path = os.path.join(Path(os.getcwd()).parent.absolute(),'opentps/testData/Phantom/Plan_SmallWaterPhantom_cropped_resampled_optimized.dcm')
     # plan3 = readDicomPlan(plan_path)
@@ -132,7 +132,7 @@ def run(output_path=""):
     #doseCalculator.overwriteOutsideROI = body
 
     # MCsquare simulation
-    doseImage = doseCalculator.computeDose(ct, plan3)
+    doseImage = doseCalculator.computeDose(ct, plan)
     # or Load dicom dose
     #doseImage = [d for d in dataList if isinstance(d, DoseImage)][0]
     # or
