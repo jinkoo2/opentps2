@@ -98,11 +98,11 @@ class ROIContour(PatientData):
         allZ = np.sort(allZ)
 
         xDiff = np.abs(np.diff(allX))
-        xDiff[xDiff==0] = np.Inf
+        xDiff[xDiff==0] = np.inf
         yDiff = np.abs(np.diff(allY))
-        yDiff[yDiff == 0] = np.Inf
+        yDiff[yDiff == 0] = np.inf
         zDiff = np.abs(np.diff(allZ))
-        zDiff[zDiff == 0] = np.Inf
+        zDiff[zDiff == 0] = np.inf
 
         contourSpacing[0] = minSpatialResolution
         contourSpacing[1] = minSpatialResolution
