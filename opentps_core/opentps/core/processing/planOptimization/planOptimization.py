@@ -7,20 +7,6 @@ import scipy.sparse as sp
 
 from opentps.core.processing.planOptimization.objectives.doseFidelity import DoseFidelity
 
-try:
-    import sparse_dot_mkl
-    use_MKL = 0 # Currently deactivated on purpose because sparse_dot_mkl generates seg fault
-except:
-    use_MKL = 0
-
-cupy_available = False
-try:
-    import cupy as cp
-    import cupyx as cpx
-    cupy_available = True
-except:
-    cupy_available = False
-
 from opentps.core.data.plan._rtPlan import RTPlan
 from opentps.core.processing.planOptimization.solvers import scipyOpt, sparcling, bfgs, localSearch, fista, gradientDescent
 from opentps.core.processing.planOptimization import planPreprocessing
@@ -29,6 +15,24 @@ from opentps.core.data.images._doseImage import DoseImage
 
 logger = logging.getLogger(__name__)
 
+try:
+    import sparse_dot_mkl
+    sdm_available = True
+except:
+    sdm_available = False
+
+try:
+    import mkl as mkl
+    mkl_available = True
+except:
+    mkl_available = False
+
+try:
+    import cupy as cp
+    import cupyx as cpx
+    cupy_available = True
+except:
+    cupy_available = False
 
 class PlanOptimizer:
     """
@@ -49,11 +53,16 @@ class PlanOptimizer:
         The threshold weight below which spots are removed from the plan and beamlet matrix.
     xSquared : bool
         If True, the weights are squared. True by default to avoid negative weights.
-    GPU_acceleration : bool (default : False)
-        If True, the evaluation of the doseFidelity function is done with cupy (this attribute should only
-        be modified with the "use_GPU_acceleration" function)
+    hardwareAcceleration : str
+        The acceleration method. It can be one of the following:
+        - 'GPU' : use the GPU for the optimization.
+        - 'MKL' : use the MKL library for the optimization with the maximum number of threads available.
+        - 'MKL-n' : use the MKL library for the optimization with n threads.
+        - 'MKL-n-DEBUG' : use the MKL library for the optimization with n threads and the debug mode.
+        - 'MKL-DEBUG' : use the MKL library for the optimization with the debug mode.
+
     """
-    def __init__(self, plan:RTPlan, **kwargs):
+    def __init__(self, plan:RTPlan, hardwareAcceleration:str=None, **kwargs):
 
         self.solver = scipyOpt.ScipyOpt('L-BFGS-B')
         planPreprocessing.extendPlanLayers(plan)
@@ -64,6 +73,26 @@ class PlanOptimizer:
         self.thresholdSpotRemoval = 1e-6 # remove all spots below this value after optimization from the plan and
         # beamlet matrix
         self.GPU_acceleration = False
+        self.MKL_acceleration = False
+        if hardwareAcceleration is not None:
+            if hardwareAcceleration == 'GPU':
+                self.use_GPU_acceleration()
+            elif hardwareAcceleration[:3] == 'MKL':
+                if hardwareAcceleration == 'MKL':
+                    self.use_MKL_acceleration()
+                else:
+                    args = hardwareAcceleration.split('-')
+                    if args[1].isdigit():
+                        n_threads = int(args[1])
+                        if len(args) > 2:
+                            debug = args[2] == 'DEBUG'
+                            self.use_MKL_acceleration(n_threads, debug=debug)
+                        self.use_MKL_acceleration(n_threads)
+                    elif args[1] == 'DEBUG':
+                        self.use_MKL_acceleration(debug=True)
+            else:
+                logger.warning('Unknown hardware acceleration method. No hardware acceleration will be used')
+
 
     @property
     def xSquared(self):
@@ -82,14 +111,56 @@ class PlanOptimizer:
             logger.info('cupy imported in planOptimization module')
             logger.info('abnormal used memory: {}'.format(cp.get_default_memory_pool().used_bytes()))
         else:
-            logger.info('Unable to import CUPY, please configure CUPY to enable GPU acceleration')
+            logger.warning('Unable to import CUPY, please configure CUPY to enable GPU acceleration')
+            logger.info('Regular optimization will be used instead')
             self.GPU_acceleration = False
+
     def stop_GPU_accelration(self):
         """
         stop the use of GPU acceleration
         """
         self.GPU_acceleration = False
         logger.info('GPU accelerations deactivated')
+
+    def use_MKL_acceleration(self,n_threads=None,debug=False):
+        """
+        Enable the uses of the MKL library for the optimization
+
+        Parameters
+        ----------
+        n_threads : int (default: None)
+            The number of threads to use. If None, the number of threads is set to the maximum number of threads available.
+        debug : bool (default: False)
+            If True, the debug mode is activated in sparse_dot_mkl.
+        """
+
+        if not sdm_available:
+            logger.warning('Unable to import sparse_dot_mkl, please install sparse_dot_mkl to enable MKL acceleration')
+            logger.info('Regular optimization will be used instead')
+
+        if mkl_available:
+            vers = mkl.get_version()['MajorVersion']
+            logger.info('MKL version: {}'.format(vers))
+        if not mkl_available:
+            logger.warning('Unable to import mkl, please install mkl-service and mkl to enable MKL acceleration as this might cause issues with MKL version')
+
+        if sdm_available:
+            if debug:
+                logger.info('MKL acceleration activated with debug mode')
+                sparse_dot_mkl.set_debug_mode(True)
+            if n_threads is not None:
+                sparse_dot_mkl.mkl_set_num_threads(n_threads)
+                logger.info('MKL acceleration activated with {} threads'.format(n_threads))
+            logger.info('CAUTION : MKL might not work on Unix systems')
+            self.MKL_acceleration = True
+            logger.info('MKL acceleration activated')
+
+    def stop_MKL_acceleration(self):
+        """
+        stop the use of MKL acceleration
+        """
+        self.MKL_acceleration = False
+        logger.info('MKL acceleration deactivated')
 
 
     def initializeWeights(self):
@@ -135,8 +206,8 @@ class PlanOptimizer:
                 roiObjectives = np.logical_or(roiObjectives, objective.maskVec)
         roiObjectives = np.logical_or(roiObjectives, roiRobustObjectives)
 
-        if use_MKL == 1:
-            print("Using MKL")
+        if self.MKL_acceleration :
+            logger.info("Using MKL to create sparse beamlet matrix")
             beamletMatrix = sparse_dot_mkl.dot_product_mkl(
                 sp.diags(roiObjectives.astype(np.float32), format='csc'), self.plan.planDesign.beamlets.toSparseMatrix())
         else:
@@ -147,7 +218,8 @@ class PlanOptimizer:
 
         if robust:
             for s in range(len(self.plan.planDesign.robustness.scenarios)):
-                if use_MKL == 1:
+                if self.MKL_acceleration:
+                    print("Using MKL to create sparse beamlet matrix")
                     beamletMatrix = sparse_dot_mkl.dot_product_mkl(
                         sp.diags(roiRobustObjectives.astype(np.float32), format='csc'),
                         self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
@@ -157,7 +229,7 @@ class PlanOptimizer:
                         self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
                 self.plan.planDesign.robustness.scenarios[s].setUnitaryBeamlets(beamletMatrix)
 
-        objectiveFunction = DoseFidelity(self.plan, self.xSquared,self.GPU_acceleration)
+        objectiveFunction = DoseFidelity(self.plan, self.xSquared,self.GPU_acceleration,self.MKL_acceleration)
         self.functions.append(objectiveFunction)
 
     def computeDose(self):
@@ -167,7 +239,7 @@ class PlanOptimizer:
 
         beamlets = self.plan.planDesign.beamlets
         weights = np.array(self.plan.spotMUs, dtype=np.float32)
-        if use_MKL == 1:
+        if self.MKL_acceleration:
             totalDose = sparse_dot_mkl.dot_product_mkl(beamlets._sparseBeamlets, weights) * self.plan.numberOfFractionsPlanned
         else:
             totalDose = csc_matrix.dot(beamlets._sparseBeamlets, weights) * self.plan.numberOfFractionsPlanned
@@ -331,8 +403,8 @@ class IMPTPlanOptimizer(PlanOptimizer):
     dict
         The optimization parameters, depending on the selected method.
     """
-    def __init__(self, method, plan:RTPlan, **kwargs):
-        super().__init__(plan, **kwargs)
+    def __init__(self, method, plan:RTPlan, hardwareAcceleration:str=None, **kwargs):
+        super().__init__(plan, hardwareAcceleration, **kwargs)
         self.method = method
         if "Scipy" in self.method:
             algo = self.method.split('_')[1]
@@ -379,8 +451,8 @@ class BoundConstraintsOptimizer(PlanOptimizer):
     dict
         The optimization parameters for the SciPy methods.
     """
-    def __init__(self, plan: RTPlan, method='Scipy_L-BFGS-B', bounds=(0.02, 250), **kwargs):
-        super().__init__(plan, **kwargs)
+    def __init__(self, plan: RTPlan, hardwareAcceleration:str=None, method='Scipy_L-BFGS-B', bounds=(0.02, 250), **kwargs):
+        super().__init__(plan, hardwareAcceleration, **kwargs)
         self.bounds = bounds
         if method == 'Scipy_L-BFGS-B':
             self.method = method
