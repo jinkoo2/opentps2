@@ -55,9 +55,9 @@ def extendAll(images:Sequence[Image3D], inPlace=False, fillValue:float=0.) -> Se
     Sequence[Image3D]
         The extended images if inPlace is False, otherwise the original images modified.
     """
-    newOrigin = np.array([np.Inf, np.Inf, np.Inf])
-    newSpacing = np.array([np.Inf, np.Inf, np.Inf])
-    newEnd = np.array([-np.Inf, -np.Inf, -np.Inf])
+    newOrigin = np.array([np.inf, np.inf, np.inf])
+    newSpacing = np.array([np.inf, np.inf, np.inf])
+    newEnd = np.array([-np.inf, -np.inf, -np.inf])
 
     for image in images:
         o = image.origin
