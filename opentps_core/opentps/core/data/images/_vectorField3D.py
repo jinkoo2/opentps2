@@ -129,7 +129,7 @@ class VectorField3D(Image3D):
                     field[:, :, :, 1] += new_1
                     field[:, :, :, 2] += new_2
 
-                displacement._imageArray = cupy.asnumpy(displacement._imageArray).astype(outputType)
+                displacement._imageArray = cupy.asnumpy(field).astype(outputType)
             except:
                 logger.warning('cupy not used for field exponentiation.')
                 tryGPU = False

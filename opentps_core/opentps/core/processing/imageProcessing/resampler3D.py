@@ -44,16 +44,7 @@ def resample(data:Any, spacing:Sequence[float]=None, gridSize:Sequence[int]=None
 
     from opentps.core.data.dynamicData._dynamic3DModel import Dynamic3DModel
 
-    if isinstance(data, VectorField3D):
-        vector_field = []
-        for i in range(data.imageArray.shape[3]):
-            component = Image3D(data.imageArray[:,:,:,i], origin=data.origin, spacing=data.spacing, angles=data.angles)
-            resampleImage3D(component, spacing=spacing, gridSize=gridSize, origin=origin, fillValue=fillValue,
-                            outputType=outputType, inPlace=inPlace, tryGPU=tryGPU)
-            vector_field.append(component)
-        return VectorField3D(np.stack([v.imageArray for v in vector_field], axis=-1), origin=data.origin, spacing=data.spacing, name=data.name, angles=data.angles)
-
-    elif isinstance(data, Deformation3D):
+    if isinstance(data, Deformation3D):
         if not(data.velocity is None):
             data.velocity = resample(data.velocity, spacing=spacing, gridSize=gridSize, origin=origin,
              fillValue=fillValue, outputType=outputType, inPlace=inPlace, tryGPU=tryGPU)
@@ -71,6 +62,19 @@ def resample(data:Any, spacing:Sequence[float]=None, gridSize:Sequence[int]=None
             return
         else:
             return data
+        
+    elif isinstance(data, VectorField3D):
+        vector_field = []
+        for i in range(data.imageArray.shape[3]):
+            component = Image3D(data.imageArray[:,:,:,i], origin=data.origin, spacing=data.spacing, angles=data.angles)
+            component = resampleImage3D(component, spacing=spacing, gridSize=gridSize, origin=origin, fillValue=fillValue,
+                            outputType=outputType, inPlace=inPlace, tryGPU=tryGPU)
+            vector_field.append(component)
+        data.imageArray = np.stack([v.imageArray for v in vector_field], axis=-1)
+
+        data.spacing = vector_field[0].spacing
+        data.origin = vector_field[0].origin
+        return data
 
     elif isinstance(data, Image3D):
         return resampleImage3D(data, spacing=spacing, gridSize=gridSize, origin=origin, fillValue=fillValue,
