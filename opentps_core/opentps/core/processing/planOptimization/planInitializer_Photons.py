@@ -1,15 +1,10 @@
 import logging
 import math
-
 import numpy as np
 from opentps.core.data.CTCalibrations._abstractCTCalibration import AbstractCTCalibration
 from opentps.core.data.images._ctImage import CTImage
 from opentps.core.data.images._roiMask import ROIMask
-from opentps.core.data.plan._planProtonLayer import PlanProtonLayer
 from opentps.core.data.plan._planPhotonBeam import PlanPhotonBeam
-from opentps.core.processing.C_libraries.libRayTracing_wrapper import transport_spots_to_target, \
-    transport_spots_inside_target
-from opentps.core.processing.rangeEnergy import energyToRange, rangeToEnergy
 from opentps.core.data.plan._photonPlan import PhotonPlan
 from opentps.core.data.plan._planPhotonBeam import PlanPhotonBeam
 
@@ -36,93 +31,60 @@ class BeamInitializer:
 
     def initializeBeam(self):
         """
-        Initialize the beam with beamlets.
+        Placement of the spots according to the Beam's Eye View (BEV) by applying gantry and 
+        couch rotations to the target and projecting onto the x-z axis (BEV axis). 
+        The BEV is discretized into beamlets based on defined x-y spacings.
         """
-        # generate hexagonal spot grid around isocenter
-        beamletGrid = self._definePencilBeamGridAroundIsocenter()
-        numBeamlets = len(beamletGrid["x"])
 
-        # compute direction vector
-        u, v, w = 1e-10, 1.0, 1e-10  # BEV to 3D coordinates
-        [u, v, w] = self._rotateVector([u, v, w], math.radians(self.beam.gantryAngle_degree), 'z')  # rotation for gantry angle
-        [u, v, w] = self._rotateVector([u, v, w], math.radians(self.beam.couchAngle_degree), 'y')  # rotation for couch angle
+        ## Step 1: Place the target in the reference frame centered on the isocenter, so the axes are in mm.
+        x, y, z = np.where(self.targetMask.imageArray)
+        x = self.targetMask.origin[0] + x*self.targetMask.spacing[0] - self.beam.isocenterPosition_mm[0]
+        y = self.targetMask.origin[1] + y*self.targetMask.spacing[1] - self.beam.isocenterPosition_mm[1]
+        z = self.targetMask.origin[2] + z*self.targetMask.spacing[2] - self.beam.isocenterPosition_mm[2]
+        centered_coords = np.vstack((x, y, z))
 
-        # prepare raytracing: translate initial positions at the CT image border
-        for s in range(numBeamlets):
-            translation = np.array([1.0, 1.0, 1.0])
-            translation[0] = (beamletGrid["x"][s] - self.imgBordersX[int(u < 0)]) / u
-            translation[1] = (beamletGrid["y"][s] - self.imgBordersY[int(v < 0)]) / v
-            translation[2] = (beamletGrid["z"][s] - self.imgBordersZ[int(w < 0)]) / w
-            translation = translation.min()
-            beamletGrid["x"][s] = beamletGrid["x"][s] - translation * u
-            beamletGrid["y"][s] = beamletGrid["y"][s] - translation * v
-            beamletGrid["z"][s] = beamletGrid["z"][s] - translation * w
+        ## Step 2: Define rotation matrices for gantry and couch
+        # the - from the fact we rotate the target and not the Gantry/Couch
+        gantry_angle_rad = np.radians(-self.beam.gantryAngle_degree)
+        couch_angle_rad = np.radians(-self.beam.couchAngle_degree)
+        # Rotation matrix around the Z-axis for the Gantry's angle
+        rotationGantry_matrix = np.array([[np.cos(gantry_angle_rad), np.sin(gantry_angle_rad), 0],
+                                        [-np.sin(gantry_angle_rad), np.cos(gantry_angle_rad), 0],
+                                        [0, 0, 1]])
+        # Rotation matrix around the Y-axis for the Couch's angle
+        rotationCouch_matrix = np.array([[np.cos(couch_angle_rad), 0, np.sin(couch_angle_rad)],
+                                        [0, 1, 0],
+                                        [-np.sin(couch_angle_rad), 0, np.cos(couch_angle_rad)]])
 
-        # This function works for protons that is why it requires the RSP. However, if we just take the x,y dimension it is ok for photons. 
-        transport_spots_to_target(self.rspImage, self.targetMask, beamletGrid, [u, v, w])
+        ## Step 3: Rotate coordinates using the combined rotation matrices
+        rotated_coords = (rotationGantry_matrix @ (rotationCouch_matrix @ centered_coords))
+        x_rotated, y_rotated, z_rotated = rotated_coords
 
-        # remove spots that didn't reach the target
-        minWET = 9999999
-        for s in range(numBeamlets - 1, -1, -1):
-            if beamletGrid["WET"][s] < 0:
-                beamletGrid["BEVx"].pop(s)
-                beamletGrid["BEVy"].pop(s)
-                beamletGrid["x"].pop(s)
-                beamletGrid["y"].pop(s)
-                beamletGrid["z"].pop(s)
-                beamletGrid["WET"].pop(s)
-            else:
-                if beamletGrid["WET"][s] < minWET: minWET = beamletGrid["WET"][s]
+        # Step 4 : Divergen projection due to the divergence of the photon beam
+        x_rotated_projected = np.array([(x_rotated[i]) * self.SAD_mm / (self.SAD_mm + y_rotated[i]) for i in range(len(x_rotated))])
+        z_rotated_projected = np.array([(z_rotated[i]) * self.SAD_mm / (self.SAD_mm + y_rotated[i]) for i in range(len(z_rotated))])
 
-        # process valid spots
-        numBeamlets = len(beamletGrid["x"])
-        for n in range(numBeamlets):
-            self.beam.appendBeamlet(beamletGrid["BEVx"][n], beamletGrid["BEVy"][n], 1)
+        # Step 5: Round x and z coordinates to the nearest beamlet spacings
+        beamlet_spacing_x = self.beam.xBeamletSpacing_mm
+        beamlet_spacing_z = self.beam.yBeamletSpacing_mm
+        x_rotated_mult = np.round(x_rotated_projected / beamlet_spacing_x) * beamlet_spacing_x
+        z_rotated_mult = np.round(z_rotated_projected / beamlet_spacing_z) * beamlet_spacing_z
+        
+        # Step 6: Combine rounded coordinates into beamlet positions and remove duplicates (same x-z position but in a other slide)
+        beamlet_positions = [(xi, zi) for xi, zi in zip(x_rotated_mult, z_rotated_mult)]
+        unique_beamlet_positions = np.unique(beamlet_positions, axis=0)
 
-    def _definePencilBeamGridAroundIsocenter(self):
-        FOV = 400  # max field size on IBA P+ is 30x40 cm
-        numSpotX = math.ceil(FOV / self.beam.xBeamletSpacing_mm)
-        numSpotY = math.ceil(FOV / self.beam.yBeamletSpacing_mm)
+        # Be sure to not take (a,b) that are extrems in both direction
+        unique_beamlet_positions = np.array([(a, b) for (a, b) in unique_beamlet_positions if np.min(x_rotated_projected) <= a <= np.max(x_rotated_projected) 
+                                             and np.min(z_rotated_projected) <= b <= np.max(z_rotated_projected)])
 
-        beamletGrid = {"BEVx": [], "BEVy": [], "x": [], "y": [], "z": [], "WET": []}
+        # Step 7: Separate positions into x and y arrays for the Beam Eyes View
+        BEVx = np.flip(unique_beamlet_positions[:, 0])
+        BEVy = np.flip(unique_beamlet_positions[:, 1])
 
-        for i in range(numSpotX):
-            for j in range(numSpotY):
-                # coordinates in Beam-eye-view
-                beamletGrid["BEVx"].append((i - round(numSpotX / 2)) * self.beam.xBeamletSpacing_mm)
-                beamletGrid["BEVy"].append((j - round(numSpotY / 2)) * self.beam.yBeamletSpacing_mm)
-
-                # 3D coordinates
-                x, y, z = beamletGrid["BEVx"][-1], 0, beamletGrid["BEVy"][-1]
-
-                # rotation for gantry angle (around Z axis)
-                [x, y, z] = self._rotateVector([x, y, z], math.radians(self.beam.gantryAngle_degree), 'z')
-
-                # rotation for couch angle (around Y axis)
-                [x, y, z] = self._rotateVector([x, y, z], math.radians(self.beam.couchAngle_degree), 'y')
-
-                # Dicom CT coordinates
-                beamletGrid["x"].append(x + self.beam.isocenterPosition_mm[0])
-                beamletGrid["y"].append(y + self.beam.isocenterPosition_mm[1])
-                beamletGrid["z"].append(z + self.beam.isocenterPosition_mm[2])
-        return beamletGrid
-
-    def _rotateVector(self, vec, angle, axis):
-        if axis == 'x':
-            x = vec[0]
-            y = vec[1] * math.cos(angle) - vec[2] * math.sin(angle)
-            z = vec[1] * math.sin(angle) + vec[2] * math.cos(angle)
-        elif axis == 'y':
-            x = vec[0] * math.cos(angle) + vec[2] * math.sin(angle)
-            y = vec[1]
-            z = -vec[0] * math.sin(angle) + vec[2] * math.cos(angle)
-        elif axis == 'z':
-            x = vec[0] * math.cos(angle) - vec[1] * math.sin(angle)
-            y = vec[0] * math.sin(angle) + vec[1] * math.cos(angle)
-            z = vec[2]
-
-        return [x, y, z]
-
+        # Step 7: Append each beamlet position to the beam
+        for n in range(len(BEVx)):
+            self.beam.appendBeamlet(BEVx[n], BEVy[n], 1)
 
 class PhotonPlanInitializer:
     def __init__(self):
@@ -130,6 +92,7 @@ class PhotonPlanInitializer:
         self.ct: CTImage = None
         self.plan: PhotonPlan = None
         self.targetMask: ROIMask = None
+        self.SAD_mm = None
 
         self._beamInitializer = BeamInitializer()
 
@@ -137,28 +100,18 @@ class PhotonPlanInitializer:
         self._beamInitializer.calibration = self.ctCalibration
         self._beamInitializer.targetMargin = targetMargin
 
-        from opentps.core.data.images._rspImage import RSPImage
         logger.info('Target is dilated using a margin of {} mm. This process might take some time.'.format(targetMargin))
         roiDilated = ROIMask.fromImage3D(self.targetMask, patient=None)
         roiDilated.dilateMask(radius=targetMargin)
         logger.info('Dilation done.')
         self._beamInitializer.targetMask = roiDilated
 
-        rspImage = RSPImage.fromCT(self.ct, self.ctCalibration, energy=100.) ######################################## Review!!!!!!!!!!!!!!!!!!!
-        rspImage.patient = None
-        self._beamInitializer.rspImage = rspImage
-
-        imgBordersX = [rspImage.origin[0], rspImage.origin[0] + rspImage.gridSize[0] * rspImage.spacing[0]]
-        imgBordersY = [rspImage.origin[1], rspImage.origin[1] + rspImage.gridSize[1] * rspImage.spacing[1]]
-        imgBordersZ = [rspImage.origin[2], rspImage.origin[2] + rspImage.gridSize[2] * rspImage.spacing[2]]
-
-        self._beamInitializer.imgBordersX = imgBordersX
-        self._beamInitializer.imgBordersY = imgBordersY
-        self._beamInitializer.imgBordersZ = imgBordersZ
+        self.SAD_mm = self.plan.SAD_mm
 
         for beam in self.plan:
             beam.removeBeamSegment(beam.beamSegments)
             if beam.beamType == 'Static':
                 beam.createBeamSegment()                
                 self._beamInitializer.beam = beam[0]
+                self._beamInitializer.SAD_mm = self.SAD_mm
                 self._beamInitializer.initializeBeam()

@@ -115,7 +115,8 @@ def run(output_path=""):
     
     plan.numberOfFractionsPlanned = 30
 
-    solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxit=1000)
+    plan.planDesign.ROI_cropping = False
+    solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=1000)
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
 
@@ -179,8 +180,8 @@ def run(output_path=""):
     ax2.set_xlabel('Iterations')
     ax2.set_xlim(0, convData['nIter'])
     ax[2].grid(True)
-    plt.savefig(os.path.join(output_path, 'dose.png'))
-    # plt.show()
+    plt.savefig(os.path.join(output_path, 'Dose_SimpleOptimizationPhotons.png'))
+    plt.show()
 
 
 if __name__ == "__main__":
