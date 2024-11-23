@@ -90,8 +90,8 @@ def run(output_path=""):
         planDesign.beamNames = beamNames
         planDesign.couchAngles = couchAngles
         planDesign.calibration = ctCalibration
-        planDesign.xBeamletSpacing_mm = 5
-        planDesign.yBeamletSpacing_mm = 5
+        planDesign.xBeamletSpacing_mm = 4
+        planDesign.yBeamletSpacing_mm = 4
 
         # Robustness settings
         planDesign.robustness = RobustnessPhoton()
@@ -104,7 +104,7 @@ def run(output_path=""):
         # planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.RANDOM
         # planDesign.robustness.numScenarios = 10   # specify how many random scenarios to simulate, default = 100
 
-        planDesign.targetMargin = max(planDesign.robustness.setupSystematicError)
+        planDesign.targetMargin = max(planDesign.robustness.setupSystematicError) * 2.5 + max(planDesign.xBeamletSpacing_mm, planDesign.yBeamletSpacing_mm) # sigma * number of sigma (95%)
         planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) # needs to be called prior spot placement
         plan = planDesign.buildPlan()  # Spot placement
         plan.PlanName = "RobustPlan"
@@ -119,7 +119,7 @@ def run(output_path=""):
     plan.planDesign.objectives.addFidObjective(roi, FidObjective.Metrics.DMIN, 20.5, 1.0, robust=True)
 
     plan.planDesign.ROI_cropping = False # Do not cropped allows 'shift' evaluation method to be used
-    solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxit=50)
+    solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=50)
     # Optimize treatment plan
     doseInfluenceMatrix = copy.deepcopy(plan.planDesign.beamlets)
     doseImage, ps = solver.optimize()

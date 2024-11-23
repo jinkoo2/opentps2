@@ -182,7 +182,9 @@ def shiftBeamlets(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_
 
 def shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAngles_rad):
     """
-    Shift the beamlets in the dose influence matrix for a given setup error. This would be equivalent to recalculating the dose distribution for a given setup error. This function is executed in c++ to gain speed and parallelize the process over different threads.
+    Shift the beamlets in the dose influence matrix for a given setup error.
+    This would be equivalent to recalculating the dose distribution for a given setup error.
+    This function is executed in c++ to gain speed and parallelize the process over different threads.
     ----------
     sparseBeamlets : sp.csc_matrix
         Sparse matrix of the beamlets
@@ -215,8 +217,6 @@ def shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAng
     numThreads = psutil.cpu_count()
     scenarioShift_voxel[2]*=-1 ### To have the setup error in LPS. Check because some signs problem
     scenarioShift_voxel[1]*=-1 ### To have the setup error in LPS. Check because some signs problem
-    nbOfBeamlets = sparseBeamlets.shape[1]
-    nbOfVoxelInImage = sparseBeamlets.shape[0]
     gridSize = np.array(gridSize, dtype=np.int32)
     BeamletMatrix = []
     
@@ -261,7 +261,6 @@ def dnorm(x, mu, sd):
 
 def adjustDoseToScenario(scenario, nominal, plan: PhotonPlan): ### Shift beamlets according sse + apply gaussian filter one the dose array to simulate sre
     if scenario.sse is not None:
-        logger.info(scenario.sse)
         shiftVoxels = np.array(scenario.sse) / np.array(nominal.doseSpacing)
         cumulativeNumberBeamlets = 0
         weights = nominal._weights

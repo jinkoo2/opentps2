@@ -428,8 +428,8 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         if computeNominal:
             logger.info("Simulation of nominal scenario")
             self.ROFolder = 'Nominal'
-            nominalBL = self.computeBeamlets(self._ct, self._plan,roi=self._roi)
-            robustEval.setNominal(nominalBL.toDoseImage(),self._roi)
+            nominalBL = self.computeBeamlets(self._ct, self._plan)
+            robustEval.setNominal(nominalBL.toDoseImage(), roi)
         
         logger.info("Simulation of error scenarios")
         for number, scenario in enumerate(scenarios):
@@ -437,9 +437,8 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             logger.info(scenario)
             self.ROFolder = 'Scenario_{}'.format(number)
             dose = self.computeRobustScenarioDose(scenario, nominalBL, origin, mode = robustMode)
-            logger.info(dose.origin)
-            robustEval.addScenario(dose, number, self._roi)
-        self._ct.origin = origin
+            robustEval.addScenario(dose, number, roi)
+            self._ct.origin = origin
 
         return robustEval
 
@@ -498,13 +497,14 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             Dose with same grid size and spacing as the CT image
         """
         t0 = time.time()
-        self._ct.origin = origin + scenario.sse
+        self._ct.origin = origin
  
         scenario.sre = None if np.all(scenario.sre == [0,0,0]) else scenario.sre
 
         if mode == "Simulation":
+            self._ct.origin =+ scenario.sse
             logger.info(f"CT origin shifted from {origin} to {self._ct.origin}")
-            DoseScenario = self.computeDose(self._ct, self._plan, overRidingList)
+            DoseScenario = self.computeDose(self._ct, self._plan, overRidingList, Density = True)
             DoseScenario.origin = origin
             if np.all(scenario.sre) != None:
                 DoseScenario.imageArray = gaussian_filter(DoseScenario.imageArray.astype(float), sigma = scenario.sre, order=0, truncate=2)

@@ -115,7 +115,7 @@ def run(output_path=""):
     
     plan.numberOfFractionsPlanned = 30
 
-    plan.planDesign.ROI_cropping = False
+    plan.planDesign.ROI_cropping = False # False, not cropping allows you to keep the dose outside the ROIs and then use the 'shift' evaluation method, which simply shifts the beamlets.
     solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=1000)
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
