@@ -1514,7 +1514,7 @@ def writeRTPlan(plan: RTPlan, outputFolder:str, outputFilename:str=None, struct:
             dcm_beam.TreatmentDeliveryType = "TREATMENT"
             
             control_point_sequence = []
-            for segment in beam.segments:
+            for segment in beam._beamSegments:
                 control_point = Dataset()
                 control_point.ControlPointIndex = segment.controlPointIndex
                 control_point.GantryAngle = segment.gantryAngle_degree
@@ -1536,10 +1536,11 @@ def writeRTPlan(plan: RTPlan, outputFolder:str, outputFilename:str=None, struct:
                     beam_limiting_device_sequence.append(y_jaw)
 
                 if segment.Xmlc_mm is not None:
-                    mlc = Dataset()
-                    mlc.RTBeamLimitingDeviceType = 'MLCX'
-                    mlc.LeafJawPositions = segment.Xmlc_mm.flatten().tolist()
-                    beam_limiting_device_sequence.append(mlc)
+                    logger.warning("MLC positions were not optimized. Plan cannot be delivered.")
+                    # mlc = Dataset()
+                    # mlc.RTBeamLimitingDeviceType = 'MLCX'
+                    # mlc.LeafJawPositions = segment.Xmlc_mm.flatten().tolist()
+                    # beam_limiting_device_sequence.append(mlc)
 
                 control_point.BeamLimitingDevicePositionSequence = beam_limiting_device_sequence
                 control_point_sequence.append(control_point)
