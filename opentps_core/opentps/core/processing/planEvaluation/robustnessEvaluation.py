@@ -482,12 +482,6 @@ class RobustnessEvalPhoton(RobustnessEval,RobustnessPhoton):
     
     def generateRobustScenarios(self):
         super().generateRobustScenarios()
-        # Add logic to handle the random error case
-        if self.setupRandomError not in [None, 0, [0, 0, 0]]:
-            self.scenariosConfig.append(RobustnessScenario(
-                sse=np.array([0, 0, 0]),
-                sre=self.setupRandomError
-            ))
         # Update numScenarios if needed (in case the random error adds a new scenario)
         self.numScenarios = len(self.scenariosConfig)
 
@@ -500,6 +494,8 @@ class RobustnessEvalPhoton(RobustnessEval,RobustnessPhoton):
         ----------
         dose : DoseImage
             The dose image.
+        scenarioIdx : int
+            Index of the scenario we add.
         contours : list[ROIContour]
             The list of contours.
         """

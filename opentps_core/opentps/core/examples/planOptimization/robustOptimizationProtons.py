@@ -89,7 +89,7 @@ def run(output_path=""):
         planDesign.calibration = ctCalibration
         # Robustness settings
         planDesign.robustness = RobustnessProton()
-        planDesign.robustness.setupSystematicError = [5.0, 5.0, 5.0]  # mm
+        planDesign.robustness.setupSystematicError = [1.6, 1.6, 1.6]  # mm
         planDesign.robustness.setupRandomError = [0.0, 0.0, 0.0]  # mm (sigma)
         planDesign.robustness.rangeSystematicError = 0.0  # %
 
