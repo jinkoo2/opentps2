@@ -39,7 +39,7 @@ class ObjectivesList:
         prescription dose of the target
     """
     def __init__(self):
-        self.fidObjList:Sequence[FidObjective,ProbabilisticFidObjective] = []
+        self.fidObjList:Sequence[FidObjective] = []
         self.exoticObjList = []
         self.targetName:Union[str,Sequence[str]] = []
         self.targetPrescription:Union[float,Sequence[float]] = []
@@ -90,7 +90,7 @@ class ObjectivesList:
 
         Parameters
         ----------
-        roi: ROIContour, ROIMask and ProbabilityMap
+        roi: ROIContour and ROIMask
             region of interest
         metric: FidObjective.Metrics or str
             metric to use for the objective : "DMin", "DMax", "DMean", "DUniform", "DVHMin", "DVHMax", "EUDMin", "EUDMax" or "EUDUniform" or "DFALLOFF" or FidObjective.Metrics.DMIN, FidObjective.Metrics.DMAX, FidObjective.Metrics.DMEAN, FidObjective.Metrics.DUNIFORM, FidObjective.Metrics.DVHMIN, FidObjective.Metrics.DVHMAX, FidObjective.Metrics.EUDMIN, FidObjective.Metrics.EUDMAX, FidObjective.Metrics.EUDUNIFORM or FidObjective.Metrics.DFALLOFF
@@ -330,22 +330,6 @@ class FidObjective:
             # convert 1D vector
             self.voxelwiseLimitValue = np.ndarray.flatten(self.voxelwiseLimitValue, 'F')
             self.voxelwiseLimitValue = self.voxelwiseLimitValue[self.maskVec]
-
-
-class ProbabilisticFidObjective(FidObjective):
-    def __init__(self, roi=None, metric=None, limitValue=0, weight=1):
-        super().__init__(roi, metric, limitValue, weight)
-    
-    def _updateMaskVec(self, spacing:Sequence[float], gridSize:Sequence[int], origin:Sequence[float]):
-        mask = self.roi
-        if not (np.array_equal(mask.gridSize, gridSize) and np.allclose(mask.origin, origin, atol=0.01) and np.allclose(mask.spacing, spacing, atol=0.01)):
-            mask = resampler3D.resampleImage3D(self.roi, gridSize=gridSize, spacing=spacing, origin=origin)
-
-        self.maskVec = np.flip(mask.imageArray, (0, 1))
-        self.maskVec = np.ndarray.flatten(self.maskVec, 'F').astype('bool')
-        self.ProbMap = np.flip(mask.probabilityMap, (0, 1))
-        self.ProbMap = np.ndarray.flatten(self.ProbMap, 'F')
-        self.ProbMap = self.ProbMap[self.maskVec]
 
 class ExoticObjective:
     """
