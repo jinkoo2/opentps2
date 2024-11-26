@@ -572,6 +572,15 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         if os.path.isdir(dirPath):
             shutil.rmtree(dirPath)
 
+    def _writeRangeShifters(self):
+        """
+        Save the range shifters in the BDL
+        """
+        range_shifters_added = [rs for rs in self._plan.rangeShifter if rs not in self._beamModel.rangeShifters]
+        if range_shifters_added:
+            logger.info('Range shifter with ID ' + str([range_shifters_added[i].ID for i in range(len(range_shifters_added))]) + ' in plan not in BDL but will be add. Please note: it is up to the user to check that the range shifter is compatible with the real machine.')
+        self._beamModel.rangeShifters.extend(range_shifters_added)
+
     def _writeFilesToSimuDir(self):
         """
         Write all files needed for MCsquare simulation in the simulation directory
@@ -579,6 +588,8 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         self._cleanDir(self._materialFolder)
         self._cleanDir(self._scannerFolder)
 
+        if self._plan.rangeShifter:
+            self._writeRangeShifters()
         mcsquareIO.writeCT(self._ct, self._ctFilePath, self.overwriteOutsideROI)
         mcsquareIO.writePlan(self._plan, self._planFilePath, self._ct, self._beamModel)
         mcsquareIO.writeCTCalibrationAndBDL(self._ctCalibration, self._scannerFolder, self._materialFolder,

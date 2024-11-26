@@ -1173,20 +1173,22 @@ def readDicomPlan(dcmFile) -> RTPlan:
             # beam.rangeShifter.ID = ""
             # beam.rangeShifterType = "none"
             pass
-        elif dcm_beam.NumberOfRangeShifters == 1:
-            beam.rangeShifter = RangeShifter()
-            beam.rangeShifter.ID = dcm_beam.RangeShifterSequence[0].RangeShifterID
-            if dcm_beam.RangeShifterSequence[0].RangeShifterType == "BINARY":
-                beam.rangeShifter.type = "binary"
-            elif dcm_beam.RangeShifterSequence[0].RangeShifterType == "ANALOG":
-                beam.rangeShifter.type = "analog"
-            else:
-                logger.warning("ERROR: Unknown range shifter type for beam " + dcm_beam.BeamName if hasattr(dcm_beam, 'BeamName') else 'No beam name')
-                # beam.rangeShifter.type = "none"
-        else:
-            logger.warning("ERROR: More than one range shifter defined for beam " + dcm_beam.BeamName if hasattr(dcm_beam, 'BeamName') else 'No beam name')
-            # beam.rangeShifterID = ""
-            # beam.rangeShifterType = "none"
+        else :
+            beam.rangeShifter = [0]*len(dcm_beam.RangeShifterSequence)
+            for b in range(len(dcm_beam.RangeShifterSequence)):
+                beam.rangeShifter[b] = RangeShifter()
+                beam.rangeShifter[b].ID = dcm_beam.RangeShifterSequence[b].RangeShifterID
+                if dcm_beam.RangeShifterSequence[b].RangeShifterType == "BINARY":
+                    beam.rangeShifter[b].type = "binary"
+                elif dcm_beam.RangeShifterSequence[b].RangeShifterType == "ANALOG":
+                    beam.rangeShifter[b].type = "analog"
+                else:
+                    logger.warning("Warning:  Unknown range shifter type for beam " + dcm_beam.BeamName if hasattr(dcm_beam, 'BeamName') else 'No beam name')
+                    # beam.rangeShifter.type = "none"
+                if b >= 1 :
+                    logger.warning("Warning:  More than one range shifter defined for beam " + dcm_beam.BeamName if hasattr(dcm_beam, 'BeamName') else 'No beam name')
+                    # beam.rangeShifterID = ""
+                    # beam.rangeShifterType = "none"
 
         SnoutPosition = 0
         if hasattr(first_layer, 'SnoutPosition'):
