@@ -18,7 +18,7 @@ from opentps.core.io.serializedObjectIO import loadRTPlan, saveRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
 from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
+from opentps.core.processing.planOptimization.planOptimization import IntensityModulationOptimizer
 
 """"
 In this example, we create and optimize a robust proton plan. 

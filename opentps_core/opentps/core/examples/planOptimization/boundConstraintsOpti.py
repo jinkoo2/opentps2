@@ -19,7 +19,7 @@ from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
 from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D, resampleImage3D
-from opentps.core.processing.planOptimization.planOptimization import BoundConstraintsOptimizer, IMPTPlanOptimizer
+from opentps.core.processing.planOptimization.planOptimization import BoundConstraintsOptimizer
 
 """
 In this example, we optimize an ion plan (Protons) using the BoundConstraintsOptimizer function.
