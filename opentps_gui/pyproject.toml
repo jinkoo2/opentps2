@@ -31,7 +31,7 @@ sparse-dot-mkl = "^0.9.6"
 setuptools = "^67.8.0" # Required for local testing with python -m pip install -e .
 pandas = "^2.2.3"
 scikit-image = "*"
-pymedphys="^0.39.3"
+pymedphys="^0.40.0"
 
 [tool.poetry.dev-dependencies]
 

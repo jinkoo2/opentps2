@@ -57,7 +57,7 @@ pip install pandas
 pip install scikit-image
 pip install tensorflow
 pip install keras
-pip3 install pymedphys==0.39.3
+pip3 install pymedphys==0.40.0
 REM pip3 install cupy
 
 echo All packages installed successfully.
