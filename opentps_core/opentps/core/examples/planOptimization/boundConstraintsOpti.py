@@ -19,7 +19,13 @@ from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
 from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D, resampleImage3D
-from opentps.core.processing.planOptimization.planOptimization import BoundConstraintsOptimizer
+from opentps.core.processing.planOptimization.planOptimization import BoundConstraintsOptimizer, IMPTPlanOptimizer
+
+"""
+In this example, we optimize an ion plan (Protons) using the BoundConstraintsOptimizer function.
+This function allows optimization with constraints on the Monitor Unit (MU) values of each spot.
+It helps to stay as close as possible to reality when certain machines cannot accept MU/spot values that are too high or too low.
+"""
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +152,6 @@ def run(output_path=""):
     plt.grid(True)
     plt.legend()
     plt.show()
-
+    plt.savefig(f'{output_path}/Dose_BoundContraintOpti.png', format = 'png')
 if __name__ == "__main__":
     run()

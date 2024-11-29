@@ -21,6 +21,9 @@ from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator impo
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D
 from opentps.core.processing.planOptimization.planOptimization import IntensityModulationOptimizer
 
+"""
+In this example, we will create and optimize a simple Protons plan.
+"""
 logger = logging.getLogger(__name__)
 
 # Generic example: box of water with squared target
@@ -197,6 +200,7 @@ def run(output_path=""):
     ax2.set_xlim(0, convData['nIter'])
     ax[2].grid(True)
     plt.show()
+    plt.savefig(os.path.join(output_path, 'Dose_SimpleOptimizationProtons.png'))
 
 
 if __name__ == "__main__":

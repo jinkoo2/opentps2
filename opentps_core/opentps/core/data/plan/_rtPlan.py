@@ -45,6 +45,7 @@ class RTPlan(PatientData):
         self.radiationType = ""
         self.scanMode = "MODULATED"
         self.treatmentMachineName = ""
+        self.rangeShifter = []        
         self.rtPlanName = ""
 
         self.originalDicomDataset = []

@@ -683,6 +683,39 @@ def dilateMask(image: Image3D, radius: Union[float, Sequence[float]]):
     outData = np.swapaxes(outData, 0, 2)
     image.imageArray = outData
 
+def erodeMask(image: Image3D, radius: Union[float, Sequence[float]]):
+    """
+    Erode a mask
+
+    parameters
+    ----------
+    image: Image3D
+        The image to erode
+    radius: Union[float, Sequence[float]]
+        The radius of the erosion
+
+    returns
+    -------
+    Image3D
+        The eroded image
+    """
+    imgType = image.imageArray.dtype
+
+    img = image3DToSITK(image, type=int)
+
+    erodeFilter = sitk.BinaryErodeImageFilter()
+    erodeFilter.SetKernelType(sitk.sitkBall)
+    erodeFilter.SetBackgroundValue(0)
+    erodeFilter.SetKernelRadius(radius)
+    outImg = erodeFilter.Execute(img)
+
+    outData = np.array(sitk.GetArrayFromImage(outImg))
+    if imgType == bool:
+        outData[outData < 0.5] = 0
+    outData = outData.astype(imgType)
+    outData = np.swapaxes(outData, 0, 2)
+    image.imageArray = outData
+
 
 if __name__ == "__main__":
     data = np.random.randint(0, high=500, size=(216, 216, 216))

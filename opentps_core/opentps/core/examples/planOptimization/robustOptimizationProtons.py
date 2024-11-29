@@ -18,7 +18,13 @@ from opentps.core.io.serializedObjectIO import loadRTPlan, saveRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
 from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D
-from opentps.core.processing.planOptimization.planOptimization import IntensityModulationOptimizer
+from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
+
+""""
+In this example, we create and optimize a robust proton plan. 
+The setup and range errors are configurable.
+"""
+
 
 logger = logging.getLogger(__name__)
 
@@ -169,8 +175,8 @@ def run(output_path=""):
     ax[1].set_ylabel("Volume (%)")
     plt.grid(True)
     plt.legend()
-
     plt.show()
+    plt.savefig(os.path.join(output_path, 'Dose_RobustOptimizationProtons.png'))
 
 if __name__ == "__main__":
     run()

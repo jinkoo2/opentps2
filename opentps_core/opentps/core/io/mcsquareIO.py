@@ -511,12 +511,10 @@ def writeCTCalibrationAndBDL(calibration: AbstractCTCalibration, scannerPath, ma
     materials = MCsquareMaterial.getMaterialList(materialPath)
     matNames = [mat["name"] for mat in materials]
 
-    with open(os.path.join(materialPath, 'list.dat'), "a") as listFile:
-        for rangeShifter in bdl.rangeShifters:
-            rangeShifter.material.write(materialPath, matNames)
-            listFile.write(str(len(materials) + 1) + ' ' + rangeShifter.material.name)
-
-    materials = MCsquareMaterial.getMaterialList(materialPath)
+    for rangeShifter in bdl.rangeShifters:
+        if rangeShifter.material.name not in matNames :
+            logger.info(f'The material contained in the range shifter {rangeShifter.material.name} is not in the material database.' +
+                        ' Please use the calss RangeShifter to create the range shifter and add his data in core/processing/doseCalculation/protons/MCsquare/Materials/')
 
     _writeBDL(bdl, bdlFileName, materials)
 
@@ -764,14 +762,12 @@ def writePlan(plan: RTPlan, file_path, CT: CTImage, bdl: BDL):
             "%f\t %f\t %f\n" % _dicomIsocenterToMCsquare(beam.isocenterPosition, CT.origin, CT.spacing, CT.gridSize))
 
         if not (beam.rangeShifter is None):
-            print([rs.ID for rs in bdl.rangeShifters])
-            if beam.rangeShifter.ID not in [rs.ID for rs in bdl.rangeShifters]:
-                raise Exception('Range shifter with ID ' + beam.rangeShifter.ID + ' in plan not in BDL')
-            else:
-                fid.write("###RangeShifterID\n")
-                fid.write("%s\n" % beam.rangeShifter.ID)
-                fid.write("###RangeShifterType\n")
-                fid.write("binary\n")
+            if isinstance(beam.rangeShifter, list) and len(beam.rangeShifter) > 1 :
+                logger.info('Only one RangeShifter is allowed per beam.')
+            fid.write("###RangeShifterID\n")
+            fid.write("%s\n" % beam.rangeShifter[0].ID)
+            fid.write("###RangeShifterType\n")
+            fid.write("binary\n")
 
         fid.write("###NumberOfControlPoints\n")
         fid.write("%d\n" % len(beam))
@@ -789,7 +785,7 @@ def writePlan(plan: RTPlan, file_path, CT: CTImage, bdl: BDL):
             fid.write("####Energy (MeV)\n")
             fid.write("%f\n" % layer.nominalEnergy)
 
-            if not (beam.rangeShifter is None) and (beam.rangeShifter.type == "binary"):
+            if isinstance(beam.rangeShifter, list) and not (beam.rangeShifter[0] is None) and (beam.rangeShifter[0].type == "binary"):
                 fid.write("####RangeShifterSetting\n")
                 fid.write("%s\n" % layer.rangeShifterSettings.rangeShifterSetting)
                 fid.write("####IsocenterToRangeShifterDistance\n")
@@ -798,7 +794,7 @@ def writePlan(plan: RTPlan, file_path, CT: CTImage, bdl: BDL):
                 if (layer.rangeShifterSettings.rangeShifterWaterEquivalentThickness is None):
                     # fid.write("%f\n" % beam.rangeShifter.WET)
                     RS_index = [rs.ID for rs in bdl.rangeShifters]
-                    ID = RS_index.index(beam.rangeShifter.ID)
+                    ID = RS_index.index(beam.rangeShifter[0].ID)
                     fid.write("%f\n" % bdl.rangeShifters[ID].WET)
                 else:
                     fid.write("%f\n" % layer.rangeShifterSettings.rangeShifterWaterEquivalentThickness)

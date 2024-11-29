@@ -25,6 +25,12 @@ from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator impo
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D, resampleImage3D
 from opentps.core.processing.planOptimization.planOptimization import IntensityModulationOptimizer
 
+"""
+In this example, we will create and optimize a simple ion (Proton) plan. 
+The generated CT, the plan, and the dose will be saved as DICOM files.
+"""
+
+
 logger = logging.getLogger(__name__)
 
 # Generic example: box of water with squared target
@@ -32,7 +38,7 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Output_Example')
+        output_path = os.path.join(os.getcwd(), 'Output', 'SimpleOptimization')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
         
@@ -216,7 +222,7 @@ def run(output_path=""):
     ax[2].grid(True)
 
     plt.show()
-
+    plt.savefig(f'{output_path}/Dose_SimpleOptimization.png', format = 'png')
 
 if __name__ == "__main__":
     run()
