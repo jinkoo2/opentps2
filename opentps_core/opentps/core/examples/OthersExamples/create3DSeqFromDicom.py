@@ -7,23 +7,20 @@ This file contains an example on how to:
 import os
 from pathlib import Path
 import sys
-currentWorkingDir = os.getcwd()
-while not os.path.isfile(currentWorkingDir + '/main.py'): currentWorkingDir = os.path.dirname(currentWorkingDir)
-sys.path.append(currentWorkingDir)
 
-from opentps_core.opentps.core.io.dataLoader import readData
-from opentps_core.opentps.core.data.dynamicData._dynamic3DSequence import Dynamic3DSequence
-from opentps_core.opentps.core.io.serializedObjectIO import saveSerializedObjects
+from opentps.core.io.dataLoader import readData
+from opentps.core.data.dynamicData._dynamic3DSequence import Dynamic3DSequence
+from opentps.core.io.serializedObjectIO import saveSerializedObjects
 
 if __name__ == '__main__':
 
     # Get the current working directory, its parent, then add the testData folder at the end of it
-    testDataPath = os.path.join(Path(os.getcwd()).parent.absolute(), 'testData/')
+    testDataPath = os.path.join(Path(os.getcwd()).parent.absolute(), 'opentps/testData/')
 
     ## read a serialized dynamic sequence
     dataPath = testDataPath + "4DCTDicomLight"
 
-    print(dataPath)
+    print('Datas present in ' + dataPath + 'are loaded.')
     dataList = readData(dataPath)
     print(len(dataList), 'images found in the folder')
     print('Image type =', type(dataList[0]))

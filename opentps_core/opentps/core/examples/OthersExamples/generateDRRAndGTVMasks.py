@@ -16,18 +16,17 @@ import concurrent
 from itertools import repeat
 import os
 import sys
+import numpy as np
 
-from opentps_core.opentps.core import crop3DDataAroundBox
-
-currentWorkingDir = os.getcwd()
-while not os.path.isfile(currentWorkingDir + '/main.py'): currentWorkingDir = os.path.dirname(currentWorkingDir)
-sys.path.append(currentWorkingDir)
-
-from opentps_core.opentps.core.IO import saveSerializedObjects, loadDataStructure
-from opentps_core.opentps.core.data import SyntheticBreathingSignal
-from opentps_core.opentps.core.Processing.DeformableDataAugmentationToolBox import generateDeformationListFromBreathingSignalsAndModel
-from opentps_core.opentps.core import forwardProjection
-from opentps_core.opentps.core import getBinaryMaskFromROIDRR, get2DMaskCenterOfMass
+from opentps.core.processing.imageProcessing.resampler3D import crop3DDataAroundBox
+from opentps.core.io.serializedObjectIO import saveSerializedObjects, loadDataStructure
+from opentps.core.data.dynamicData._breathingSignals import SyntheticBreathingSignal
+from opentps.core.processing.deformableDataAugmentationToolBox.generateDynamicSequencesFromModel import generateDeformationListFromBreathingSignalsAndModel
+from opentps.core.processing.imageSimulation.DRRToolBox import forwardProjection
+from opentps.core.processing.imageProcessing.image2DManip import getBinaryMaskFromROIDRR, get2DMaskCenterOfMass
+from opentps.core.processing.imageProcessing.crop2D import getBoxAroundROI
+from opentps.core.processing.imageProcessing.imageTransform3D import getVoxelIndexFromPosition
+from opentps.core.processing.deformableDataAugmentationToolBox.modelManipFunctions import getAverageModelValuesAroundPosition
 
 if __name__ == '__main__':
     ## paths selection ------------------------------------

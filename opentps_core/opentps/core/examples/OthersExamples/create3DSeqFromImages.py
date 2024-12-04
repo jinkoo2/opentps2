@@ -17,12 +17,12 @@ from opentps.core.io.serializedObjectIO import saveSerializedObjects
 if __name__ == '__main__':
 
     # Get the current working directory, its parent, then add the testData folder at the end of it
-    testDataPath = os.path.join(Path(os.getcwd()).parent.absolute(), 'testData/')
+    testDataPath = os.path.join(Path(os.getcwd()).parent.absolute(), 'opentps/testData/')
 
     ## read a serialized dynamic sequence
     dataPath = testDataPath + "4DCTDicomLight"
 
-    print(dataPath)
+    print('Datas present in ' + dataPath + 'are loaded.')
     dataList = readData(dataPath)
     print(len(dataList), 'images found in the folder')
     print('Image type =', type(dataList[0]))
