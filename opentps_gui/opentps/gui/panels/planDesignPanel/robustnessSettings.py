@@ -45,15 +45,25 @@ class RobustnessSettings(QWidget):
         if (self._robustParam.selectionStrategy == self._robustParam.Strategies.DISABLED):
             RobustSettings = 'No robust settings'
         elif (self._robustParam.selectionStrategy == self._robustParam.Strategies.ALL):
+            self._robustParam.numScenarios = 81
+            if(self._robustParam.setupSystematicError[0] == 0.0): self._robustParam.numScenarios/=3
+            if(self._robustParam.setupSystematicError[1] == 0.0): self._robustParam.numScenarios/=3
+            if(self._robustParam.setupSystematicError[2] == 0.0): self._robustParam.numScenarios/=3
+            if(self._robustParam.rangeSystematicError == [0.0]*3): self._robustParam.numScenarios/=3
             RobustSettings += '<b>Scenario</b>: '
-            RobustSettings += 'All <br>'
+            RobustSettings += 'All (' + str(int(self._robustParam.numScenarios)) + ' scenarios) <br>'
             RobustSettings += 'Syst. setup: E<sub>S</sub> = ' + str(self._robustParam.setupSystematicError) + ' mm<br>'
             if self.modality == "IMPT":
                 RobustSettings += 'Rand. setup: &sigma;<sub>S</sub> = ' + str(self._robustParam.setupRandomError) + ' mm<br>'
                 RobustSettings += 'Syst. range: E<sub>R</sub> = ' + str(self._robustParam.rangeSystematicError) + ' %<br>'
         elif (self._robustParam.selectionStrategy == self._robustParam.Strategies.REDUCED_SET):
+            self._robustParam.numScenarios = 21
+            if(self._robustParam.setupSystematicError[0] == 0.0): self._robustParam.numScenarios-=6
+            if(self._robustParam.setupSystematicError[1] == 0.0): self._robustParam.numScenarios-=6
+            if(self._robustParam.setupSystematicError[2] == 0.0): self._robustParam.numScenarios-=6
+            if(self._robustParam.rangeSystematicError == [0.0]*3): self._robustParam.numScenarios/=3
             RobustSettings += '<b>Scenario</b>: '
-            RobustSettings += 'Reduced set<br>'
+            RobustSettings += 'Reduced set (' + str(int(self._robustParam.numScenarios)) + ' scenarios) <br>'
             RobustSettings += 'Syst. setup: &Sigma;<sub>S</sub> = ' + str(self._robustParam.setupSystematicError) + ' mm<br>'
             if self.modality == "IMPT":
                 RobustSettings += 'Rand. setup: &sigma;<sub>S</sub> = ' + str(self._robustParam.setupRandomError) + ' mm<br>'
@@ -63,7 +73,7 @@ class RobustnessSettings(QWidget):
             RobustSettings += 'Random <br>'
             #RobustSettings += 'Syst. setup: &Sigma;<sub>S</sub> = ' + str(self._robustParam.setupSystematicError) + ' mm<br>'
             #RobustSettings += 'Rand. setup: &sigma;<sub>S</sub> = ' + str(self._robustParam.setupRandomError) + ' mm<br>'
-            RobustSettings += 'Random num of scenarios = ' + str(self._robustParam.numRandomScenarios)
+            RobustSettings += 'Random num of scenarios = ' + str(int(self._robustParam.numRandomScenarios)) + '<br>'
             if self.modality == "IMPT": RobustSettings += 'Syst. range: &Sigma;<sub>R</sub> = ' + str(self._robustParam.rangeSystematicError) + ' %<br>'
 
         self._robustSettingsLabel.setText(RobustSettings)
@@ -144,7 +154,7 @@ class RobustnessSettingsDialog(QDialog):
         self.numRandSceSpin.setGroupSeparatorShown(True)
         self.numRandSceSpin.setRange(0, 100)
         self.numRandSceSpin.setSingleStep(1)
-        self.numRandSceSpin.setValue(1)
+        self.numRandSceSpin.setValue(50)
         self.ErrorLayout.addWidget(self.numRandSceSpin)
         self.numRandSceLabel.hide()
         self.numRandSceSpin.hide()
