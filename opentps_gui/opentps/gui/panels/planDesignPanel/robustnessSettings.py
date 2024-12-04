@@ -45,11 +45,14 @@ class RobustnessSettings(QWidget):
         if (self._robustParam.selectionStrategy == self._robustParam.Strategies.DISABLED):
             RobustSettings = 'No robust settings'
         elif (self._robustParam.selectionStrategy == self._robustParam.Strategies.ALL):
-            self._robustParam.numScenarios = 81
-            if(self._robustParam.setupSystematicError[0] == 0.0): self._robustParam.numScenarios/=3
-            if(self._robustParam.setupSystematicError[1] == 0.0): self._robustParam.numScenarios/=3
-            if(self._robustParam.setupSystematicError[2] == 0.0): self._robustParam.numScenarios/=3
-            if(self._robustParam.rangeSystematicError == [0.0]*3): self._robustParam.numScenarios/=3
+            if self.modality == "IMPT":
+                self._robustParam.numScenarios = 81
+                if(self._robustParam.setupSystematicError[0] == 0.0): self._robustParam.numScenarios/=3
+                if(self._robustParam.setupSystematicError[1] == 0.0): self._robustParam.numScenarios/=3
+                if(self._robustParam.setupSystematicError[2] == 0.0): self._robustParam.numScenarios/=3
+                if(self._robustParam.rangeSystematicError == 0.0): self._robustParam.numScenarios/=3
+            elif self.modality == "IMRT":
+                self._robustParam.numScenarios = 27 if self._robustParam.setupSystematicError[0] != 0.0 else 1
             RobustSettings += '<b>Scenario</b>: '
             RobustSettings += 'All (' + str(int(self._robustParam.numScenarios)) + ' scenarios) <br>'
             RobustSettings += 'Syst. setup: E<sub>S</sub> = ' + str(self._robustParam.setupSystematicError) + ' mm<br>'
@@ -57,11 +60,14 @@ class RobustnessSettings(QWidget):
                 RobustSettings += 'Rand. setup: &sigma;<sub>S</sub> = ' + str(self._robustParam.setupRandomError) + ' mm<br>'
                 RobustSettings += 'Syst. range: E<sub>R</sub> = ' + str(self._robustParam.rangeSystematicError) + ' %<br>'
         elif (self._robustParam.selectionStrategy == self._robustParam.Strategies.REDUCED_SET):
-            self._robustParam.numScenarios = 21
-            if(self._robustParam.setupSystematicError[0] == 0.0): self._robustParam.numScenarios-=6
-            if(self._robustParam.setupSystematicError[1] == 0.0): self._robustParam.numScenarios-=6
-            if(self._robustParam.setupSystematicError[2] == 0.0): self._robustParam.numScenarios-=6
-            if(self._robustParam.rangeSystematicError == [0.0]*3): self._robustParam.numScenarios/=3
+            if self.modality == "IMPT":
+                self._robustParam.numScenarios = 21
+                if(self._robustParam.setupSystematicError[0] == 0.0): self._robustParam.numScenarios-=6
+                if(self._robustParam.setupSystematicError[1] == 0.0): self._robustParam.numScenarios-=6
+                if(self._robustParam.setupSystematicError[2] == 0.0): self._robustParam.numScenarios-=6
+                if(self._robustParam.rangeSystematicError == 0.0): self._robustParam.numScenarios/=3
+            elif self.modality == "IMRT":
+                self._robustParam.numScenarios = 7 if self._robustParam.setupSystematicError[0] != 0.0 else 1
             RobustSettings += '<b>Scenario</b>: '
             RobustSettings += 'Reduced set (' + str(int(self._robustParam.numScenarios)) + ' scenarios) <br>'
             RobustSettings += 'Syst. setup: &Sigma;<sub>S</sub> = ' + str(self._robustParam.setupSystematicError) + ' mm<br>'
