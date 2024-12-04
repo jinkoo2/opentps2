@@ -265,7 +265,12 @@ class PlanOptimizer:
         assert self.plan.planDesign.beamlets._sparseBeamlets is not None
 
         beamlets = self.plan.planDesign.beamlets
-        weights = np.array(self.plan.spotMUs, dtype=np.float32)
+        
+        if self.plan.radiationType == 'Proton':
+            weights = np.array(self.plan.spotMUs, dtype=np.float32)
+        else :
+            weights = np.array(self.plan.beamletMUs, dtype=np.float32)
+
         if self.MKL_acceleration:
             totalDose = sparse_dot_mkl.dot_product_mkl(beamlets._sparseBeamlets, weights) * self.plan.numberOfFractionsPlanned
         else:

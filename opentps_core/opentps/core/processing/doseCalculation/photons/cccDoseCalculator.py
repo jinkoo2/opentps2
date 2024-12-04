@@ -262,7 +262,16 @@ class CCCDoseCalculator(AbstractDoseCalculator):
             self._ct = ct
             self._ct = self.fromHU2Densities(self._ct, overRidingList) 
             self._plan = plan
-        self._roi = roi
+
+        if roi :
+            roi = [roi] if not isinstance(roi, list) else roi
+            self._roi = []
+            for contour in roi:
+                if isinstance(contour, ROIContour):
+                    mask = contour.getBinaryMask(self._ct.origin, self._ct.gridSize, self._ct.spacing)
+                else:
+                    mask = contour
+                self._roi.append(mask)
 
         self._cleanDir(self.outputDir)
         self._cleanDir(self._executableDir)
