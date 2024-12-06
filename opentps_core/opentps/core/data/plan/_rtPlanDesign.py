@@ -103,40 +103,6 @@ class RTPlanDesign(PatientData):
     @scoringOrigin.setter
     def scoringOrigin(self, origin):
         self._scoringOrigin = origin
-        
-    def defineTargetMaskAndPrescriptionFromObjList(self):
-        """
-        Defines the target mask and the prescription from the objective list 
-        Only works if objectives have already been set.
-        """
-        from opentps.core.data._roiContour import ROIContour
-
-        targetMask = None
-        for objective in self.objectives.fidObjList:
-            if objective.metric == objective.Metrics.DMIN:
-                roi = objective.roi
-
-                if isinstance(roi, ROIContour):
-                    mask = roi.getBinaryMask(origin=self.ct.origin, gridSize=self.ct.gridSize,
-                                             spacing=self.ct.spacing)
-                elif isinstance(roi, ROIMask):
-                    mask = resampler3D.resampleImage3D(roi, origin=self.ct.origin,
-                                                       gridSize=self.ct.gridSize,
-                                                       spacing=self.ct.spacing)
-                else:
-                    raise Exception(roi.__class__.__name__ + ' is not a supported class for roi')
-
-                if targetMask is None:
-                    targetMask = mask
-                else:
-                    targetMask.imageArray = np.logical_or(targetMask.imageArray, mask.imageArray)
-                
-                self.objectives.setTarget(objective.roiName, mask, objective.limitValue)
-
-        if targetMask is None:
-            raise Exception('Could not find a target volume in dose fidelity objectives')
-
-        self.targetMask = targetMask
 
     def defineTargetMaskAndPrescription(self,target:Union[Union[ROIMask,ROIContour],Sequence[Union[ROIMask,ROIContour]]],targetPrescription:Union[float,Sequence[float]]):
         """
@@ -147,6 +113,7 @@ class RTPlanDesign(PatientData):
         from opentps.core.data._roiContour import ROIContour
         targetMask = None
         if isinstance(target,Iterable):
+            Targets_to_merge = []
             for target,p in list(zip(target,targetPrescription)):                
                 if isinstance(target, ROIContour):
                         mask = target.getBinaryMask(origin=self.ct.origin, gridSize=self.ct.gridSize,
@@ -164,6 +131,9 @@ class RTPlanDesign(PatientData):
                     targetMask.imageArray = np.logical_or(targetMask.imageArray, mask.imageArray)
                 
                 self.objectives.setTarget(target.name, mask, p)
+                Targets_to_merge.append(mask)
+            if len(Targets_to_merge) >=2 :
+                targetMask = self.mergeBinaryMask(roi = Targets_to_merge, ct = self.ct)
         else:
             if isinstance(target, ROIContour):
                     mask = target.getBinaryMask(origin=self.ct.origin, gridSize=self.ct.gridSize,
@@ -235,4 +205,10 @@ class RTPlanDesign(PatientData):
 
         for objective in self.objectives.fidObjList:
             objective._updateMaskVec(spacing=self.scoringVoxelSpacing, gridSize=self.scoringGridSize, origin=self.scoringOrigin)
-            
+
+    def mergeBinaryMask(self, roi: Sequence[Union[ROIContour, ROIMask]], ct:CTImage):
+        UnionOfTargetsMasks = ROIMask(name='UnionOfTargetsMasks', origin=ct.origin, spacing=ct.spacing, patient=self.patient)
+        UnionOfTargetsMasks.imageArray = np.full(ct.imageArray.shape,False)
+        for mask in roi:
+            UnionOfTargetsMasks.imageArray = np.logical_or(UnionOfTargetsMasks.imageArray, mask.imageArray)
+        return UnionOfTargetsMasks

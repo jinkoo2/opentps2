@@ -250,13 +250,18 @@ class PlanOptiPanel(QWidget):
         # create list of contours
         objROINames = []
         contours = []
+        targets = []
+        prescription = []
         for obj in self.selectedPlanStructure.objectives.fidObjList:
             # remove duplicate
             if obj.roiName not in objROINames:
                 objROINames.append(obj.roiName)
                 contours.append(obj.roi)
+                if obj.isTarget:
+                    targets.append(obj.roi)
+                    prescription.append(obj.prescription)
 
-        self.selectedPlanStructure.defineTargetMaskAndPrescriptionFromObjList()
+        self.selectedPlanStructure.defineTargetMaskAndPrescription(targets, prescription)
 
         if self._spotPlacementBox.isChecked():
             self._placeSpots()
@@ -368,7 +373,7 @@ class ObjectivesWidget(QWidget):
         self._planDesign = None
 
         self._roiWindow = ObjectivesWindow(viewController, self)
-        self._roiWindow.setMinimumWidth(400)
+        self._roiWindow.setMinimumWidth(800)
         self._roiWindow.setMinimumHeight(400)
         self._roiWindow.hide()
 
