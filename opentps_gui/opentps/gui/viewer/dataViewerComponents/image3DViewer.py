@@ -1,5 +1,6 @@
 import typing
 from enum import Enum
+import numpy as np
 
 from PyQt5.QtWidgets import *
 
@@ -99,6 +100,8 @@ class Image3DViewer(QWidget):
 
         self._closed = False
 
+        self.image: Image3D = None
+
 
     def closeEvent(self, QCloseEvent):
         if self._closed:
@@ -163,6 +166,8 @@ class Image3DViewer(QWidget):
 
     def _setPrimaryImageForViewer(self, image:GenericImageForViewer):
         # If I do not reset secondary image, the interactor sets its colormap to gray???!!!
+        self.image = image
+
         secondaryImage = self._secondaryImageLayer.image
         self._secondaryImageLayer.image = None
 
@@ -172,7 +177,6 @@ class Image3DViewer(QWidget):
 
         self._primaryImageLayer.image = image
         self._contourLayer.referenceImage = image
-        self._textLayer.setPrimaryTextLine(2, image.name)
 
         self._primaryImageLayer.image.selectedPositionChangedSignal.connect(self._handlePosition)
         self._primaryImageLayer.image.nameChangedSignal.connect(self._setPrimaryName)
@@ -201,6 +205,14 @@ class Image3DViewer(QWidget):
         self._handlePosition(self._primaryImageLayer.image.selectedPosition)
         self._renderWindow.Render()
 
+        sliceNumber = self.GetSliceNumber(self._primaryImageLayer.image.selectedPosition)
+        if self._viewType == self.ViewerTypes.AXIAL:
+            sliceNumber = int(sliceNumber[2])
+        if self._viewType == self.ViewerTypes.CORONAL:
+            sliceNumber = int(sliceNumber[1])
+        if self._viewType == self.ViewerTypes.SAGITTAL:
+            sliceNumber = int(sliceNumber[0])
+        self._textLayer.setPrimaryTextLine(2, f'{image.name} - Slice : {sliceNumber}')
 
     def _setPrimaryName(self, name):
         self._textLayer.setPrimaryTextLine(2, name)
@@ -268,6 +280,9 @@ class Image3DViewer(QWidget):
     def secondaryImageLayer(self):
         return self._secondaryImageLayer
 
+    def GetSliceNumber(self, coord):
+        slicePosition = (coord - self.image.data.origin)/self.image.data.spacing
+        return slicePosition
 
     @property
     def viewType(self):
@@ -437,6 +452,23 @@ class Image3DViewer(QWidget):
         if self._crossHairEnabled:
             point = self._viewMatrix.MultiplyPoint((point[0], point[1], point[2], 1))
             Image3DForViewer(self.primaryImage).selectedPosition = point
+
+        sliceNumber = self.GetSliceNumber(np.array([center[0], center[1], center[2]]))
+        if self._viewType == self.ViewerTypes.AXIAL:
+            sliceNumber = int(sliceNumber[2])
+            if sliceNumber > self.primaryImage.imageArray.shape[2]:
+                sliceNumber = f'OUT ({sliceNumber})'
+        elif self._viewType == self.ViewerTypes.CORONAL:
+            sliceNumber = int(sliceNumber[1])
+            if sliceNumber > self.primaryImage.imageArray.shape[1]:
+                sliceNumber = f'OUT ({sliceNumber})'
+        elif self._viewType == self.ViewerTypes.SAGITTAL:
+            sliceNumber = int(sliceNumber[0])
+            if sliceNumber > self.primaryImage.imageArray.shape[0]:
+                sliceNumber = f'OUT ({sliceNumber})'
+        if isinstance(sliceNumber, (int, float)) and sliceNumber < 0:
+            sliceNumber = f'OUT ({sliceNumber})'
+        self._textLayer.setPrimaryTextLine(2, f'{self.image.name} - Slice : {sliceNumber}')
 
         self._renderWindow.Render()
 
