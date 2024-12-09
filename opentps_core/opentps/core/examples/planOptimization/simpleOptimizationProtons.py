@@ -110,7 +110,8 @@ def run(output_path=""):
         planDesign.targetMargin = 5.0
         planDesign.setScoringParameters(scoringSpacing=[2, 2, 2], adapt_gridSize_to_new_spacing=True)
         # needs to be called after scoringGrid settings but prior to spot placement
-        planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) 
+        planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.)
+        planDesign.isocenterPosition_mm = None # None take the center of mass of the target
         
         plan = planDesign.buildPlan()  # Spot placement
         plan.name = "Simple_Patient"
