@@ -13,7 +13,7 @@ from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsquareDoseCalculator
+from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
 
 """
@@ -84,8 +84,8 @@ def run(output_path=""):
     # Load / Generate scenarios
     scenario_folder = os.path.join(output_path,'RobustnessTest')
     if os.path.isdir(scenario_folder):
-        scenarios = RobustnessEvalProton()
-        scenarios.selectionStrategy = RobustnessEvalProton.Strategies.ALL
+        scenarios = RobustnessEval()
+        scenarios.selectionStrategy = RobustnessEval.Strategies.ALL
         scenarios.setupSystematicError = plan.planDesign.robustnessEval.setupSystematicError
         scenarios.setupRandomError = plan.planDesign.robustnessEval.setupRandomError
         scenarios.rangeSystematicError = plan.planDesign.robustnessEval.rangeSystematicError
@@ -93,7 +93,7 @@ def run(output_path=""):
     else:
         # MCsquare config for scenario dose computation
         mc2.nbPrimaries = 1e7
-        plan.planDesign.robustnessEval = RobustnessEvalProton()
+        plan.planDesign.robustnessEval = RobustnessEval()
         plan.planDesign.robustnessEval.setupSystematicError = [5.0, 5.0, 5.0]  # mm
         plan.planDesign.robustnessEval.setupRandomError = [0.0, 0.0, 0.0]  # mm (sigma)
         plan.planDesign.robustnessEval.rangeSystematicError = 3.0  # %
