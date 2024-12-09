@@ -205,13 +205,13 @@ def readData(inputPaths, maxDepth=-1) -> Sequence[Union[PatientData, Patient]]:
 
     # read MHD images
     for d, filePath in enumerate(fileLists["MHD"]):
-        logger.info(f'Loading data {d}/{len(fileLists["MHD"])} MHD files : ({os.path.basename(filePath)}).')
+        logger.info(f'Loading data {d}/{len(fileLists["MHD"])} MHD files : {os.path.basename(filePath)}.')
         mhdImage = mhdIO.importImageMHD(filePath)
         dataList.append(mhdImage)
 
     # read serialized object files
     for d, filePath in enumerate(fileLists["Serialized"]):
-        logger.info(f'Loading data {d}/{len(fileLists["Serialized"])} Serialized files : ({os.path.basename(filePath)}).')
+        logger.info(f'Loading data {d}/{len(fileLists["Serialized"])} Serialized files : {os.path.basename(filePath)}.')
         dataList += loadDataStructure(filePath) # not append because loadDataStructure returns a list already
         print('---------', type(dataList[-1]))
 
