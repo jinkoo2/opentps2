@@ -266,7 +266,7 @@ class PlanOptimizer:
 
         beamlets = self.plan.planDesign.beamlets
         
-        if self.plan.radiationType == 'Proton':
+        if self.plan.radiationType == 'PROTON':
             weights = np.array(self.plan.spotMUs, dtype=np.float32)
         else :
             weights = np.array(self.plan.beamletMUs, dtype=np.float32)
