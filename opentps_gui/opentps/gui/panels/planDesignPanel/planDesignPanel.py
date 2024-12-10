@@ -1,5 +1,6 @@
 import logging
 import time
+import numpy as np
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QDoubleSpinBox, QListWidget, \
@@ -138,6 +139,21 @@ class PlanDesignPanel(QWidget):
         self._distalSpin.setDecimals(0)
         self._distalLayout.addWidget(self._distalSpin)
 
+        self._isocenterLayout = QHBoxLayout()
+        self.layout.addLayout(self._isocenterLayout)
+
+        self._isocenterLabel = QLabel('Isocenter:')
+        self._isocenterLayout.addWidget(self._isocenterLabel)
+        self._isocenterComboBox = QComboBox(self)
+        self._isocenterComboBox.addItem("Target COM")
+        self._isocenterComboBox.addItem("Custom")
+        self._isocenterLayout.addWidget(self._isocenterComboBox)
+        self._isocenterCustomInput = QLineEdit(self)
+        self._isocenterCustomInput.setPlaceholderText("(a,b,c) mm")
+        self._isocenterCustomInput.hide()
+        self._isocenterLayout.addWidget(self._isocenterCustomInput)
+        self._isocenterComboBox.currentTextChanged.connect(self._toggleIsocenterInput)
+
         self._beams = QListWidget()
         self._beams.setContextMenuPolicy(Qt.CustomContextMenu)
         self._beams.customContextMenuRequested.connect(lambda pos, list_type='beam': self.List_RightClick(pos, list_type))
@@ -159,6 +175,12 @@ class PlanDesignPanel(QWidget):
         self.setCurrentPatient(self._viewController.currentPatient)
         self._modalityComboBox.currentTextChanged.connect(self.updateUIBasedOnModality)
         self._viewController.currentPatientChangedSignal.connect(self.setCurrentPatient)
+
+    def _toggleIsocenterInput(self, text):
+        if text == "Custom":
+            self._isocenterCustomInput.show()
+        else:
+            self._isocenterCustomInput.hide()
 
     @property
     def selectedModality(self):
@@ -224,6 +246,24 @@ class PlanDesignPanel(QWidget):
         planDesign.targetMargin = self._marginSpin.value()
         planDesign.name = self._planNameEdit.text()
         planDesign.patient = self._patient
+
+        # Isocentre
+        isocenter_option = self._isocenterComboBox.currentText()
+        if isocenter_option == "Target COM":
+            planDesign.isocenterPosition_mm = None
+        elif isocenter_option == "Custom":
+            try:
+                custom_isocenter = eval(self._isocenterCustomInput.text())
+                if isinstance(custom_isocenter, (list, tuple)) and len(custom_isocenter) == 3:
+                    planDesign.isocenterPosition_mm = np.array(custom_isocenter)
+                else:
+                    raise ValueError("Invalid format for isocenter")
+            except Exception as e:
+                logger.error(f"Invalid isocenter input: {e}")
+                return
+        else:
+            logger.error(f"Unsupported isocenter option: {isocenter_option}")
+
         # extract beam info from QListWidget
         beamNames = []
         gantryAngles = []

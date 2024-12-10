@@ -49,6 +49,7 @@ class ProtonPlanDesign(RTPlanDesign):
         self.distalLayers = 1
         self.layersToSpacingAlignment = False
         self.rangeShifters: Sequence[RangeShifter] = []
+        self.isocenterPosition_mm = None
 
         self.beamletsLET = []
 
@@ -75,6 +76,8 @@ class ProtonPlanDesign(RTPlanDesign):
         plan.radiationType = "PROTON"
         plan.scanMode = "MODULATED"
         plan.treatmentMachineName = "Unknown"
+        if self.isocenterPosition_mm is None:
+            self.isocenterPosition_mm = self.targetMask.centerOfMass
         logger.info('Building plan ...')
         self.createBeams(plan)
         self.initializeBeams(plan)

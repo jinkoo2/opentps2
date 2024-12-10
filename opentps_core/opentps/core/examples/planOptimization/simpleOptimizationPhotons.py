@@ -90,6 +90,7 @@ def run(output_path=""):
         planDesign = PhotonPlanDesign()
         planDesign.ct = ct
         planDesign.targetMask = roi
+        planDesign.isocenterPosition_mm = None # None take the center of mass of the target
         planDesign.gantryAngles = gantryAngles
         planDesign.couchAngles = couchAngles
         planDesign.beamNames = beamNames
