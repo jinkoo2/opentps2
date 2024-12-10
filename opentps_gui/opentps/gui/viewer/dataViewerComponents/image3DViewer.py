@@ -424,6 +424,7 @@ class Image3DViewer(QWidget):
             self._iStyle.OnMouseMove()
 
     def onScroll(self, obj=None, event='Forward'):
+        OutOfImage = False
         sliceSpacing = self._primaryImageLayer._reslice.GetOutput().GetSpacing()[2]
 
         deltaY = 0.
@@ -443,32 +444,36 @@ class Image3DViewer(QWidget):
             tform.Invert()
             point = tform.MultiplyPoint((worldPos[0], worldPos[1], worldPos[2], 1))
 
-        # move the center point that we are slicing through
+        # Get the sliced position
         center = self._viewMatrix.MultiplyPoint((0, 0, deltaY, 1))
-        self._viewMatrix.SetElement(0, 3, center[0])
-        self._viewMatrix.SetElement(1, 3, center[1])
-        self._viewMatrix.SetElement(2, 3, center[2])
 
         if self._crossHairEnabled:
             point = self._viewMatrix.MultiplyPoint((point[0], point[1], point[2], 1))
             Image3DForViewer(self.primaryImage).selectedPosition = point
 
+        # Get the sice Number dans write it
         sliceNumber = self.GetSliceNumber(np.array([center[0], center[1], center[2]]))
         if self._viewType == self.ViewerTypes.AXIAL:
             sliceNumber = int(sliceNumber[2])
-            if sliceNumber > self.primaryImage.imageArray.shape[2]:
-                sliceNumber = f'OUT ({sliceNumber})'
+            if sliceNumber > self.primaryImage.imageArray.shape[2]-1:
+                OutOfImage = True
         elif self._viewType == self.ViewerTypes.CORONAL:
             sliceNumber = int(sliceNumber[1])
-            if sliceNumber > self.primaryImage.imageArray.shape[1]:
-                sliceNumber = f'OUT ({sliceNumber})'
+            if sliceNumber > self.primaryImage.imageArray.shape[1]-1:
+                OutOfImage = True
         elif self._viewType == self.ViewerTypes.SAGITTAL:
             sliceNumber = int(sliceNumber[0])
-            if sliceNumber > self.primaryImage.imageArray.shape[0]:
-                sliceNumber = f'OUT ({sliceNumber})'
-        if isinstance(sliceNumber, (int, float)) and sliceNumber < 0:
-            sliceNumber = f'OUT ({sliceNumber})'
+            if sliceNumber > self.primaryImage.imageArray.shape[0]-1:
+                OutOfImage = True
+        if sliceNumber < 1:
+            OutOfImage = True
         self._textLayer.setPrimaryTextLine(2, f'{self.image.name} - Slice : {sliceNumber}')
+
+        # move the center point that we are slicing through
+        if OutOfImage == False:
+            self._viewMatrix.SetElement(0, 3, center[0])
+            self._viewMatrix.SetElement(1, 3, center[1])
+            self._viewMatrix.SetElement(2, 3, center[2])
 
         self._renderWindow.Render()
 
