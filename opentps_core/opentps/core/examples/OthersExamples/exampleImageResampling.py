@@ -2,15 +2,11 @@
 """
 This file shows example of how the resampling functions can be used on image3D objects
 """
-
-import os
-from pathlib import Path
 import sys
-currentWorkingDir = os.getcwd()
-while not os.path.isfile(currentWorkingDir + '/main.py'): currentWorkingDir = os.path.dirname(currentWorkingDir)
-sys.path.append(currentWorkingDir)
 import matplotlib.pyplot as plt
+import os
 
+from pathlib import Path
 from opentps.core.io.dataLoader import readData
 from opentps.core.processing.imageProcessing.resampler3D import resample, resampleOnImage3D
 

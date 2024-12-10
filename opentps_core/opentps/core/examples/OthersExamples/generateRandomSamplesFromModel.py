@@ -1,15 +1,12 @@
 import os
 import sys
-currentWorkingDir = os.getcwd()
-while not os.path.isfile(currentWorkingDir + '/main.py'): currentWorkingDir = os.path.dirname(currentWorkingDir)
-sys.path.append(currentWorkingDir)
-from pathlib import Path
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+from pathlib import Path
 
-from opentps_core.opentps.core.IO import loadDataStructure
-from opentps_core.opentps.core.Processing import generateRandomImagesFromModel, generateRandomDeformationsFromModel
+from opentps.core.io.serializedObjectIO import loadDataStructure
+from opentps.core.processing.deformableDataAugmentationToolBox.generateRandomSamplesFromModel import generateRandomImagesFromModel, generateRandomDeformationsFromModel
 
 if __name__ == '__main__':
 

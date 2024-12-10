@@ -11,17 +11,13 @@ This file contains an example on how to:
 import os
 import sys
 
-from opentps_core.opentps.core import crop3DDataAroundBox
-
-currentWorkingDir = os.getcwd()
-while not os.path.isfile(currentWorkingDir + '/main.py'): currentWorkingDir = os.path.dirname(currentWorkingDir)
-sys.path.append(currentWorkingDir)
-
-from opentps_core.opentps.core.IO import loadDataStructure
+from opentps.core.processing.imageProcessing.resampler3D import crop3DDataAroundBox
+from opentps.core.processing.segmentation.segmentation3D import getBoxAroundROI
+from opentps.core.io.serializedObjectIO import loadDataStructure
 
 if __name__ == '__main__':
 
-    dataPath = '/home/damien/Desktop/Patient_0/Patient0BaseAndMod.p'
+    dataPath = '/data/Patient0BaseAndMod.p'
     patient = loadDataStructure(dataPath)[0]
 
     dynSeq = patient.getPatientDataOfType("Dynamic3DSequence")[0]

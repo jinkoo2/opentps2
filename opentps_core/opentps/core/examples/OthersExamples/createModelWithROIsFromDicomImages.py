@@ -11,18 +11,15 @@ This file contains an example on how to:
 
 import os
 import sys
-currentWorkingDir = os.getcwd()
-while not os.path.isfile(currentWorkingDir + '/main.py'): currentWorkingDir = os.path.dirname(currentWorkingDir)
-sys.path.append(currentWorkingDir)
-from pydicom.uid import generate_uid
 import time
 import numpy as np
 
-from opentps_core.opentps.core.IO import readData
-from opentps_core.opentps.core.data import Dynamic3DSequence
-from opentps_core.opentps.core.IO import saveSerializedObjects
-from opentps_core.opentps.core.data import Dynamic3DModel
-from opentps_core.opentps.core.data._patient import Patient
+from pydicom.uid import generate_uid
+from opentps.core.io.dataLoader import readData
+from opentps.core.data.dynamicData._dynamic3DSequence import Dynamic3DSequence
+from opentps.core.io.serializedObjectIO import saveSerializedObjects
+from opentps.core.data.dynamicData._dynamic3DModel import Dynamic3DModel
+from opentps.core.data._patient import Patient
 
 
 if __name__ == '__main__':

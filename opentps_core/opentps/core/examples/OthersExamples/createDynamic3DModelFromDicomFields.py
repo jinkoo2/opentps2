@@ -1,21 +1,18 @@
 import os
 import sys
-currentWorkingDir = os.getcwd()
-while not os.path.isfile(currentWorkingDir + '/main.py'): currentWorkingDir = os.path.dirname(currentWorkingDir)
-sys.path.append(currentWorkingDir)
-from opentps_core.opentps.core.IO import readData
-from opentps_core.opentps.core.data.Images._deformation3D import Deformation3D
-from opentps_core.opentps.core.data import Dynamic3DModel
+
+from opentps.core.io.dataLoader import readData
+from opentps.core.data.images._deformation3D import Deformation3D
+from opentps.core.data.dynamicData._dynamic3DModel import Dynamic3DModel
 
 # Load DICOM CT
-patient_name = 'Patient_1'
-inputPaths = f"/data/public/liver/{patient_name}/MidP_ct/"
+inputPaths = f"/data/MidP_ct/"
 dataList = readData(inputPaths, maxDepth=0)
 midP = dataList[0]
 print(type(midP))
 
 # Load DICOM Deformation Fields
-inputPaths = f"/data/public/liver/{patient_name}/deformation_fields/"
+inputPaths = f"/data/deformation_fields/"
 defList = readData(inputPaths, maxDepth=0)
 
 # Transform VectorField3D to deformation3D
@@ -26,6 +23,8 @@ for df in defList:
     deformationList.append(df2)
 del defList
 print(deformationList)
+
+patient_name = 'OpenTPS_Patient'
 
 # Create Dynamic 3D Model
 model3D = Dynamic3DModel(name=patient_name, midp=midP, deformationList=deformationList)
