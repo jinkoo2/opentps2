@@ -2,7 +2,7 @@ import copy
 import logging
 import numpy as np
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QComboBox, QLabel, QPushButton, QCheckBox, QDialog, \
-    QLineEdit
+    QLineEdit, QDoubleSpinBox, QHBoxLayout
 from PyQt5.QtCore import Qt
 from opentps.core.data.images import CTImage
 from opentps.core.data.plan import ObjectivesList
@@ -182,6 +182,17 @@ class PlanOptiPanel(QWidget):
         self.layout.addWidget(self._spotPlacementBox)
         self.layout.addWidget(self._beamletBox)
 
+        self._fractionsLayout = QHBoxLayout()
+        self.layout.addLayout(self._fractionsLayout)
+
+        self._fractionsLabel = QLabel('Number of fractions:')
+        self._fractionsLayout.addWidget(self._fractionsLabel)
+        self._fractionsSpin = QDoubleSpinBox()
+        self._fractionsSpin.setRange(1, 99)
+        self._fractionsSpin.setValue(1)
+        self._fractionsSpin.setDecimals(0)
+        self._fractionsLayout.addWidget(self._fractionsSpin)
+
         self._planLabel = QLabel('plan name:')
         self.layout.addWidget(self._planLabel)
         self._planNameEdit = QLineEdit(self)
@@ -272,6 +283,8 @@ class PlanOptiPanel(QWidget):
             self._plan.planDesign = self.selectedPlanStructure
 
         self._plan.name = self._planNameEdit.text()
+
+        self._plan.numberOfFractionsPlanned = self._fractionsSpin.value()
 
         if self._beamletBox.isChecked() and self._beamletBox.isEnabled():
             self._computeBeamlets(contours)
