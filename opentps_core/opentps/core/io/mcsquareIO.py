@@ -762,8 +762,10 @@ def writePlan(plan: RTPlan, file_path, CT: CTImage, bdl: BDL):
             "%f\t %f\t %f\n" % _dicomIsocenterToMCsquare(beam.isocenterPosition, CT.origin, CT.spacing, CT.gridSize))
 
         if not (beam.rangeShifter is None):
-            if isinstance(beam.rangeShifter, list) and len(beam.rangeShifter) > 1 :
-                logger.info('Only one RangeShifter is allowed per beam.')
+            if not isinstance(beam.rangeShifter, list) :
+                beam.rangeShifter = [beam.rangeShifter]
+            if len(beam.rangeShifter) > 1 :
+                logger.error('Only one RangeShifter is allowed per beam.')
             fid.write("###RangeShifterID\n")
             fid.write("%s\n" % beam.rangeShifter[0].ID)
             fid.write("###RangeShifterType\n")
