@@ -95,7 +95,7 @@ def run(output_path=""):
 
         # Robustness settings
         planDesign.robustness = RobustnessPhoton()
-        planDesign.robustness.setupSystematicError = [1.6, 1.6, 1.6] # sigma (mm)
+        planDesign.robustness.setupSystematicError = [4, 4, 4] # mm
         planDesign.robustness.setupRandomError = None # Random error can not be include in the optimization. But well in evaluation.
         
         # Strategy selection 

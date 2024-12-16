@@ -52,10 +52,8 @@ class RobustnessPhoton(Robustness):
                 self.generateReducedErrorSpacecenarios()
             elif self.selectionStrategy == self.selectionStrategy.ALL :
                 self.generateAllErrorSpaceScenarios()
-            elif self.selectionStrategy == self.selectionStrategy.DISABLED :
-                self.scenariosConfig.append(RobustScenario(sse = np.array([self.setupSystematicError[0]* self.numberOfSigmas, 
-                                                                         self.setupSystematicError[1]* self.numberOfSigmas, 
-                                                                         self.setupSystematicError[2]* self.numberOfSigmas])))
+            else :
+                raise Exception("No evaluation strategy selected")
         else :
             raise Exception("No evaluation strategy selected")
 
@@ -73,13 +71,13 @@ class RobustnessPhoton(Robustness):
         for index, sse in enumerate(self.setupSystematicError):
             for sign in [-1,1]:
                 array = np.zeros(3)
-                array[index] = sse * sign * self.numberOfSigmas
+                array[index] = sse * sign
                 scenario = RobustScenario(sse = array, sre = self.setupRandomError)
                 self.scenariosConfig.append(scenario)
 
     def generateAllErrorSpaceScenarios(self):
         # Point coordinates on hypersphere with two zero axes
-        R = self.setupSystematicError[0] * self.numberOfSigmas
+        R = self.setupSystematicError[0]
         for sign in [-1, 1]:
             self.scenariosConfig.append(RobustScenario(sse = np.round(np.array([sign * R, 0, 0]), 2), sre = self.setupRandomError))
             self.scenariosConfig.append(RobustScenario(sse = np.round(np.array([0, sign * R, 0]), 2), sre = self.setupRandomError))
@@ -99,10 +97,10 @@ class RobustnessPhoton(Robustness):
 
 
     def generateRandomScenarios(self):
-        # Sample in gaussian
+        # Sample in gaussian, the gaussian is scaled by the number of sigmas cause the input is already sigma x nbr of sigma
         setupErrorSpace = self.setupSystematicError
         for _ in range(self.numScenarios):
-            SampleSetupError = [np.random.normal(0, sigma) for sigma in setupErrorSpace]
+            SampleSetupError = [np.random.normal(0, sigma/self.numberOfSigmas) for sigma in setupErrorSpace]
             SampleSetupError = np.round(SampleSetupError, 2)
             scenario = RobustScenario(sse = SampleSetupError, sre = self.setupRandomError)
             self.scenariosConfig.append(scenario)
