@@ -59,6 +59,16 @@ class RobustnessPhoton(Robustness):
         else :
             raise Exception("No evaluation strategy selected")
 
+        # Remove duplicates and nominal scenario
+        sse_list = []
+        for s in reversed(range(len(self.scenariosConfig))):
+            scenario = self.scenariosConfig[s]
+            sse  = scenario.sse.tolist()
+            if sse in sse_list or sse == [0,0,0]:
+                self.scenariosConfig.pop(s)
+            else:
+                sse_list.append(sse)
+
     def generateReducedErrorSpacecenarios(self):  # From [a, b, c] to 6 scenarios [+-a, +-b, +-c]
         for index, sse in enumerate(self.setupSystematicError):
             for sign in [-1,1]:
