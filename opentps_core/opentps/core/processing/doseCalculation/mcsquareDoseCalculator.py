@@ -3,11 +3,13 @@ import copy
 import logging
 import math
 import os
+import sys
 import platform
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional, Sequence, Union, Tuple
+import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -22,18 +24,20 @@ from opentps.core.data.CTCalibrations._abstractCTCalibration import AbstractCTCa
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import DoseImage
 from opentps.core.data.images import LETImage
-from opentps.core.data.images import Image3D
 from opentps.core.data.images import ROIMask
 from opentps.core.data.MCsquare import BDL
 from opentps.core.data.plan import RTPlan
 from opentps.core.data.plan import PlanDesign
 from opentps.core.data import ROIContour
-
-import opentps.core.io.mcsquareIO as mcsquareIO
+from opentps.core.data.dynamicData._dynamic3DSequence import Dynamic3DSequence
+from opentps.core.processing.registration.midPosition import compute
+from opentps.core.io import mcsquareIO
+from scipy.sparse import csc_matrix
+from opentps.core.processing.planDeliverySimulation.simpleBeamDeliveryTimings import SimpleBeamDeliveryTimings
+from opentps.core.data.images._deformation3D import Deformation3D
 
 __all__ = ['MCsquareDoseCalculator']
 
-from scipy.sparse import csc_matrix
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +93,10 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         AbstractDoseInfluenceCalculator.__init__(self)
 
         self._ctCalibration: Optional[AbstractCTCalibration] = None
-        self._ct: Optional[Image3D] = None
-        self._plan: Optional[RTPlan] = None
-        self._roi = None
+        self._ct: Optional[Union[Sequence[CTImage], CTImage]] = None
+        self._plan: Optional[Union[Sequence[RTPlan], RTPlan]] = None
+        self._roi: Optional[Union[Sequence[RTPlan], RTPlan]] = None
+        self._CT4D: Optional[Union[Sequence[CTImage], CTImage]] = None
         self._config = None
         self._mcsquareCTCalibration = None
         self._beamModel = None
@@ -103,6 +108,9 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         self._adapt_gridSize_to_new_spacing=False
         self._simulationDirectory = ProgramSettings().simulationFolder
         self._simulationFolderName = 'MCsquare_simulation'
+        self._RefIndex: Optional[int] = None
+        self._nbPhase = 0
+        self._phase = 0
 
         self._computeDVHOnly = 0
         self._computeLETDistribution = 0
@@ -124,6 +132,9 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
             return os.path.join(self._workDir, "Sparse_Dose.txt")
         elif self._sparseDoseScenarioToRead==None:
             return os.path.join(self._workDir, "Sparse_Dose_Nominal.txt")
+        elif self._plan.planDesign.robustness.Mode4D == self._plan.planDesign.robustness.Mode4D.MCsquareSystematic :
+            return os.path.join(self._workDir, "Sparse_Dose_Scenario_" + str(self._sparseDoseScenarioToRead + 1) + "-" + str(
+                self._plan.planDesign.robustness.numScenarios) + "_Phase" + str(self.phase) + ".txt")
         else:
             return os.path.join(self._workDir, "Sparse_Dose_Scenario_" + str(self._sparseDoseScenarioToRead + 1) + "-" + str(
                 self._plan.planDesign.robustness.numScenarios) + ".txt")
@@ -324,7 +335,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         let = self._importLET()
         return dose, let
 
-    def computeRobustScenario(self, ct: CTImage, plan: RTPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> RobustnessEval:
+    def computeRobustScenario(self, ct: CTImage, plan: RTPlan, roi: Sequence[Union[ROIContour, ROIMask]]) -> RobustnessEval:
         """
         Compute robustness scenario using MCsquare
 
@@ -344,7 +355,6 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         """
         logger.info("Prepare MCsquare Robust Dose calculation")
         scenarios = plan.planDesign.robustnessEval
-
         self.ct = ct
         self._plan = plan
         self._roi = roi
@@ -374,8 +384,59 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
                 scenarios.addScenario(dose, self._roi)
 
         return scenarios
+    
+    def compute4DRobustScenario(self, ct: CTImage, plan: RTPlan, refIndex: Optional[int] = None, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> RobustnessEval:
+        """
+        Compute 4D robustness scenario using MCsquare
 
-    def computeBeamlets(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
+        Parameters
+        ----------
+        ct : CTImage
+            Sequence of CT image of the patient
+        plan : RTPlan
+            RT plan
+        refIndex : Optional[int]
+            Index of the reference image of the 4DCT -Accumulation: Phase of accumulation -Systematic : Nominal phase
+        roi : [Sequence[Union[ROIContour, ROIMask]]]
+            sequence of ROI contours or masks
+
+        Returns
+        -------
+        scenarios:Robustness
+            Robustness with nominal and error scenarios
+        """
+        logger.info("Prepare MCsquare Robust Dose calculation")
+        scenarios = plan.planDesign.robustnessEval
+        self._CT4D = ct
+        self._plan = plan
+        self._roi = roi
+        self._RefIndex = refIndex
+
+        self._save4DCTAndFields()
+
+        # Nominal - RefPhase
+        self._ct = self._CT4D[self._RefIndex]
+        self._roi = self._roi[self._RefIndex]
+        # Use special config for robustness
+        self._config = self._scenarioComputationConfig
+        # Export useful data
+        self._writeFilesToSimuDir()
+        # Start simulation of 4D Phases-Scenarios
+        logger.info("Simulation of 4D scenarios phases")
+        self._startMCsquare()
+        self._doseFilePath = os.path.join(self._workDir, 'Dose_Nominal.mhd')
+        dose = self._importDose(plan)
+        scenarios.setNominal(dose, self._roi)
+        # Import dose results
+        for s in range(self._plan.planDesign.robustnessEval.numScenarios):
+            fileName = 'Dose_Scenario_' + str(s + 1) + '-' + str(self._plan.planDesign.robustnessEval.numScenarios) + '.mhd'
+            self._doseFilePath = os.path.join(self._workDir, fileName)
+            if os.path.isfile(self._doseFilePath):
+                dose = self._importDose(plan)
+                scenarios.addScenario(dose, self._roi)
+        return scenarios
+
+    def computeBeamlets(self, ct: Sequence[CTImage], plan: RTPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
         """
         Compute beamlets using MCsquare
 
@@ -471,10 +532,52 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         beamletDose = self.computeBeamlets(ct, plan, roi)
         beamletLET = self._importBeamletsLET()
-
+        
         return beamletDose, beamletLET
+    
+    def compute4DRobustScenarioBeamlets(self, ct:Sequence[CTImage], plan:RTPlan, refIndex: Optional[int] = None, \
+                                      roi:Optional[Sequence[Union[ROIContour, ROIMask]]]=None, storePath:Optional[str] = None) \
+            -> Tuple[SparseBeamlets, Sequence[SparseBeamlets]]:
+        """
+        Compute nominal and error scenarios beamlets for 4DCT using MCsquare
+        Can be used with accumulation or without
 
-    def computeRobustScenarioBeamlets(self, ct:CTImage, plan:RTPlan, \
+        Parameters
+        ----------
+        ct : Sequence[CTImage]
+            Sequence of CT images of the patient
+        plan : RTPlan
+            RT plan
+        refIndex : Optional[int]
+            Index of the reference image of the 4DCT -Accumulation: Phase of accumulation -Systematic : Nominal phase
+        roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
+            ROI contours or masks on which beamlets will be cropped at import, by default None
+        storePath : Optional[str], optional
+            Path to store the beamlets, by default None
+
+        Returns
+        -------
+        nominal:SparseBeamlets
+            Nominal beamlets dose with same grid size and spacing as the CT image
+        scenarios:Sequence[SparseBeamlets]
+            Error scenarios beamlets dose with same grid size and spacing as the CT image
+        """
+        self._CT4D = ct
+        self._roi = roi
+        self._plan = plan
+        self.output_path = storePath
+        self._RefIndex = refIndex
+
+        self._save4DCTAndFields()
+
+        RefCT = self._CT4D[self._RefIndex]
+        RefROI = self._roi[self._RefIndex] if self._roi != None else None
+
+        nominal, scenarios = self.computeRobustScenarioBeamlets(RefCT, plan, RefROI, storePath=self.output_path)
+
+        return nominal, scenarios
+
+    def computeRobustScenarioBeamlets(self, ct:Sequence[CTImage], plan:RTPlan, \
                                       roi:Optional[Sequence[Union[ROIContour, ROIMask]]]=None, storePath:Optional[str] = None) \
             -> Tuple[SparseBeamlets, Sequence[SparseBeamlets]]:
         """
@@ -498,7 +601,6 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         scenarios:Sequence[SparseBeamlets]
             Error scenarios beamlets dose with same grid size and spacing as the CT image
         """
-        # TODO: Investigate this nominal scenario computation (necessary?)
         nominal = self.computeBeamlets(ct, plan, roi)
         if not (storePath is None):
             outputBeamletFile = os.path.join(storePath, "BeamletMatrix_" + plan.seriesInstanceUID + "_Nominal.blm")
@@ -507,17 +609,28 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         scenarios = []
         for s in range(self._plan.planDesign.robustness.numScenarios):
             self._sparseDoseScenarioToRead = s
-            scenario = self._importBeamlets()
-            if not (storePath is None):
-                outputBeamletFile = os.path.join(storePath,
+            if self._plan.planDesign.robustness.Mode4D == self._plan.planDesign.robustness.Mode4D.MCsquareSystematic:
+                for p in range(self._nbPhase):
+                    self._phase = p+1
+                    scenario = self._importBeamlets()
+                    if not (storePath is None):
+                        outputBeamletFile = os.path.join(storePath,
+                                                        "BeamletMatrix_" + plan.seriesInstanceUID + "_Scenario_" + str(
+                                                            s + 1) + "-" + str(self._plan.planDesign.robustness.numScenarios) + "_Phase" + str(self._phase) + ".blm")
+                        scenario.storeOnFS(outputBeamletFile)
+                    scenarios.append(scenario)
+            else : 
+                scenario = self._importBeamlets()
+                if not (storePath is None):
+                    outputBeamletFile = os.path.join(storePath,
                                                  "BeamletMatrix_" + plan.seriesInstanceUID + "_Scenario_" + str(
                                                      s + 1) + "-" + str(self._plan.planDesign.robustness.numScenarios) + ".blm")
-                scenario.storeOnFS(outputBeamletFile)
-            scenarios.append(scenario)
+                    scenario.storeOnFS(outputBeamletFile)
+                scenarios.append(scenario)
 
         return nominal, scenarios
 
-    def optimizeBeamletFree(self, ct: CTImage, plan: RTPlan, roi: [Sequence[Union[ROIContour, ROIMask]]]) -> DoseImage:
+    def optimizeBeamletFree(self, ct: CTImage, plan: RTPlan, roi: Sequence[Union[ROIContour, ROIMask]]) -> DoseImage:
         """
         Optimize weights using beamlet free optimization
 
@@ -629,6 +742,36 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
                 self._subprocessKilled = False
                 raise Exception('MCsquare subprocess killed by caller.')
             self._subprocess = None
+        
+    def _save4DCTAndFields(self):
+        """
+        Clean the CT4D folder and save new CT4D
+        Generate 4D Fields and save them
+        """
+
+        if self._RefIndex == None :
+                sys.exit("The user must have a reference phase/index on which to accumulate the dose. opentps/core/processing/registration/midPosition.py allow to do it.")
+        
+        # 4DCT
+        CT_folder_path = os.path.join(self._mcsquareSimuDir, '4DCT')
+        if os.path.exists(CT_folder_path) and os.path.isdir(CT_folder_path):
+            shutil.rmtree(CT_folder_path)
+
+        for i in range(0, len(self._CT4D)):
+            mcsquareIO.writeCT(self._CT4D[i], os.path.join(self._4DCTFolder, f'CT_{i+1}.mhd'), self.overwriteOutsideROI)
+            self._nbPhase +=1
+
+        # 4D Fields : The fields for systematic scenarios are unnecessary, but MCsquare still requires them to be present.
+        Fields_Path = os.path.join(self._mcsquareSimuDir, 'Fields')
+        self._FieldsFolder
+        if os.listdir(Fields_Path) == []: # no DeformationFields yet - > Compute them
+            dynseq = Dynamic3DSequence(dyn3DImageList=self._CT4D)
+            NewrefIndex = [i for i, element in enumerate(dynseq.dyn3DImageList) if element._name == self._CT4D[self._RefIndex]._name] # Dynamic3DSequence orders dynseqs according to the order of CT names
+            logger.info('Computation of deformation fields. May take time.')
+            Midp, motionFieldList = compute(dynseq, NewrefIndex[0], baseResolution=2.5, nbProcesses=-1, tryGPU=True)
+            for i in range(0, len(motionFieldList)):
+                mcsquareIO.writeCT(motionFieldList[i].velocity, os.path.join(Fields_Path, f'Field_Ref_to_phase{i+1}.mhd'))
+        logger.info(f"Fields present in {Fields_Path} are going to be used.")
 
     def _importDose(self, plan:RTPlan = None) -> DoseImage:
         """
@@ -781,6 +924,18 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         folder = os.path.join(self._mcsquareSimuDir, 'Scanner')
         self._createFolderIfNotExists(folder)
         return folder
+    
+    @property
+    def _4DCTFolder(self):
+        folder = os.path.join(self._mcsquareSimuDir, '4DCT')
+        self._createFolderIfNotExists(folder)
+        return folder
+    
+    @property
+    def _FieldsFolder(self):
+        folder = os.path.join(self._mcsquareSimuDir, 'Fields')
+        self._createFolderIfNotExists(folder)
+        return folder
 
     @property
     def _doseComputationConfig(self) -> MCsquareConfig:
@@ -795,11 +950,12 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         config = self._generalMCsquareConfig
         config["Dose_to_Water_conversion"] = "OnlineSPR"
         # Import number of particles from previous simulation
-        self.SimulatedParticles, self.SimulatedStatUncert = self.getSimulationProgress()
-        config["Num_Primaries"] = self.SimulatedParticles
+        # self.SimulatedParticles, self.SimulatedStatUncert = self.getSimulationProgress()
+        # config["Num_Primaries"] = self.SimulatedParticles
+        config["Num_Primaries"] = self._nbPrimaries
         config["Compute_stat_uncertainty"] = False
         config["Robustness_Mode"] = True
-        config["Simulate_nominal_plan"] = False
+        config["Simulate_nominal_plan"] = False #True for 4D Accumulation, see below
         config["Systematic_Setup_Error"] = [self._plan.planDesign.robustnessEval.setupSystematicError[0] / 10, self._plan.planDesign.robustnessEval.setupSystematicError[1] / 10,
                                             self._plan.planDesign.robustnessEval.setupSystematicError[2] / 10]  # cm
         config["Random_Setup_Error"] = [self._plan.planDesign.robustnessEval.setupRandomError[0] / 10, self._plan.planDesign.robustnessEval.setupRandomError[1] / 10,
@@ -830,11 +986,38 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
             self._plan.planDesign.robustnessEval.numScenarios = config["Num_Random_Scenarios"]
         else:
             logger.error("No scenario selection strategy was configured. Pick between [ALL,REDUCED_SET,RANDOM]")
-        
+
         # Remove duplicate of nominal scenario if no random set up errors in ALL and REDUCED_SET scenarios 
         if np.sum(config["Random_Setup_Error"])==0 and config["Scenario_selection"] != "Random":
             self._plan.planDesign.robustnessEval.numScenarios-=1
-        
+
+        # 4D configurations
+
+        if self._plan.planDesign.robustnessEval.Mode4D == self._plan.planDesign.robustnessEval.Mode4D.MCsquareAccumulation :
+            config["4D_Mode"] = True
+            config["4D_Dose_Accumulation"] = True
+            config["Simulate_nominal_plan"] = True
+            if self._plan.planDesign.robustness.selectionStrategy == self._plan.planDesign.robustness.Strategies.RANDOM:
+                config["Create_Ref_from_4DCT"] = self._plan.planDesign.robustness.CreateReffrom4DCT
+                config["Create_4DCT_from_Ref"] = self._plan.planDesign.robustness.Create4DCTfromRef
+                config["Systematic_Amplitude_Error"] = self._plan.planDesign.robustness.SystematicAmplitudeError
+                config["Random_Amplitude_Error"] = self._plan.planDesign.robustness.RandomAmplitudeError
+                config["Systematic_Period_Error"] = self._plan.planDesign.robustness.SystematicPeriodError
+                config["Random_Period_Error"] = self._plan.planDesign.robustness.RandomPeriodError
+                config["Dynamic_delivery"] = self._plan.planDesign.robustness.Dynamic_delivery
+                config["Breathing_period"] = self._plan.planDesign.robustness.Breathing_period
+                if config["Dynamic_delivery"] == True and len(self._plan.spotTimings)==0:
+                    logger.info("plan has no delivery timings. Computing timings...")
+                    bdt = SimpleBeamDeliveryTimings(self._plan)
+                    self._plan = bdt.getPBSTimings(sort_spots="true")
+
+        if self._plan.planDesign.robustnessEval.Mode4D == self._plan.planDesign.robustnessEval.Mode4D.MCsquareSystematic :
+            config["4D_Mode"] = True
+            config["4D_Dose_Accumulation"] = False
+            config["Simulate_nominal_plan"] = True
+            if self._plan.planDesign.robustness.selectionStrategy == self._plan.planDesign.robustness.Strategies.RANDOM:
+                logger.error("Using the random strategy in systematic mode with amplitude and perido error is not supported.")
+
         self._plan.planDesign.robustnessEval.numScenarios = int(self._plan.planDesign.robustnessEval.numScenarios) # handle float output
         
         return config
@@ -891,6 +1074,31 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
             else:
                 logger.error("No scenario selection strategy was configured. Pick between [ALL,REDUCED_SET,RANDOM]")
             
+            # 4D configurations
+
+            if self._plan.planDesign.robustness.Mode4D == self._plan.planDesign.robustness.Mode4D.MCsquareAccumulation :
+                config["4D_Mode"] = True
+                config["4D_Dose_Accumulation"] = True
+                if self._plan.planDesign.robustness.selectionStrategy == self._plan.planDesign.robustness.Strategies.RANDOM:
+                    config["Create_Ref_from_4DCT"] = self._plan.planDesign.robustness.CreateReffrom4DCT
+                    config["Create_4DCT_from_Ref"] = self._plan.planDesign.robustness.Create4DCTfromRef
+                    config["Systematic_Amplitude_Error"] = self._plan.planDesign.robustness.SystematicAmplitudeError
+                    config["Random_Amplitude_Error"] = self._plan.planDesign.robustness.RandomAmplitudeError
+                    config["Systematic_Period_Error"] = self._plan.planDesign.robustness.SystematicPeriodError
+                    config["Random_Period_Error"] = self._plan.planDesign.robustness.RandomPeriodError
+                    config["Dynamic_delivery"] = self._plan.planDesign.robustness.Dynamic_delivery
+                    config["Breathing_period"] = self._plan.planDesign.robustness.Breathing_period
+                    if config["Dynamic_delivery"] == True and len(self._plan.spotTimings)==0:
+                        logger.info("plan has no delivery timings. Computing timings...")
+                        bdt = SimpleBeamDeliveryTimings(self._plan)
+                        self._plan = bdt.getPBSTimings(sort_spots="true")
+
+            if self._plan.planDesign.robustness.Mode4D == self._plan.planDesign.robustness.Mode4D.MCsquareSystematic :
+                config["4D_Mode"] = True
+                config["4D_Dose_Accumulation"] = False
+                if self._plan.planDesign.robustness.selectionStrategy == self._plan.planDesign.robustness.Strategies.RANDOM:
+                    logger.error("Using the random strategy in systematic mode is not supported.")
+
             # Remove duplicate of nominal scenario if no random set up errors in ALL and REDUCED_SET scenarios 
             if np.sum(config["Random_Setup_Error"])==0 and config["Scenario_selection"] != "Random":
                 self._plan.planDesign.robustness.numScenarios-=1
@@ -959,7 +1167,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         progressionFile = os.path.join(self._workDir, "Simulation_progress.txt")
 
         simulationStarted = 0
-        batch = 0
+        batch = 1
         uncertainty = -1
         multiplier = 1.0
 
@@ -967,7 +1175,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
             for line in fid:
                 if "Simulation started (" in line:
                     simulationStarted = 0
-                    batch = 0
+                    batch = 1
                     uncertainty = -1
                     multiplier = 1.0
 
