@@ -195,8 +195,13 @@ class PlanOptimizer:
         """
         self.plan.planDesign.setScoringParameters()
         # crop on ROI
-        roiObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
-        roiRobustObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+        if self.plan.planDesign.ROI_cropping == True:
+            roiObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+            roiRobustObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+        else : 
+            roiObjectives = np.ones(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+            roiRobustObjectives = np.ones(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+
         robust = False
         for objective in self.plan.planDesign.objectives.fidObjList:
             if objective.robust:
@@ -329,7 +334,8 @@ class PlanOptimizer:
 
         # unload scenario beamlets
         for s in range(len(self.plan.planDesign.robustness.scenarios)):
-            self.plan.planDesign.robustness.scenarios[s].unload()
+            if self.plan.planDesign.robustness.scenarios[0] != self.plan.planDesign.beamlets :
+                self.plan.planDesign.robustness.scenarios[s].unload()
 
         # total dose
         logger.info("Total dose calculation ...")

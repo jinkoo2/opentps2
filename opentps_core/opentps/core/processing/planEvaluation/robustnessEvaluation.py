@@ -61,7 +61,12 @@ class RobustnessEval:
         ALL = "ALL"
         REDUCED_SET = "REDUCED_SET"
         RANDOM = "RANDOM"
-
+    
+    class Mode4D(Enum):
+        DISABLED = "DISABLED"
+        MCsquareAccumulation = 'MCsquareAccumulation'
+        MCsquareSystematic = 'MCsquareSystematic'
+        
     def __init__(self):
         self.selectionStrategy = self.Strategies.DEFAULT
         self.setupSystematicError = [1.6, 1.6, 1.6]  # mm
@@ -75,6 +80,17 @@ class RobustnessEval:
         self.dvhBands = []
         self.doseDistributionType = ""
         self.doseDistribution = []
+
+        #4D Mode
+        self.Mode4D = self.Mode4D.DISABLED
+        self.CreateReffrom4DCT = False
+        self.Create4DCTfromRef = False
+        self.SystematicAmplitudeError = 0.0
+        self.RandomAmplitudeError = 0.0
+        self.Dynamic_delivery = False
+        self.SystematicPeriodError = 0.0
+        self.RandomPeriodError = 0.0
+        self.Breathing_period = 7
 
     def setNominal(self, dose: DoseImage, contours: Union[ROIContour, ROIMask]):
         """

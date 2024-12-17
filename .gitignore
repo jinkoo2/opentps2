@@ -37,3 +37,4 @@ configureEnv.sh
 *.log
 *.pdf
 *.png
+*.txt

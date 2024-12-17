@@ -83,6 +83,7 @@ class PlanDesign(PatientData):
         self.gantryAngles = []
         self.couchAngles = []
         self.rangeShifters: Sequence[RangeShifter] = []
+        self.ROI_cropping = True
 
         self.objectives = ObjectivesList()
         self.beamlets = []
@@ -126,8 +127,7 @@ class PlanDesign(PatientData):
     @scoringOrigin.setter
     def scoringOrigin(self, origin):
         self._scoringOrigin = origin
-
-
+        
     def buildPlan(self):
         """
         Builds a plan from the plan design
@@ -195,7 +195,7 @@ class PlanDesign(PatientData):
 
     def defineTargetMaskAndPrescription(self,target:Union[Union[ROIMask,ROIContour],Sequence[Union[ROIMask,ROIContour]]],targetPrescription:Union[float,Sequence[float]]):
         """
-        Defines the target mask and the prescription with given parameters (primary and secondary tumors masl)
+        Defines the target mask and the prescription with given parameters (primary and secondary tumors mask)
         Works even if no objectives have been set (at the plan design stage)
         Call required before spot placement.
         """
@@ -344,6 +344,11 @@ class Robustness:
         REDUCED_SET = "REDUCED_SET"
         RANDOM = "RANDOM"
 
+    class Mode4D(Enum):
+        DISABLED = "DISABLED"
+        MCsquareAccumulation = 'MCsquareAccumulation'
+        MCsquareSystematic = 'MCsquareSystematic'
+
     def __init__(self):
         self.selectionStrategy = self.Strategies.DEFAULT
         self.setupSystematicError = [1.6, 1.6, 1.6]  # mm
@@ -351,3 +356,12 @@ class Robustness:
         self.rangeSystematicError = 1.6  # %
         self.numScenarios = 0
         self.scenarios = []
+        self.Mode4D = self.Mode4D.DISABLED
+        self.CreateReffrom4DCT = False
+        self.Create4DCTfromRef = False
+        self.SystematicAmplitudeError = 0.0
+        self.RandomAmplitudeError = 0.0
+        self.Dynamic_delivery = False
+        self.SystematicPeriodError = 0.0
+        self.RandomPeriodError = 0.0
+        self.Breathing_period = 7

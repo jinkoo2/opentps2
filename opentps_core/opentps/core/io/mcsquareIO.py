@@ -806,7 +806,10 @@ def writePlan(plan: RTPlan, file_path, CT: CTImage, bdl: BDL):
 
             fid.write("####X Y Weight\n")
             for i, xy in enumerate(layer.spotXY):
-                fid.write("%f %f %f\n" % (xy[0], xy[1], layer.spotMUs[i]))
+                if len(layer.spotTimings) != 0:
+                    fid.write("%f %f %f %f \n" % (xy[0], xy[1], layer.spotMUs[i], layer.spotTimings[i]))
+                else :
+                    fid.write("%f %f %f\n" % (xy[0], xy[1], layer.spotMUs[i]))
 
     fid.close()
 

@@ -31,7 +31,6 @@ def run(output_path=""):
         if not os.path.exists(output_path):
             os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
-    # Generic example: box of water with squared target
 
     ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)
     bdl = mcsquareIO.readBDL(DoseCalculationConfig().bdlFile)
@@ -59,10 +58,6 @@ def run(output_path=""):
     data = np.zeros((ctSize, ctSize, ctSize)).astype(bool)
     data[100:120, 100:120, 100:120] = True
     roi.imageArray = data
-
-    # Create output folder
-    if not os.path.isdir(output_path):
-        os.mkdir(output_path)
 
     # Configure MCsquare
     mc2 = MCsquareDoseCalculator()
@@ -110,9 +105,7 @@ def run(output_path=""):
         
         plan.patient = None
         # run MCsquare simulation
-        scenarios = mc2.computeRobustScenario(ct, plan, [roi])
-        if not os.path.isdir(output_path):
-          os.mkdir(output_path)
+        scenarios = mc2.computeRobustScenario(ct, plan, [roi]) #-----phase
         output_folder = os.path.join(output_path, "RobustnessTest_" + datetime.datetime.today().strftime("%b-%d-%Y_%H-%M-%S"))
         scenarios.save(output_folder)
 
