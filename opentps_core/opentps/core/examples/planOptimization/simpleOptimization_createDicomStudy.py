@@ -91,7 +91,7 @@ def run(output_path=""):
     # struct.studyInstanceUID = studyInstanceUID
     # struct.frameOfReferenceUID = frameOfReferenceUID
     # struct.appendContour(contour)
-    # writeRTStruct(struct, os.path.join(output_path, "struct.dcm"))
+    # writeRTStruct(struct, output_path, "struct")
 
     # Design plan
     beamNames = ["Beam1"]

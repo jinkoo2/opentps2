@@ -60,10 +60,6 @@ def run(output_path=""):
     data[100:120, 100:120, 100:120] = True
     roi.imageArray = data
 
-    # Create output folder
-    if not os.path.isdir(output_path):
-        os.mkdir(output_path)
-
     # Configure MCsquare
     mc2 = MCsquareDoseCalculator()
     mc2.beamModel = bdl

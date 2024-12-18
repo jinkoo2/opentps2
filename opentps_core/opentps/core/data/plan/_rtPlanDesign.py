@@ -9,6 +9,7 @@ from opentps.core.data.CTCalibrations._abstractCTCalibration import AbstractCTCa
 from opentps.core.data._roiContour import ROIContour
 from opentps.core.data.images import CTImage
 from opentps.core.data.images._roiMask import ROIMask
+from opentps.core.data.plan._rangeShifter import RangeShifter
 from opentps.core.data.plan._robustness import Robustness
 from opentps.core.processing.imageProcessing import resampler3D
 from opentps.core.data._patientData import PatientData
@@ -58,6 +59,7 @@ class RTPlanDesign(PatientData):
         self.beamNames = []
         self.gantryAngles = []
         self.couchAngles = []
+        self.rangeShifters: Sequence[RangeShifter] = []
         self._scoringVoxelSpacing = None
         self.ROI_cropping = True
 
@@ -106,7 +108,7 @@ class RTPlanDesign(PatientData):
 
     def defineTargetMaskAndPrescription(self,target:Union[Union[ROIMask,ROIContour],Sequence[Union[ROIMask,ROIContour]]],targetPrescription:Union[float,Sequence[float]]):
         """
-        Defines the target mask and the prescription with given parameters (primary and secondary tumors masl)
+        Defines the target mask and the prescription with given parameters (primary and secondary tumors mask)
         Works even if no objectives have been set (at the plan design stage)
         Call required before spot placement.
         """

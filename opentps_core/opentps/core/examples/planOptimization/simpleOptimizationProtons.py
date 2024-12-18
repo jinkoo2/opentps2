@@ -200,8 +200,8 @@ def run(output_path=""):
     ax2.set_xlabel('Iterations')
     ax2.set_xlim(0, convData['nIter'])
     ax[2].grid(True)
-    plt.show()
     plt.savefig(os.path.join(output_path, 'Dose_SimpleOptimizationProtons.png'))
+    plt.show()
 
 
 if __name__ == "__main__":

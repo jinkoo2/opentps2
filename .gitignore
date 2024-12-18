@@ -16,7 +16,6 @@ version.py
 Perso/
 waldoScripts/
 testData/*
-*.dcm
 
 
 OpenTPS_venv/*
@@ -38,3 +37,4 @@ configureEnv.sh
 *.log
 *.pdf
 *.png
+*.txt

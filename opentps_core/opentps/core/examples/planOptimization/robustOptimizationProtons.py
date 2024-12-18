@@ -97,7 +97,7 @@ def run(output_path=""):
         planDesign.robustness = RobustnessProton()
         planDesign.robustness.setupSystematicError = [1.6, 1.6, 1.6]  # mm
         planDesign.robustness.setupRandomError = [0.0, 0.0, 0.0]  # mm (sigma)
-        planDesign.robustness.rangeSystematicError = 0.0  # %
+        planDesign.robustness.rangeSystematicError = 5.0  # %
 
         # Regular scenario sampling
         planDesign.robustness.selectionStrategy = planDesign.robustness.Strategies.REDUCED_SET
