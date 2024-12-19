@@ -24,6 +24,12 @@ class RobustnessSettings(QWidget):
         self._robustSettingsLabel = QLabel('')
         self.layout.addWidget(self._robustSettingsLabel)
 
+        self._dialog = RobustnessSettingsDialog(self.modality, planEvaluation=self.planEval)
+        self._robustParam = self._dialog.robustness
+        RobustSettings = 'No robust settings'
+        self._robustSettingsLabel.setText(RobustSettings)
+        self._updateRobustSettings()
+
         #self._dialog = RobustnessSettingsDialog(modality="IMPT",planEvaluation=planEvaluation)
         #self._robustParam = self._dialog.robustness
         #self._robustParam = None
@@ -42,9 +48,7 @@ class RobustnessSettings(QWidget):
 
     def _updateRobustSettings(self):
         RobustSettings = ''
-        if (self._robustParam.selectionStrategy == self._robustParam.Strategies.DISABLED):
-            RobustSettings = 'No robust settings'
-        elif (self._robustParam.selectionStrategy == self._robustParam.Strategies.ALL):
+        if (self._robustParam.selectionStrategy == self._robustParam.Strategies.ALL):
             if self.modality == "IMPT":
                 self._robustParam.numScenarios = 81
                 if(self._robustParam.setupSystematicError[0] == 0.0): self._robustParam.numScenarios/=3
@@ -81,6 +85,9 @@ class RobustnessSettings(QWidget):
             #RobustSettings += 'Rand. setup: &sigma;<sub>S</sub> = ' + str(self._robustParam.setupRandomError) + ' mm<br>'
             RobustSettings += 'Random num of scenarios = ' + str(int(self._robustParam.numRandomScenarios)) + '<br>'
             if self.modality == "IMPT": RobustSettings += 'Syst. range: &Sigma;<sub>R</sub> = ' + str(self._robustParam.rangeSystematicError) + ' %<br>'
+        else:
+            self._robustParam.selectionStrategy = self._robustParam.Strategies.DISABLED
+            RobustSettings = 'No robust settings'
 
         self._robustSettingsLabel.setText(RobustSettings)
 

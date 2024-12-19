@@ -35,12 +35,16 @@ class PlanDesignPanel(QWidget):
         self._modalityComboBox.addItem("IMRT")
         self.layout.addWidget(self._modalityComboBox)
         
-        
         self._planLabel = QLabel('Plan name:')
         self.layout.addWidget(self._planLabel)
-        self._planNameEdit = QLineEdit(self)
-        self._planNameEdit.setText('New plan design')
-        self.layout.addWidget(self._planNameEdit)
+
+        self._planIMPTNameEdit = QLineEdit(self)
+        self._planIMPTNameEdit.setText('New IMPT plan design')
+        self.layout.addWidget(self._planIMPTNameEdit)
+        self._planIMRTNameEdit = QLineEdit(self)
+        self._planIMRTNameEdit.setText('New IMRT plan design')
+        self.layout.addWidget(self._planIMRTNameEdit)
+        self._planIMRTNameEdit.hide()
 
         from opentps.gui.programSettingEditor import MCsquareConfigEditor
         self._mcsquareConfigWidget = MCsquareConfigEditor(self)
@@ -201,11 +205,13 @@ class PlanDesignPanel(QWidget):
             self._proximalSpin.hide()
             self._distalLabel.hide()
             self._distalSpin.hide()
+            self._planIMPTNameEdit.hide()
 
             self.xBeamletSpacingLabel.show()
             self._xBeamletSpacing.show()
             self.yBeamletSpacingLabel.show()
             self._yBeamletSpacing.show()
+            self._planIMRTNameEdit.show()
 
         elif modality == "IMPT":
             self._mcsquareConfigWidget._txt2.show()
@@ -217,11 +223,16 @@ class PlanDesignPanel(QWidget):
             self._proximalSpin.show()
             self._distalLabel.show()
             self._distalSpin.show()
+            self._planIMPTNameEdit.show()
 
             self.xBeamletSpacingLabel.hide()
             self._xBeamletSpacing.hide()
             self.yBeamletSpacingLabel.hide()
             self._yBeamletSpacing.hide()
+            self._planIMRTNameEdit.hide()
+
+        for _ in range(self._beams.count()):
+            self.delete_item('beam', 0)
 
         self._robustSettings._updateForModality(modality)
 
