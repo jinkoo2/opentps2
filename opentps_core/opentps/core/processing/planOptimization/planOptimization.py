@@ -7,11 +7,30 @@ import scipy.sparse as sp
 
 from opentps.core.processing.planOptimization.objectives.doseFidelity import DoseFidelity
 
+try:
+    import sparse_dot_mkl
+    use_MKL = 0 # Currently deactivated on purpose because sparse_dot_mkl generates seg fault
+except:
+    use_MKL = 0
+
+cupy_available = False
+try:
+    import cupy as cp
+    import cupyx as cpx
+    cupy_available = True
+except:
+    cupy_available = False
+from opentps.core.data.plan._photonPlan import PhotonPlan
 from opentps.core.data.plan._rtPlan import RTPlan
-from opentps.core.processing.planOptimization.solvers import scipyOpt, sparcling, bfgs, localSearch, fista, gradientDescent
+from opentps.core.data.plan._protonPlan import ProtonPlan
+from opentps.core.processing.planOptimization.solvers import sparcling, \
+    beamletFree
+from opentps.core.processing.planOptimization.solvers import scipyOpt, bfgs, localSearch
+from opentps.core.processing.planOptimization.solvers import fista, gradientDescent
 from opentps.core.processing.planOptimization import planPreprocessing
 from scipy.sparse import csc_matrix
 from opentps.core.data.images._doseImage import DoseImage
+
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +84,9 @@ class PlanOptimizer:
     def __init__(self, plan:RTPlan, hardwareAcceleration:str=None, **kwargs):
 
         self.solver = scipyOpt.ScipyOpt('L-BFGS-B')
-        planPreprocessing.extendPlanLayers(plan)
+        
+        if isinstance(plan, ProtonPlan):
+            planPreprocessing.extendPlanLayers(plan)
         self.plan = plan
         self.opti_params = kwargs
         self.functions = []
@@ -173,7 +194,7 @@ class PlanOptimizer:
             The weights.
         """
         # Total Dose calculation
-        totalDose = self.computeDose().imageArray
+        totalDose = self.computeDose().imageArray 
         maxDose = np.max(totalDose)
         try:
             x0 = self.opti_params['init_weights']
@@ -194,6 +215,7 @@ class PlanOptimizer:
         Initialize the dose fidelity objective function.
         """
         self.plan.planDesign.setScoringParameters()
+
         # crop on ROI
         if self.plan.planDesign.ROI_cropping == True:
             roiObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
@@ -243,7 +265,12 @@ class PlanOptimizer:
         assert self.plan.planDesign.beamlets._sparseBeamlets is not None
 
         beamlets = self.plan.planDesign.beamlets
-        weights = np.array(self.plan.spotMUs, dtype=np.float32)
+        
+        if self.plan.radiationType == 'PROTON':
+            weights = np.array(self.plan.spotMUs, dtype=np.float32)
+        else :
+            weights = np.array(self.plan.beamletMUs, dtype=np.float32)
+
         if self.MKL_acceleration:
             totalDose = sparse_dot_mkl.dot_product_mkl(beamlets._sparseBeamlets, weights) * self.plan.numberOfFractionsPlanned
         else:
@@ -319,7 +346,7 @@ class PlanOptimizer:
         except:
             pass
 
-        weights = result['sol']
+        self.weights = result['sol']
         crit = result['crit']
         self.niter = result['niter']
         self.time = result['time']
@@ -330,7 +357,7 @@ class PlanOptimizer:
 
         logger.info(
             ' {} terminated in {} Iter, x = {}, f(x) = {}, time elapsed {}, time per iter {}'
-                .format(self.solver.__class__.__name__, self.niter, weights, self.cost, self.time, self.time / self.niter))
+                .format(self.solver.__class__.__name__, self.niter, self.weights, self.cost, self.time, self.time / self.niter))
 
         # unload scenario beamlets
         for s in range(len(self.plan.planDesign.robustness.scenarios)):
@@ -340,18 +367,34 @@ class PlanOptimizer:
         # total dose
         logger.info("Total dose calculation ...")
         if self.xSquared:
-            self.plan.spotMUs = np.square(weights).astype(np.float32) / self.plan.numberOfFractionsPlanned
+            MUs = np.square(self.weights).astype(np.float32) / self.plan.numberOfFractionsPlanned
         else:
-            self.plan.spotMUs = weights.astype(np.float32) / self.plan.numberOfFractionsPlanned
-        
-        MU_before_simplify = self.plan.spotMUs.copy()
+            MUs = self.weights.astype(np.float32) / self.plan.numberOfFractionsPlanned
+        if isinstance(self.plan,ProtonPlan):
+            self.plan.spotMUs = MUs
+        elif isinstance(self.plan,PhotonPlan): 
+            self.plan.beamletMUs = MUs
+        MU_before_simplify = MUs.copy()
         self.plan.simplify(threshold=self.thresholdSpotRemoval) # remove spots below self.thresholdSpotRemoval
-        if self.plan.planDesign.beamlets.shape[1] != len(self.plan.spotMUs):
-            # Beamlet matrix has not removed zero weight column
-            ind_to_keep = MU_before_simplify > self.thresholdSpotRemoval
-            assert np.sum(ind_to_keep) == len(self.plan.spotMUs)
-            self.plan.planDesign.beamlets.setUnitaryBeamlets(self.plan.planDesign.beamlets._sparseBeamlets[:, ind_to_keep])
-
+        
+        if isinstance(self.plan,ProtonPlan):
+            if self.plan.planDesign.beamlets.shape[1] != len(self.plan.spotMUs):
+                # Beamlet matrix has not removed zero weight column
+                ind_to_keep = MU_before_simplify > self.thresholdSpotRemoval
+                assert np.sum(ind_to_keep) == len(self.plan.spotMUs)
+                self.plan.planDesign.beamlets.setUnitaryBeamlets(self.plan.planDesign.beamlets._sparseBeamlets[:, ind_to_keep])
+                self.plan.planDesign.beamlets._weights = self.plan.spotMUs
+            else:
+                self.plan.planDesign.beamlets._weights = self.plan.spotMUs
+        elif isinstance(self.plan,PhotonPlan):        
+            if self.plan.planDesign.beamlets.shape[1] != len(self.plan.beamletMUs):
+                # Beamlet matrix has not removed zero weight column
+                ind_to_keep = MU_before_simplify > self.thresholdSpotRemoval
+                assert np.sum(ind_to_keep) == len(self.plan.beamletMUs)
+                self.plan.planDesign.beamlets.setUnitaryBeamlets(self.plan.planDesign.beamlets._sparseBeamlets[:, ind_to_keep])
+                self.plan.planDesign.beamlets._weights = self.plan.beamletMUs
+            else:
+                self.plan.planDesign.beamlets._weights = self.plan.beamletMUs
         totalDose = self.computeDose()
         logger.info('Optimization done.')
 
@@ -386,9 +429,9 @@ class PlanOptimizer:
         return dct
 
 
-class IMPTPlanOptimizer(PlanOptimizer):
+class IntensityModulationOptimizer(PlanOptimizer):
     """
-    This class is used to optimize an Intensity Modulated Proton Therapy (IMPT) plan. It inherits from PlanOptimizer.
+    This class is used to optimize an Intensity Modulated Radiation/Proton Therapy (IMRT/IMPT). It inherits from PlanOptimizer.
     Attributes
     ----------
     method : str

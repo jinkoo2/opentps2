@@ -4,7 +4,7 @@ import re
 import logging
 logger = logging.getLogger(__name__)
 
-import opentps.core.processing.doseCalculation.MCsquare as MCsquare
+import opentps.core.processing.doseCalculation.protons.MCsquare as MCsquare
 
 class MCsquareMaterial:
     """

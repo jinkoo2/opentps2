@@ -7,13 +7,13 @@ import numpy as np
 from matplotlib import pyplot as plt
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan._protonPlanDesign import ProtonPlanDesign
 from opentps.core.data import Patient
 from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsquareDoseCalculator
+from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
 
 """
@@ -27,14 +27,15 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Output', 'EvaluateRobustness')
+        output_path = os.path.join(os.getcwd(), 'Proton_Robust_Output_Example')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
 
     ctCalibration = readScanner(DoseCalculationConfig().scannerFolder)
     bdl = mcsquareIO.readBDL(DoseCalculationConfig().bdlFile)
-
+    
+    # Generic example: box of water with squared target
     patient = Patient()
     patient.name = 'Patient'
 
@@ -67,7 +68,7 @@ def run(output_path=""):
     mc2.ctCalibration = ctCalibration
 
     # Load / Generate new plan
-    plan_file = os.path.join(output_path, "Plan_WaterPhantom_cropped_resampled_optimized.tps")
+    plan_file = os.path.join(output_path, "Plan_Proton_WaterPhantom_cropped_optimized.tps")
 
     if os.path.isfile(plan_file):
         plan = loadRTPlan(plan_file)
@@ -77,7 +78,7 @@ def run(output_path=""):
         exit()
 
     # Load / Generate scenarios
-    scenario_folder = os.path.join(output_path,'RobustnessTest_Jul-17-2024_15-16-10_')
+    scenario_folder = os.path.join(output_path,'RobustnessTest')
     if os.path.isdir(scenario_folder):
         scenarios = RobustnessEval()
         scenarios.selectionStrategy = RobustnessEval.Strategies.ALL
@@ -101,12 +102,12 @@ def run(output_path=""):
 
         # Random scenario sampling  
         plan.planDesign.robustnessEval.selectionStrategy = plan.planDesign.robustnessEval.Strategies.RANDOM
-        plan.planDesign.robustnessEval.numScenarios = 30 # specify how many random scenarios to simulate, default = 100
+        plan.planDesign.robustnessEval.nScenarios = 30 # specify how many random scenarios to simulate, default = 100
         
         plan.patient = None
         # run MCsquare simulation
-        scenarios = mc2.computeRobustScenario(ct, plan, [roi]) #-----phase
-        output_folder = os.path.join(output_path, "RobustnessTest_" + datetime.datetime.today().strftime("%b-%d-%Y_%H-%M-%S"))
+        scenarios = mc2.computeRobustScenario(ct, plan, [roi])
+        output_folder = os.path.join(output_path, "RobustnessTest")
         scenarios.save(output_folder)
 
     # Robustness analysis

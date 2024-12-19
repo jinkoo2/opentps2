@@ -22,8 +22,8 @@ from opentps.core.data.images import ROIMask
 from opentps.core.data.MCsquare import BDL
 from opentps.core.data.MCsquare import MCsquareConfig
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan import PlanIonBeam
-from opentps.core.data.plan import PlanIonLayer
+from opentps.core.data.plan import PlanProtonBeam
+from opentps.core.data.plan import PlanProtonLayer
 from opentps.core.data.plan import RangeShifter
 from opentps.core.data.plan import RTPlan
 from opentps.core.data import SparseBeamlets
@@ -360,7 +360,7 @@ def readMCsquarePlan(ct: CTImage, file_path):
                 plan.numberOfFractionsPlanned = int(f.readline())
 
             elif line == "#FIELD-DESCRIPTION":
-                plan._beams.append(PlanIonBeam())
+                plan._beams.append(PlanProtonBeam())
                 plan.beams[-1].seriesInstanceUID = plan.seriesInstanceUID
 
             elif line == "###FieldID" and len(plan.beams) > 0:
@@ -388,7 +388,7 @@ def readMCsquarePlan(ct: CTImage, file_path):
                 plan.beams[-1].rangeShifter.ID = f.readline().replace('\r', '').replace('\n', '').replace('\t', '')
 
             elif line == "####ControlPointIndex":
-                plan.beams[-1]._layers.append(PlanIonLayer())
+                plan.beams[-1]._layers.append(PlanProtonLayer())
                 plan.beams[-1].layers[-1].seriesInstanceUID = plan.seriesInstanceUID
                 line = f.readline()
 
@@ -956,7 +956,7 @@ def writeBin(destFolder):
     destFolder : str
         The folder where the binaries will be written
     """
-    import opentps.core.processing.doseCalculation.MCsquare as MCsquareModule
+    import opentps.core.processing.doseCalculation.protons.MCsquare as MCsquareModule
     mcsquarePath = str(MCsquareModule.__path__[0])
 
     if (platform.system() == "Linux"):
@@ -1076,16 +1076,16 @@ class MCsquareIOTestCase(unittest.TestCase):
         """
         Test the write function.
         """
-        from opentps.core.data.plan._planIonBeam import PlanIonBeam
-        from opentps.core.data.plan._planIonLayer import PlanIonLayer
+        from opentps.core.data.plan._planProtonBeam import PlanProtonBeam
+        from opentps.core.data.plan._planProtonLayer import PlanProtonLayer
 
         import opentps.core.processing.doseCalculation.MCsquare.BDL as BDLModule
 
         bdl = readBDL(os.path.join(str(BDLModule.__path__[0]), 'BDL_default_DN_RangeShifter.txt'))
 
         plan = RTPlan()
-        beam = PlanIonBeam()
-        layer = PlanIonLayer(nominalEnergy=100.)
+        beam = PlanProtonBeam()
+        layer = PlanProtonLayer(nominalEnergy=100.)
         layer.appendSpot(0, 0, 1)
         layer.appendSpot(0, 1, 2)
 

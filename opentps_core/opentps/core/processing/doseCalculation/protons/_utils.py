@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 
-import opentps.core.processing.doseCalculation.MCsquare as MCsquareModule
+import opentps.core.processing.doseCalculation.protons.MCsquare as MCsquareModule
 from opentps.core.io.mcsquareIO import _print_memory_usage
 
 from scipy.sparse import csc_matrix, hstack

@@ -15,9 +15,9 @@ import numpy as np
 
 from opentps.core.data.MCsquare import MCsquareConfig
 from opentps.core.data import SparseBeamlets
-from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
+from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEvalProton
 from opentps.core.processing.doseCalculation.abstractDoseInfluenceCalculator import AbstractDoseInfluenceCalculator
-from opentps.core.processing.doseCalculation.abstractMCDoseCalculator import AbstractMCDoseCalculator
+from opentps.core.processing.doseCalculation.protons.abstractMCDoseCalculator import AbstractMCDoseCalculator
 from opentps.core.processing.imageProcessing import resampler3D
 from opentps.core.utils.programSettings import ProgramSettings
 from opentps.core.data.CTCalibrations._abstractCTCalibration import AbstractCTCalibration
@@ -26,8 +26,7 @@ from opentps.core.data.images import DoseImage
 from opentps.core.data.images import LETImage
 from opentps.core.data.images import ROIMask
 from opentps.core.data.MCsquare import BDL
-from opentps.core.data.plan import RTPlan
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan import ProtonPlan,ProtonPlanDesign
 from opentps.core.data import ROIContour
 from opentps.core.data.dynamicData._dynamic3DSequence import Dynamic3DSequence
 from opentps.core.processing.registration.midPosition import compute
@@ -53,7 +52,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         CT calibration (Optional)
     _ct : Image3D
         the CT image of the patient (Optional)
-    _plan : RTPlan
+    _plan : IonPlan
         Treatment plan (Optional)
     _roi : ROIMask
         ROI mask
@@ -94,8 +93,8 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         self._ctCalibration: Optional[AbstractCTCalibration] = None
         self._ct: Optional[Union[Sequence[CTImage], CTImage]] = None
-        self._plan: Optional[Union[Sequence[RTPlan], RTPlan]] = None
-        self._roi: Optional[Union[Sequence[RTPlan], RTPlan]] = None
+        self._plan: Optional[Union[Sequence[ProtonPlan], ProtonPlan]] = None
+        self._roi = None
         self._CT4D: Optional[Union[Sequence[CTImage], CTImage]] = None
         self._config = None
         self._mcsquareCTCalibration = None
@@ -280,7 +279,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
             self._subprocess.kill()
             self._subprocess = None
 
-    def computeDose(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[ROIContour]] = None) -> DoseImage:
+    def computeDose(self, ct: CTImage, plan: ProtonPlan, roi: Optional[Sequence[ROIContour]] = None) -> DoseImage:
         """
         Compute dose distribution in the patient using MCsquare
 
@@ -288,7 +287,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[ROIContour]], optional
             ROI contours, by default None
@@ -312,7 +311,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         mhdDose = self._importDose(plan)
         return mhdDose
 
-    def computeDoseAndLET(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[ROIContour]] = None) -> Tuple[DoseImage, LETImage]:
+    def computeDoseAndLET(self, ct: CTImage, plan: ProtonPlan, roi: Optional[Sequence[ROIContour]] = None) -> Tuple[DoseImage, LETImage]:
         """
         Compute dose and LET distribution in the patient using MCsquare
 
@@ -320,7 +319,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[ROIContour]], optional
             ROI contours, by default None
@@ -335,7 +334,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         let = self._importLET()
         return dose, let
 
-    def computeRobustScenario(self, ct: CTImage, plan: RTPlan, roi: Sequence[Union[ROIContour, ROIMask]]) -> RobustnessEval:
+    def computeRobustScenario(self, ct: CTImage, plan: ProtonPlan, roi: Sequence[Union[ROIContour, ROIMask]]) -> RobustnessEvalProton:
         """
         Compute robustness scenario using MCsquare
 
@@ -343,7 +342,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : [Sequence[Union[ROIContour, ROIMask]]]
             ROI contours or masks
@@ -385,7 +384,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return scenarios
     
-    def compute4DRobustScenario(self, ct: CTImage, plan: RTPlan, refIndex: Optional[int] = None, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> RobustnessEval:
+    def compute4DRobustScenario(self, ct: CTImage, plan: ProtonPlan, refIndex: Optional[int] = None, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> RobustnessEvalProton:
         """
         Compute 4D robustness scenario using MCsquare
 
@@ -436,7 +435,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
                 scenarios.addScenario(dose, self._roi)
         return scenarios
 
-    def computeBeamlets(self, ct: Sequence[CTImage], plan: RTPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
+    def computeBeamlets(self, ct: Sequence[CTImage], plan: ProtonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> SparseBeamlets:
         """
         Compute beamlets using MCsquare
 
@@ -444,7 +443,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
             ROI contours or masks on which beamlets will be cropped at import, by default None
@@ -463,7 +462,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         self._plan.simplify(threshold=None) # make sure no spot duplicates
 
         if not self._plan.planDesign: # external plan
-            planDesign = PlanDesign()
+            planDesign = ProtonPlanDesign()
             planDesign.ct = ct
             planDesign.targetMask = roi
             planDesign.scoringVoxelSpacing = self.scoringVoxelSpacing
@@ -494,7 +493,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         os.environ['MCsquare_Materials_Dir'] = self._materialFolder
         nVoxels = self.scoringGridSize[0]*self.scoringGridSize[1]*self.scoringGridSize[2]
 
-        from opentps.core.processing.doseCalculation._utils import MCsquareSharedLib
+        from opentps.core.processing.doseCalculation.protons._utils import MCsquareSharedLib
         self._mc2Lib = MCsquareSharedLib(mcsquarePath=self._mcsquareSimuDir)
         sparseBeamlets = self._mc2Lib.computeBeamletsSharedLib(self._configFilePath, nVoxels, self._plan.numberOfSpots)
 
@@ -508,7 +507,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         beamletDose.doseGridSize = self.scoringGridSize
         return beamletDose
 
-    def computeBeamletsAndLET(self, ct: CTImage, plan: RTPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> Tuple[SparseBeamlets, SparseBeamlets]:
+    def computeBeamletsAndLET(self, ct: CTImage, plan: ProtonPlan, roi: Optional[Sequence[Union[ROIContour, ROIMask]]] = None) -> Tuple[SparseBeamlets, SparseBeamlets]:
         """
         Compute beamlets and LET using MCsquare
 
@@ -516,7 +515,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
             ROI contours or masks, by default None
@@ -535,7 +534,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         
         return beamletDose, beamletLET
     
-    def compute4DRobustScenarioBeamlets(self, ct:Sequence[CTImage], plan:RTPlan, refIndex: Optional[int] = None, \
+    def compute4DRobustScenarioBeamlets(self, ct:Sequence[CTImage], plan:ProtonPlan, refIndex: Optional[int] = None, \
                                       roi:Optional[Sequence[Union[ROIContour, ROIMask]]]=None, storePath:Optional[str] = None) \
             -> Tuple[SparseBeamlets, Sequence[SparseBeamlets]]:
         """
@@ -577,7 +576,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return nominal, scenarios
 
-    def computeRobustScenarioBeamlets(self, ct:Sequence[CTImage], plan:RTPlan, \
+    def computeRobustScenarioBeamlets(self, ct:Sequence[CTImage], plan:ProtonPlan, \
                                       roi:Optional[Sequence[Union[ROIContour, ROIMask]]]=None, storePath:Optional[str] = None) \
             -> Tuple[SparseBeamlets, Sequence[SparseBeamlets]]:
         """
@@ -587,7 +586,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : Optional[Sequence[Union[ROIContour, ROIMask]]], optional
             ROI contours or masks on which beamlets will be cropped at import, by default None
@@ -630,7 +629,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
 
         return nominal, scenarios
 
-    def optimizeBeamletFree(self, ct: CTImage, plan: RTPlan, roi: Sequence[Union[ROIContour, ROIMask]]) -> DoseImage:
+    def optimizeBeamletFree(self, ct: CTImage, plan: ProtonPlan, roi: Sequence[Union[ROIContour, ROIMask]]) -> DoseImage:
         """
         Optimize weights using beamlet free optimization
 
@@ -638,7 +637,7 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
         ----------
         ct : CTImage
             CT image of the patient
-        plan : RTPlan
+        plan : IonPlan
             RT plan
         roi : [Sequence[Union[ROIContour, ROIMask]]]
             ROI contours or masks
@@ -742,44 +741,14 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
                 self._subprocessKilled = False
                 raise Exception('MCsquare subprocess killed by caller.')
             self._subprocess = None
-        
-    def _save4DCTAndFields(self):
-        """
-        Clean the CT4D folder and save new CT4D
-        Generate 4D Fields and save them
-        """
 
-        if self._RefIndex == None :
-                sys.exit("The user must have a reference phase/index on which to accumulate the dose. opentps/core/processing/registration/midPosition.py allow to do it.")
-        
-        # 4DCT
-        CT_folder_path = os.path.join(self._mcsquareSimuDir, '4DCT')
-        if os.path.exists(CT_folder_path) and os.path.isdir(CT_folder_path):
-            shutil.rmtree(CT_folder_path)
-
-        for i in range(0, len(self._CT4D)):
-            mcsquareIO.writeCT(self._CT4D[i], os.path.join(self._4DCTFolder, f'CT_{i+1}.mhd'), self.overwriteOutsideROI)
-            self._nbPhase +=1
-
-        # 4D Fields : The fields for systematic scenarios are unnecessary, but MCsquare still requires them to be present.
-        Fields_Path = os.path.join(self._mcsquareSimuDir, 'Fields')
-        self._FieldsFolder
-        if os.listdir(Fields_Path) == []: # no DeformationFields yet - > Compute them
-            dynseq = Dynamic3DSequence(dyn3DImageList=self._CT4D)
-            NewrefIndex = [i for i, element in enumerate(dynseq.dyn3DImageList) if element._name == self._CT4D[self._RefIndex]._name] # Dynamic3DSequence orders dynseqs according to the order of CT names
-            logger.info('Computation of deformation fields. May take time.')
-            Midp, motionFieldList = compute(dynseq, NewrefIndex[0], baseResolution=2.5, nbProcesses=-1, tryGPU=True)
-            for i in range(0, len(motionFieldList)):
-                mcsquareIO.writeCT(motionFieldList[i].velocity, os.path.join(Fields_Path, f'Field_Ref_to_phase{i+1}.mhd'))
-        logger.info(f"Fields present in {Fields_Path} are going to be used.")
-
-    def _importDose(self, plan:RTPlan = None) -> DoseImage:
+    def _importDose(self, plan:ProtonPlan = None) -> DoseImage:
         """
         Import dose from MCsquare simulation
 
         Parameters
         ----------
-        plan : RTPlan (optional)
+        plan : IonPlan (optional)
             RT plan (default is None)
         """
         dose = mcsquareIO.readDose(self._doseFilePath)

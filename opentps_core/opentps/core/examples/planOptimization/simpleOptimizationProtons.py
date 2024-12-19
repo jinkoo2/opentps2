@@ -3,33 +3,27 @@ import logging
 import numpy as np
 from matplotlib import pyplot as plt
 import sys
-import datetime
-import pydicom
 sys.path.append('..')
 
 from opentps.core.io.dicomIO import writeRTPlan, writeDicomCT, writeRTDose, writeRTStruct
 from opentps.core.processing.planOptimization.tools import evaluateClinical
-from opentps.core.data.images import CTImage, DoseImage
+from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan._protonPlanDesign import ProtonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
-from opentps.core.data import RTStruct
 from opentps.core.data.plan import FidObjective
 from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsquareDoseCalculator
-from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D, resampleImage3D
-from opentps.core.processing.planOptimization.planOptimization import IMPTPlanOptimizer
+from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
+from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D
+from opentps.core.processing.planOptimization.planOptimization import IntensityModulationOptimizer
 
 """
 In this example, we will create and optimize a simple Protons plan.
 """
-
-
 logger = logging.getLogger(__name__)
 
 # Generic example: box of water with squared target
@@ -37,7 +31,7 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Output', 'SimpleOptimizationProtons')
+        output_path = os.path.join(os.getcwd(), 'Proton_Output_Example')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
         
@@ -105,7 +99,7 @@ def run(output_path=""):
         plan = loadRTPlan(plan_file)
         logger.info('Plan loaded')
     else:
-        planDesign = PlanDesign()
+        planDesign = ProtonPlanDesign()
         planDesign.ct = ct
         planDesign.gantryAngles = gantryAngles
         planDesign.beamNames = beamNames
@@ -116,10 +110,11 @@ def run(output_path=""):
         planDesign.targetMargin = 5.0
         planDesign.setScoringParameters(scoringSpacing=[2, 2, 2], adapt_gridSize_to_new_spacing=True)
         # needs to be called after scoringGrid settings but prior to spot placement
-        planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) 
+        planDesign.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.)
+        planDesign.isocenterPosition_mm = None # None take the center of mass of the target
         
         plan = planDesign.buildPlan()  # Spot placement
-        plan.rtPlanName = "Simple_Patient"
+        plan.name = "Simple_Patient"
 
         beamlets = mc2.computeBeamlets(ct, plan)
         plan.planDesign.beamlets = beamlets
@@ -141,7 +136,7 @@ def run(output_path=""):
     # plan.planDesign.objectives.addFidObjective(BODY, FidObjective.Metrics.DFALLOFF, weight=10, fallOffDistance=1, fallOffLowDoseLevel=0, fallOffHighDoseLevel=21)
     plan.numberOfFractionsPlanned = 30
 
-    solver = IMPTPlanOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=1000)
+    solver = IntensityModulationOptimizer(method='Scipy_L-BFGS-B', plan=plan, maxiter=1000)
     # Optimize treatment plan
     doseImage, ps = solver.optimize()
     doseImage.patient = plan.patient

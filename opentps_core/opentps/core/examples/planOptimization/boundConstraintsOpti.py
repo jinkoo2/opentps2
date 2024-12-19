@@ -1,4 +1,3 @@
-import math
 import os
 import logging
 import numpy as np
@@ -10,7 +9,7 @@ sys.path.append('..')
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
 from opentps.core.data.plan import ObjectivesList
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan._protonPlanDesign import ProtonPlanDesign
 from opentps.core.data import DVH
 from opentps.core.data import Patient
 from opentps.core.data.plan import FidObjective
@@ -18,9 +17,9 @@ from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsquareDoseCalculator
+from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DOnImage3D, resampleImage3D
-from opentps.core.processing.planOptimization.planOptimization import BoundConstraintsOptimizer, IMPTPlanOptimizer
+from opentps.core.processing.planOptimization.planOptimization import BoundConstraintsOptimizer
 
 """
 In this example, we optimize an ion plan (Protons) using the BoundConstraintsOptimizer function.
@@ -35,7 +34,7 @@ def run(output_path=""):
     if(output_path != ""):
         output_path = output_path
     else:
-        output_path = os.path.join(os.getcwd(), 'Output', 'BoundConstraintsOpti')
+        output_path = os.path.join(os.getcwd(), 'Proton_Output_Example')
         if not os.path.exists(output_path):
             os.makedirs(output_path)
     logger.info('Files will be stored in {}'.format(output_path))
@@ -47,11 +46,9 @@ def run(output_path=""):
     patient.name = 'Patient'
 
     ctSize = 150
-
     ct = CTImage()
     ct.name = 'CT'
     ct.patient = patient
-
 
     huAir = -1024.
     huWater = ctCalibration.convertRSP2HU(1.)
@@ -87,7 +84,7 @@ def run(output_path=""):
         plan = loadRTPlan(plan_file)
         logger.info('Plan loaded')
     else:
-        planInit = PlanDesign()
+        planInit = ProtonPlanDesign()
         planInit.ct = ct
         planInit.gantryAngles = gantryAngles
         planInit.beamNames = beamNames
@@ -100,7 +97,7 @@ def run(output_path=""):
         planInit.defineTargetMaskAndPrescription(target = roi, targetPrescription = 20.) # needs to be called prior spot placement
         
         plan = planInit.buildPlan()  # Spot placement
-        plan.PlanName = "NewPlan"
+        plan.name = "NewPlan"
 
         beamlets = mc2.computeBeamlets(ct, plan, roi=[roi])
         plan.planDesign.beamlets = beamlets
@@ -156,6 +153,5 @@ def run(output_path=""):
     plt.legend()
     plt.show()
     plt.savefig(f'{output_path}/Dose_BoundContraintOpti.png', format = 'png')
-run()
 if __name__ == "__main__":
     run()

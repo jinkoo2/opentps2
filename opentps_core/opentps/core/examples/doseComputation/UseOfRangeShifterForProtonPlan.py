@@ -8,9 +8,9 @@ from opentps.core.processing.imageProcessing.resampler3D import resampleImage3DO
 sys.path.append('..')
 import numpy as np
 from pathlib import Path
-from opentps.core.data.plan import PlanIonBeam
-from opentps.core.data.plan import PlanIonLayer
-# from opentps.core.data.plan import RTPlan
+from opentps.core.data.plan._planProtonBeam import PlanProtonBeam
+from opentps.core.data.plan._planProtonLayer import PlanProtonLayer
+from opentps.core.data.plan._protonPlan import ProtonPlan
 from opentps.core.data.plan._rtPlan import RTPlan
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import loadRTPlan, saveRTPlan
@@ -19,7 +19,7 @@ from opentps.core.data._dvh import DVH
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
 from opentps.core.io.dataLoader import readData
 from opentps.core.io.mhdIO import exportImageMHD
-from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsquareDoseCalculator
+from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.data.images import CTImage, DoseImage
 from opentps.core.data.images import ROIMask
 from opentps.core.io.dicomIO import writeDicomCT, writeRTPlan, writeRTDose, readDicomDose, writeRTStruct
@@ -121,17 +121,16 @@ def run(output_path=""):
     # doseCalculator.overwriteOutsideROI = body
 
     # Create plan from scratch
-    plan = RTPlan()
-    plan.radiationType = 'proton'
-    plan.appendBeam(PlanIonBeam())
-    plan.appendBeam(PlanIonBeam())
-    plan.appendBeam(PlanIonBeam())
+    plan = ProtonPlan()
+    plan.appendBeam(PlanProtonBeam())
+    plan.appendBeam(PlanProtonBeam())
+    plan.appendBeam(PlanProtonBeam())
     plan.beams[0].gantryAngle = 0.
     plan.beams[1].gantryAngle = 0.
     plan.beams[2].gantryAngle = 90.
-    plan.beams[0].appendLayer(PlanIonLayer(120)) # Nominal energy of the layer 
-    plan.beams[1].appendLayer(PlanIonLayer(120))
-    plan.beams[2].appendLayer(PlanIonLayer(120))
+    plan.beams[0].appendLayer(PlanProtonLayer(120)) # Nominal energy of the layer 
+    plan.beams[1].appendLayer(PlanProtonLayer(120))
+    plan.beams[2].appendLayer(PlanProtonLayer(120))
     plan[0].layers[0].appendSpot([50, 60], [100, 100], [300, 300]) # Two spots to the target from beam 0 (0. gantryAngle)
     plan[1].layers[0].appendSpot([90, 100], [100, 100], [300, 300]) # Two spots to the target from beam 1 (0. gantryAngle)
     plan[2].layers[0].appendSpot([100, 110], [100, 110], [300, 300]) # Two spots placed outside the target from beam 2 (90. gantryAngle)

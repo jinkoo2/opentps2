@@ -50,7 +50,7 @@ pip3 install vtk==9.2.6
 pip3 install SimpleITK
 pip3 install pandas
 pip3 install scikit-image
-pip3 install pymedphys==0.39.3
+pip3 install pymedphys==0.40.0
 pip3
 ```
 

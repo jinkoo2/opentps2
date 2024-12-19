@@ -80,7 +80,7 @@ pip3 install pandas
 pip3 install scikit-image
 pip3 install tensorflow
 pip3 install keras
-pip3 install pymedphys==0.39.3
+pip3 install pymedphys==0.40.0
 # pip3 install cupy
 
 echo
