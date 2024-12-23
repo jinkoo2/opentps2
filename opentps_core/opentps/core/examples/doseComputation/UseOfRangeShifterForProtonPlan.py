@@ -26,6 +26,7 @@ from opentps.core.io.dicomIO import writeDicomCT, writeRTPlan, writeRTDose, read
 from opentps.core.io.mcsquareIO import RangeShifter
 from opentps.core.data.CTCalibrations.MCsquareCalibration._mcsquareMolecule import MCsquareMolecule
 from opentps.core.data._rtStruct import RTStruct
+from opentps.core.data import Patient
 
 
 logger = logging.getLogger(__name__)
@@ -85,10 +86,13 @@ def run(output_path=""):
     # Configure dose calculation
     doseCalculator.nbPrimaries = 1e7  # number of primary particles, 1e4 is enough for a quick test, otherwise 1e7 is recommended (It can take several minutes to compute).
 
+    patient = Patient()
+    patient.name = 'TestPatient'
     # Define CT and Target
     ctSize = 200
     ct = CTImage()
-    ct.name = 'CT'
+    ct.name = 'TestPhantom'
+    ct.patient = patient
 
     target = ROIMask()
     target.name = 'TV'
