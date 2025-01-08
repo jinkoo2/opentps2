@@ -16,7 +16,6 @@ version.py
 Perso/
 waldoScripts/
 testData/*
-*.dcm
 
 
 OpenTPS_venv/*
@@ -26,6 +25,9 @@ wei_dev_test.bat
 opentps_core/opentps/core/Processing/DoseCalculation/MCsquare/BDL/UMCG_P1_v2_RangeShifter.txt
 *.tps
 *.blm
+*.nrrd
+*nii.gz
+configureEnv.sh
 *.dcm
 *.csv
 *.tif
@@ -35,3 +37,4 @@ opentps_core/opentps/core/Processing/DoseCalculation/MCsquare/BDL/UMCG_P1_v2_Ran
 *.log
 *.pdf
 *.png
+*.txt
