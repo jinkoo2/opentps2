@@ -11,11 +11,8 @@ To install all required dependencies:
 poetry install
 ```
 
-Note: VTK is only compatible with Python version <= 3.9. Do not use Python 3.10
-
 ## Installation (Windows):
 
-Note: VTK is only compatible with Python version <= 3.9. Do not use Python 3.10
 
 1. Install anaconda on your Windows computer
 
@@ -24,7 +21,7 @@ Note: VTK is only compatible with Python version <= 3.9. Do not use Python 3.10
 3. Create a new Anaconda environment:
 
 ```
-conda create --name OpenTPS python=3.8
+conda create --name OpenTPS python=3.11
 ```
 
 4. Activate the new environment:
