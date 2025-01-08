@@ -23,7 +23,7 @@ primaryClass={physics.med-ph}
 
 ## Without Anaconda (Linux and Windows)
 
-1. Install Python 3.9.
+1. Install Python 3.11.
 2. If you don't want to install OpenTPS and its dependencies in your global Python environment: Create a virtual environment and activate it before going to step 3.
 3. Install the opentps package with pip:
 
@@ -40,10 +40,10 @@ primaryClass={physics.med-ph}
 ## On Windows with Anaconda
 
 1. Install the latest version of Anaconda: https://www.anaconda.com/.
-2. In a conda prompt, create a new virtual environment with python 3.9 and activate it:
+2. In a conda prompt, create a new virtual environment with python 3.11 and activate it:
 
 ```
-   conda create --name OpenTPS python=3.9
+   conda create --name OpenTPS python=3.11
    conda activate OpenTPS
 ```
 
