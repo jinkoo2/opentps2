@@ -247,15 +247,18 @@ class PlanDesignPanel(QWidget):
             planDesign = PhotonPlanDesign()
             planDesign.xBeamletSpacing_mm = self._xBeamletSpacing.value()
             planDesign.yBeamletSpacing_mm = self._yBeamletSpacing.value()
+            planDesign.name = self._planIMRTNameEdit.text()
+
         elif self.selectedModality == "IMPT":
             planDesign = ProtonPlanDesign()
             planDesign.spotSpacing = self._spacingSpin.value()
             planDesign.layerSpacing = self._layerSpin.value()
+            planDesign.name = self._planIMPTNameEdit.text()
             
         else:
             logger.error(f"Unsupported modality: {self.selectedModality}")
+
         planDesign.targetMargin = self._marginSpin.value()
-        planDesign.name = self._planNameEdit.text()
         planDesign.patient = self._patient
 
         # Isocentre
