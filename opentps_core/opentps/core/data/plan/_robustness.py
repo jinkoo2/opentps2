@@ -27,6 +27,11 @@ class Robustness:
         ALL = "ALL"
         REDUCED_SET = "REDUCED_SET"
         RANDOM = "RANDOM"
+    
+    class Mode4D(Enum):   ## Only for protons
+        DISABLED = "DISABLED"
+        MCsquareAccumulation = 'MCsquareAccumulation'
+        MCsquareSystematic = 'MCsquareSystematic'
 
     def __init__(self):
         self.selectionStrategy = self.Strategies.DEFAULT
@@ -34,3 +39,14 @@ class Robustness:
         self.setupRandomError = [1.4, 1.4, 1.4]  # mm
         self.scenarios = []
         self.numScenarios = 0
+
+        #4D Mode
+        self.Mode4D = self.Mode4D.DISABLED  ## Only for protons
+        self.CreateReffrom4DCT = False
+        self.Create4DCTfromRef = False
+        self.SystematicAmplitudeError = 0.0
+        self.RandomAmplitudeError = 0.0
+        self.Dynamic_delivery = False
+        self.SystematicPeriodError = 0.0
+        self.RandomPeriodError = 0.0
+        self.Breathing_period = 7
