@@ -833,6 +833,37 @@ class MCsquareDoseCalculator(AbstractMCDoseCalculator, AbstractDoseInfluenceCalc
                     beamletRescaling.append(Protons_per_MU * 1.602176e-19 * 1000)
 
         return beamletRescaling
+    
+    def _save4DCTAndFields(self):
+        """
+        Clean the CT4D folder and save new CT4D
+        Generate 4D Fields and save them
+        """
+
+        if self._RefIndex == None :
+                sys.exit("The user must have a reference phase/index on which to accumulate the dose. opentps/core/processing/registration/midPosition.py allow to do it.")
+        
+        # 4DCT
+        CT_folder_path = os.path.join(self._mcsquareSimuDir, '4DCT')
+        if os.path.exists(CT_folder_path) and os.path.isdir(CT_folder_path):
+            shutil.rmtree(CT_folder_path)
+
+        for i in range(0, len(self._CT4D)):
+            mcsquareIO.writeCT(self._CT4D[i], os.path.join(self._4DCTFolder, f'CT_{i+1}.mhd'), self.overwriteOutsideROI)
+            self._nbPhase +=1
+
+        # 4D Fields : The fields for systematic scenarios are necessary cause phases are sent to the ref. 
+        Fields_Path = os.path.join(self._mcsquareSimuDir, 'Fields')
+        self._FieldsFolder
+        if os.listdir(Fields_Path) == []: # no DeformationFields yet - > Compute them
+            dynseq = Dynamic3DSequence(dyn3DImageList=self._CT4D)
+            NewrefIndex = [i for i, element in enumerate(dynseq.dyn3DImageList) if element._name == self._CT4D[self._RefIndex]._name] # Dynamic3DSequence orders dynseqs according to the order of CT names
+            logger.info('Computation of deformation fields. May take time.')
+            Midp, motionFieldList = compute(dynseq, NewrefIndex[0], baseResolution=2.5, nbProcesses=-1, tryGPU=True)
+            for i in range(0, len(motionFieldList)):
+                mcsquareIO.writeCT(motionFieldList[i].velocity, os.path.join(Fields_Path, f'Field_Ref_to_phase{i+1}.mhd'))
+        logger.info(f"Fields present in {Fields_Path} are going to be used.")
+
 
     @property
     def _mcsquareSimuDir(self):

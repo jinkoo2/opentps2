@@ -9,13 +9,13 @@ import numpy as np
 from matplotlib import pyplot as plt
 from opentps.core.data.images import CTImage
 from opentps.core.data.images import ROIMask
-from opentps.core.data.plan import PlanDesign
+from opentps.core.data.plan._protonPlanDesign import ProtonPlanDesign
 from opentps.core.data import Patient
 from opentps.core.io import mcsquareIO
 from opentps.core.io.scannerReader import readScanner
 from opentps.core.io.serializedObjectIO import saveRTPlan, loadRTPlan
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
-from opentps.core.processing.doseCalculation.mcsquareDoseCalculator import MCsquareDoseCalculator
+from opentps.core.processing.doseCalculation.protons.mcsquareDoseCalculator import MCsquareDoseCalculator
 from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
 from opentps.core.io.dataLoader import readData
 from opentps.core.data import DVH
