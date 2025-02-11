@@ -503,6 +503,7 @@ def readDicomMRI(dcmFiles):
         image.patientPosition = dcm.PatientPosition
     if hasattr(dcm, 'SeriesNumber'):
         image.seriesNumber = dcm.SeriesNumber
+    image.imageOrientationPatient = dcm.ImageOrientationPatient if hasattr(dcm, 'imageOrientationPatient') else ""
     image.studyInstanceUID = dcm.StudyInstanceUID if hasattr(dcm, 'StudyInstanceUID') else pydicom.uid.generate_uid()
     image.bitsAllocated = dcm.BitsAllocated if hasattr(dcm, 'BitsAllocated') else "16"
     image.bitsStored = dcm.BitsStored if hasattr(dcm, 'BitsStored') else ""
