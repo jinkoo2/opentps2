@@ -1,4 +1,4 @@
-from numpy import matlib as mb
+
 import numpy as np
 from scipy.special import logsumexp
 
@@ -122,7 +122,7 @@ class EnergySeq(BaseFunc):
         flatRes = [item for sublist in res for item in sublist]
 
         for layer in range(len(flatRes)):
-            tmp = mb.repmat(flatRes[layer], 1, self.struct.nSpotsInLayer[layer])
+            tmp = np.tile(flatRes[layer], (1, self.struct.nSpotsInLayer[layer]))
             gradX = np.concatenate((gradX, tmp), axis=1)
 
         gradX = gradX.flatten()
