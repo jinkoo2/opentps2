@@ -78,7 +78,7 @@ class LogBarrier(BaseFunc):
                 layerSum[beam] += np.sum(x[beam][layer])
         layerSum[:] = np.reciprocal(np.where(layerSum > 0., layerSum, 1e-300))
         for beam in range(len(layerSum)):
-            tmp = mb.repmat(layerSum[beam], 1, self.struct.nSpotsInBeam[beam])
+            tmp = np.tile(layerSum[beam], (1, self.struct.nSpotsInBeam[beam]))
             X = np.concatenate((X, tmp), axis=1)
 
         res = X.flatten()

@@ -2,7 +2,7 @@ import re
 from typing import Sequence, Union
 
 import numpy as np
-from numpy.matlib import repmat
+
 from scipy.interpolate import interpolate
 
 from opentps.core.data.CTCalibrations.RayStationCalibration._rayStationMaterial import RayStationMaterial
@@ -105,8 +105,8 @@ class RayStationDensity2Material:
 
         densityRefLen = max(self._densities.shape)
 
-        referenceDensities = repmat(self._densities.reshape(densityRefLen, 1), 1, densityLen)
-        queryDensities = repmat(density.reshape(1, densityLen), densityRefLen, 1)
+        referenceDensities = np.tile(self._densities.reshape(densityRefLen, 1), (1, densityLen))
+        queryDensities = np.tile(density.reshape(1, densityLen), (densityRefLen, 1))
 
         indexOfClosestDensity = (np.abs(referenceDensities - queryDensities)).argmin(axis = 0)
 

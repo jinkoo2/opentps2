@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 from matplotlib.animation import FuncAnimation
-from scipy.ndimage.morphology import binary_dilation
+from scipy.ndimage import binary_dilation
 import numpy as np
 
 from opentps.core.processing.doseCalculation.doseCalculationConfig import DoseCalculationConfig
@@ -29,7 +29,7 @@ def showModelWithAnimatedFields(model):
         plt.quiver(compZ[::5, ::5], compX[::5, ::5], alpha=0.2, color='red', angles='xy', scale_units='xy', scale=5)
 
     anim = FuncAnimation(fig, updateAnim, frames=len(model.deformationList), interval=300)
-    
+
     # anim.save('D:/anim.gif')
     plt.show()
 
