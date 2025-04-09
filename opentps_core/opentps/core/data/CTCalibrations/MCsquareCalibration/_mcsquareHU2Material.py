@@ -146,7 +146,7 @@ class MCsquareHU2Material:
         huRefLen = max(spRef.shape)
 
         referenceHUs = np.tile(huRef.reshape(huRefLen, 1), (1, huLen))
-        queryHUs = np.tile(huRef.reshape(huRefLen, 1), (huLen, 1))
+        queryHUs = np.tile(hu.reshape(1,huLen), (huRefLen, 1))
 
         diff = referenceHUs - queryHUs
         diff[diff>0] = -9999
