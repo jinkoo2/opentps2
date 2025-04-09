@@ -130,7 +130,7 @@ def readDicomCT(dcmFiles):
     image.implementationVersionName = dcm.file_meta.ImplementationVersionName if hasattr(dcm.file_meta, 'ImplementationVersionName') else "DicomObjects.NET"
     image.contentDate = dcm.ContentDate if hasattr(dcm, 'ContentDate') else dt.strftime('%Y%m%d')
     image.frameOfReferenceUID = dcm.FrameOfReferenceUID if hasattr(dcm, 'FrameOfReferenceUID') else None
-    image.imageOrientationPatient = dcm.ImageOrientationPatient if hasattr(dcm, 'imageOrientationPatient') else ""
+    image.imageOrientationPatient = dcm.ImageOrientationPatient if hasattr(dcm, 'ImageOrientationPatient') else ""
     image.seriesDate = dcm.SeriesDate if hasattr(dcm, 'SeriesDate') else dt.strftime('%Y%m%d')
     image.studyInstanceUID = dcm.StudyInstanceUID if hasattr(dcm, 'StudyInstanceUID') else pydicom.uid.generate_uid()
     image.bitsAllocated = dcm.BitsAllocated if hasattr(dcm, 'BitsAllocated') else 16
@@ -503,7 +503,7 @@ def readDicomMRI(dcmFiles):
         image.patientPosition = dcm.PatientPosition
     if hasattr(dcm, 'SeriesNumber'):
         image.seriesNumber = dcm.SeriesNumber
-    image.imageOrientationPatient = dcm.ImageOrientationPatient if hasattr(dcm, 'imageOrientationPatient') else ""
+    image.imageOrientationPatient = dcm.ImageOrientationPatient if hasattr(dcm, 'ImageOrientationPatient') else ""
     image.studyInstanceUID = dcm.StudyInstanceUID if hasattr(dcm, 'StudyInstanceUID') else pydicom.uid.generate_uid()
     image.bitsAllocated = dcm.BitsAllocated if hasattr(dcm, 'BitsAllocated') else "16"
     image.bitsStored = dcm.BitsStored if hasattr(dcm, 'BitsStored') else ""
