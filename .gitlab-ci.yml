@@ -1,6 +1,12 @@
-# Official language image. Look for the different tagged releases at:
-# https://hub.docker.com/r/library/python/tags/
-image: python:latest
+# Use specific image.  Slim or bullseye will still need a lot of GUI packages, so this is simpler
+image: python:3.11
+
+variables:
+  POETRY_VERSION: "2.1.1"
+  POETRY_HOME: "/opt/poetry"
+  POETRY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/poetry"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PYTHONPATH: "$CI_PROJECT_DIR/opentps_core:$CI_PROJECT_DIR/opentps_gui"
 
 stages:
   - build
@@ -9,82 +15,116 @@ stages:
   - unittest_core
   - doc
 
+# Define the default cache configuration
+cache:
+  key:
+    files:
+      - opentps_core/poetry.lock
+      - opentps_gui/poetry.lock
+  paths:
+    - .cache/poetry
+    - .cache/pip
+    - venv/
+    - $POETRY_HOME
+  policy: pull-push
 
-before_script:
-  - python --version  # For debugging
-  - pip install virtualenv
-# install poetry in separate venv
-  - export POETRY_HOME=/opt/poetry
-  - virtualenv $POETRY_HOME
+# Shared setup logic for all jobs
+.setup_script: &setup_script
+  # Install basic requirements and debug info
+  - python --version
+  - apt-get update && apt-get install -y libgl1 virtualenv libglib2.0-0 libgl1-mesa-glx # Install system dependencies
+
+  # Set up Poetry (from cache if available)
+  - if [ ! -d "$POETRY_HOME" ] || [ ! -f "$POETRY_HOME/bin/poetry" ]; then
+      echo "Installing Poetry..." &&
+      virtualenv $POETRY_HOME &&
+      $POETRY_HOME/bin/pip install poetry==$POETRY_VERSION;
+    else
+      echo "Using cached Poetry installation";
+    fi
   - source $POETRY_HOME/bin/activate
-  - $POETRY_HOME/bin/pip install poetry==1.2.0
   - $POETRY_HOME/bin/poetry --version
-# create environment for project
-  - virtualenv venv
-  #- virtualenv --clear venv
+
+  # Set up project virtualenv (from cache if available)
+  - if [ ! -d "venv" ]; then
+      echo "Creating virtual environment..." &&
+      virtualenv venv;
+    else
+      echo "Using cached virtual environment";
+    fi
   - source venv/bin/activate
-  #- pip3 install poetry
-  - $POETRY_HOME/bin/poetry --version
+
+  # Install core dependencies
   - cd $CI_PROJECT_DIR/opentps_core
-  - $POETRY_HOME/bin/poetry install --no-root # install dependencies
-  - apt-get update && apt-get install -y libgl1 # For PyQt5
-  #- apt-get install -y '^libxcb.*-dev' # For PyQt5
+  - $POETRY_HOME/bin/poetry config virtualenvs.in-project true
+  - $POETRY_HOME/bin/poetry install --no-root
+
+  # Install GUI dependencies
   - cd $CI_PROJECT_DIR/opentps_gui
-  - $POETRY_HOME/bin/poetry install --no-root # install dependencies
+  - $POETRY_HOME/bin/poetry config virtualenvs.in-project true
+  - $POETRY_HOME/bin/poetry install --no-root
+
+  # Return to project root
+  - cd $CI_PROJECT_DIR
 
 build:
   image: python:3.11
   stage: build
+  before_script:
+    - *setup_script
   script:
-    - export PYTHONPATH="$PWD/opentps_core:$PWD/opentps_gui"
     - cd $CI_PROJECT_DIR/opentps_core
     - $POETRY_HOME/bin/poetry build
     - cd $CI_PROJECT_DIR/opentps_gui
     - $POETRY_HOME/bin/poetry build
-    #- pip install dist/*
   artifacts:
     paths:
-      - dist/*.whl
+      - opentps_core/dist/*.whl
+      - opentps_gui/dist/*.whl
+    expire_in: 1 week
 
-# TODO: Should tests be executed on the built application
 test_core:
   image: python:3.11
   stage: test_core
+  before_script:
+    - *setup_script
   script:
-    - pip show SimpleITK
-    - cd $CI_PROJECT_DIR/
-    - export PYTHONPATH="$CI_PROJECT_DIR/opentps_core:$CI_PROJECT_DIR/opentps_gui"
+    - pip show SimpleITK  # For debugging
     - python3 CI/tests.py
 
 test_gui:
   image: python:3.11
   stage: test_gui
+  before_script:
+    - *setup_script
   script:
-    - pip show SimpleITK
-    - pip show vtk
-    - cd $CI_PROJECT_DIR/
-    - export PYTHONPATH="$CI_PROJECT_DIR/opentps_core:$CI_PROJECT_DIR/opentps_gui"
+    - pip show SimpleITK  # For debugging
+    - pip show vtk  # For debugging
     - export QT_QPA_PLATFORM=offscreen
     - python -m unittest discover opentps_gui/opentps/gui
 
 docs:
   image: python:3.11
   stage: doc
-  script:
+  before_script:
+    - *setup_script
     - pip install sphinx sphinx-rtd-theme
-    #- export PYTHONPATH="$CI_PROJECT_DIR"
+  script:
+    - echo "Documentation build would go here"
     #- python3 docs/tools/version_utils.py
     #- cd docs
     #- make html
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-# Must be run after all script because we create __init__.py for unittest. The absence of this file is essential and tested in test_core.
+# Must be run after all script because we create __init__.py for unittest
 unittest_core:
   stage: unittest_core
   image: python:3.11
+  before_script:
+    - *setup_script
   script:
     - cd $CI_PROJECT_DIR/opentps_core/
-    - touch opentps/__init__.py # because unittests does not work on namespace package
-    - touch __init__.py # because unittests does not work on namespace package
+    - touch opentps/__init__.py  # because unittests does not work on namespace package
+    - touch __init__.py  # because unittests does not work on namespace package
     - python3 -m unittest discover -s ./opentps -p '[!example]*.py' -v
