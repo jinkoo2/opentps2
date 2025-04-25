@@ -1,5 +1,6 @@
 import functools
 
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QLineEdit, QMainWindow, QWidget, QPushButton, QHBoxLayout, QCheckBox, \
     QFrame, QGroupBox
 
@@ -45,7 +46,7 @@ class ProgramSettingEditor(QMainWindow):
 
     def __init__(self):
         super().__init__()
-
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.setWindowTitle('Program settings')
         self.resize(400, 400)
 
