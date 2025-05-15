@@ -238,6 +238,8 @@ def readBinaryMHD(inputPath, metaData=None):
         data = np.fromfile(metaData["ElementDataFile"], dtype=bool)
     elif metaData["ElementType"] == "MET_SHORT":
         data = np.fromfile(metaData["ElementDataFile"], dtype=np.uint16)
+    elif metaData["ElementType"] == "MET_INT":
+        data = np.fromfile(metaData["ElementDataFile"], dtype=np.uint32)
     else:
         data = np.fromfile(metaData["ElementDataFile"], dtype=np.float32)
 
