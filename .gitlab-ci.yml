@@ -1,81 +1,81 @@
+# .gitlab-ci.yml for OpenTPS
+
 stages:
-  - docker
+  - setup
+  - test_core
+  - test_gui
+  - unittest_core
   - build
-  - test
   - docs
 
 variables:
   IMAGE_NAME: $CI_REGISTRY_IMAGE
-  IMAGE_TAG: $CI_COMMIT_REF_SLUG
-  PYTHONPATH: "$CI_PROJECT_DIR/opentps/opentps_core:$CI_PROJECT_DIR/opentps/opentps_gui"
+  IMAGE_TAG: $CI_COMMIT_REF_NAME
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
 
-# ---------------------------
-# 1. Build & push custom image
-# ---------------------------
-docker-build:
-  stage: docker
-  image: docker:latest
-  services:
-    - docker:dind
+# Use Docker-in-Docker
+image: docker:latest
+services:
+  - docker:dind
+
+before_script:
+  # Install Python and Poetry in the CI environment
+  - apk add --no-cache python3 py3-pip py3-virtualenv bash git
+  - python3 -m ensurepip
+  - pip3 install --upgrade pip setuptools wheel
+  - pip3 install poetry==1.2.0
+  - poetry --version
+  - export PYTHONPATH="$CI_PROJECT_DIR/opentps_core:$CI_PROJECT_DIR/opentps_gui"
+
+# ------------------------
+# Core testing
+# ------------------------
+test_core:
+  stage: test_core
   script:
+    - cd $CI_PROJECT_DIR
+    - poetry install --no-root
+    - python3 CI/tests.py
+
+test_gui:
+  stage: test_gui
+  script:
+    - cd $CI_PROJECT_DIR
+    - poetry install --no-root
+    - export QT_QPA_PLATFORM=offscreen
+    - python -m unittest discover opentps_gui/opentps/gui
+
+unittest_core:
+  stage: unittest_core
+  script:
+    - cd $CI_PROJECT_DIR/opentps_core
+    - touch opentps/__init__.py __init__.py
+    - python3 -m unittest discover -s ./opentps -p '[!example]*.py' -v
+
+# ------------------------
+# Docker build and push
+# ------------------------
+build:
+  stage: build
+  script:
+    - cd $CI_PROJECT_DIR
+    - poetry install --no-root
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker build -t $IMAGE_NAME:$IMAGE_TAG .
     - docker push $IMAGE_NAME:$IMAGE_TAG
-  rules:
-    - changes:
-        - opentps/pyproject.toml
-        - opentps/poetry.lock
-        - Dockerfile
+  only:
+    - branches
+    - tags
 
-# ---------------------------
-# 2. Build wheels
-# ---------------------------
-build:
-  stage: build
-  image: $IMAGE_NAME:$IMAGE_TAG
-  needs: ["docker-build"]
-  script:
-    - cd opentps && poetry build
-  artifacts:
-    paths:
-      - opentps/dist/*.whl
-
-# ---------------------------
-# 3. Tests
-# ---------------------------
-test_core:
-  stage: test
-  image: $IMAGE_NAME:$IMAGE_TAG
-  needs: ["docker-build"]
-  script:
-    - python CI/tests.py
-
-test_gui:
-  stage: test
-  image: $IMAGE_NAME:$IMAGE_TAG
-  needs: ["docker-build"]
-  script:
-    - export QT_QPA_PLATFORM=offscreen
-    - python -m unittest discover opentps/opentps_gui/opentps/gui
-
-unittest_core:
-  stage: test
-  image: $IMAGE_NAME:$IMAGE_TAG
-  needs: ["docker-build"]
-  script:
-    - cd opentps/opentps_core
-    - touch opentps/__init__.py __init__.py
-    - python -m unittest discover -s ./opentps -p '[!example]*.py' -v
-
-# ---------------------------
-# 4. Docs
-# ---------------------------
+# ------------------------
+# Docs
+# ------------------------
 docs:
   stage: docs
-  image: $IMAGE_NAME:$IMAGE_TAG
-  needs: ["docker-build"]
   script:
     - pip install sphinx sphinx-rtd-theme
-    - cd docs && make html
+    - cd docs
+    - make html
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
