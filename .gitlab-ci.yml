@@ -61,12 +61,20 @@ build:
   script:
     - cd $CI_PROJECT_DIR
     - poetry install --no-root
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
     - docker build -t $IMAGE_NAME:$IMAGE_TAG .
     - docker push $IMAGE_NAME:$IMAGE_TAG
   only:
     - branches
     - tags
+  rules:
+    - changes:
+        - Dockerfile
+        - opentps_core/opentps/core/pyproject.toml
+        - opentps_core/opentps/core/poetry.lock
+        - opentps_gui/opentps/gui/poetry.lock
+        - opentps_gui/opentps/gui/pyproject.toml
+        - pyproject.toml
+        - poetry.lock
 
 # ------------------------
 # Docs
