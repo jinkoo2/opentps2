@@ -63,9 +63,6 @@ build:
     - poetry install --no-root
     - docker build -t $IMAGE_NAME:$IMAGE_TAG .
     - docker push $IMAGE_NAME:$IMAGE_TAG
-  only:
-    - branches
-    - tags
   rules:
     - changes:
         - Dockerfile
