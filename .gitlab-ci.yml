@@ -22,7 +22,6 @@ services:
 before_script:
   # Install Python and Poetry in the CI environment
   - apk add --no-cache python3 py3-pip py3-virtualenv bash git
-  - python3 -m ensurepip
   - pip3 install --upgrade pip setuptools wheel
   - pip3 install poetry==1.2.0
   - poetry --version
