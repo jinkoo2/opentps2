@@ -8,10 +8,32 @@ ENV POETRY_HOME=/opt/poetry \
 # Install system deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    git \
-    libgl1 \
     libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
+    libgl1-mesa-glx \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-randr0 \
+    libxcb-render-util0 \
+    libxcb-xinerama0 \
+    libxcb-xkb1 \
+    libxkbcommon-x11-0 \
+    libxcb-xfixes0 \
+    libxcb-shape0 \
+    libxcb-shm0 \
+    libx11-xcb1 \
+    libxcb-cursor0 \
+    libxcb-util1 \
+    libxcb-glx0 \
+    libxcb-dri2-0 \
+    libxcb-dri3-0 \
+    libxcb-present0 \
+    git \
+    xvfb \
+    --no-install-recommends && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 
 # Install Poetry
 RUN python -m venv $POETRY_HOME \
