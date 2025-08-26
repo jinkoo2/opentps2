@@ -17,10 +17,10 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "~3.11"
+python = "~3.13"
 cachecontrol = "*"
 numpy = "^1.26.4"
-Pillow = "^9.4.0"
+Pillow = "^10.0.0"
 pydicom = "^3.0.1"
 SimpleITK = "^2.2.1"
 sparse-dot-mkl = "^0.9.6"
