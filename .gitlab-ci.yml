@@ -32,7 +32,7 @@ cache:
 .setup_script: &setup_script
   # Install basic requirements and debug info
   - python --version
-  - apt-get update && apt-get install -y libgl1 virtualenv libglib2.0-0 libgl1-mesa-glx # Install system dependencies
+  - apt-get update && apt-get install -y libgl1 virtualenv libglib2.0-0  # Install system dependencies
 
   # Set up Poetry (from cache if available)
   - if [ ! -d "$POETRY_HOME" ] || [ ! -f "$POETRY_HOME/bin/poetry" ]; then
