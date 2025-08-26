@@ -1,5 +1,5 @@
 # Use specific image.  Slim or bullseye will still need a lot of GUI packages, so this is simpler
-image: python:3.11
+image: python:3.13
 
 variables:
   POETRY_VERSION: "2.1.1"
@@ -48,7 +48,7 @@ cache:
   # Set up project virtualenv (from cache if available)
   - if [ ! -d "venv" ]; then
       echo "Creating virtual environment..." &&
-      virtualenv -p python3.11 venv;
+      virtualenv -p python3.13 venv;
     else
       echo "Using cached virtual environment";
     fi
@@ -68,7 +68,7 @@ cache:
   - cd $CI_PROJECT_DIR
 
 build:
-  image: python:3.11
+  image: python:3.13
   stage: build
   before_script:
     - *setup_script
@@ -84,7 +84,7 @@ build:
     expire_in: 1 week
 
 test_core:
-  image: python:3.11
+  image: python:3.13
   stage: test_core
   before_script:
     - *setup_script
@@ -93,7 +93,7 @@ test_core:
     - python3 CI/tests.py
 
 test_gui:
-  image: python:3.11
+  image: python:3.13
   stage: test_gui
   before_script:
     - *setup_script
@@ -104,7 +104,7 @@ test_gui:
     - python -m unittest discover opentps_gui/opentps/gui
 
 docs:
-  image: python:3.11
+  image: python:3.13
   stage: doc
   before_script:
     - *setup_script
@@ -120,7 +120,7 @@ docs:
 # Must be run after all script because we create __init__.py for unittest
 unittest_core:
   stage: unittest_core
-  image: python:3.11
+  image: python:3.13
   before_script:
     - *setup_script
   script:
