@@ -9,8 +9,8 @@ stages:
   - docs
 
 variables:
-  IMAGE_NAME: $CI_REGISTRY_IMAGE
-  IMAGE_TAG: $CI_COMMIT_REF_NAME
+  IMAGE_NAME: opentps/opentps
+  IMAGE_TAG: latest
 
 # ------------------------
 # Docker build and push
