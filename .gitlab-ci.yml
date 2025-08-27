@@ -33,7 +33,7 @@ build:
         - poetry.lock
 
 default:
-  image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+  image: $IMAGE_NAME:$IMAGE_TAG
 
 # ------------------------
 # Core testing
