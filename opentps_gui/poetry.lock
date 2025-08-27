@@ -870,14 +870,14 @@ pixeldata = ["numpy", "pillow", "pyjpegls", "pylibjpeg[openjpeg]", "pylibjpeg[rl
 
 [[package]]
 name = "pymedphys"
-version = "0.40.0"
+version = "0.41.0"
 description = "Medical Physics library"
 optional = false
-python-versions = ">=3.8, !=2.7.*, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, !=3.6.*, !=3.7.*, !=3.12.*"
+python-versions = "<3.13,>=3.10"
 groups = ["main"]
 files = [
-    {file = "pymedphys-0.40.0-py3-none-any.whl", hash = "sha256:ed5e0ae970065002c60c737f49b2bcaf84d5756307da74bcc9794324135377d8"},
-    {file = "pymedphys-0.40.0.tar.gz", hash = "sha256:bc12976600f96e68888a1727edb954a9f57d4229757b5eb35c27132eec137eff"},
+    {file = "pymedphys-0.41.0-py3-none-any.whl", hash = "sha256:9fd7ff9f60c8875ff207e2bf59e78bec4739008ed17a2c5f31ffeaf51e945463"},
+    {file = "pymedphys-0.41.0.tar.gz", hash = "sha256:0d17a0ae42a2c8a16b9970ba652176866f5655cc3c785d57d416cfeb8961ed63"},
 ]
 
 [package.dependencies]
@@ -886,19 +886,18 @@ tomlkit = "*"
 typing-extensions = "*"
 
 [package.extras]
-all = ["Pillow (>=9.0.0)", "PyYAML", "astroid", "attrs", "black (>=22.3.0)", "dbfread", "dicompyler-core", "doc8", "imageio", "ipython (>=7.31.1)", "jupyter-book (>=0.12.0)", "keyring", "matplotlib", "mypy", "natsort", "networkx", "numpy (>=1.20.2)", "packaging", "pandas (>=1.0.0)", "pre-commit", "psutil", "pydicom (>=2.0.0)", "pylibjpeg-libjpeg (>=1.3.2)", "pylint", "pymssql", "pynetdicom", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32 (>=301) ; sys_platform == \"win32\"", "readme-renderer", "requests", "rope", "scikit-learn", "scipy", "shapely (>=1.7.0)", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit (>=1.29.0,<1.30.0)", "streamlit-ace", "tabulate", "timeago", "toml", "tqdm", "watchdog", "xmltodict"]
+all = ["Pillow (>=9.0.0)", "PyYAML", "anthropic (==0.29.0)", "anyio", "astroid", "attrs", "dbfread", "dicompyler-core", "doc8", "imageio", "ipython (>=7.31.1)", "jupyter-book (>=0.12.0,<2.0.0)", "keyring", "matplotlib", "natsort", "networkx", "numba", "numpy (>=1.26)", "packaging", "pandas (>=1.0.0)", "pre-commit", "psutil", "pydicom (>=2.0.0)", "pylibjpeg-libjpeg (>=1.3.2)", "pylint", "pymssql", "pynetdicom", "pyright (==1.1.359)", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "pywin32 (>=301) ; sys_platform == \"win32\"", "readme-renderer", "requests", "rope", "ruff (==0.4.1)", "scikit-learn", "scipy", "shapely (>=1.7.0)", "sphinx-argparse", "sphinx-book-theme", "sqlalchemy", "streamlit (>=1.34.0,<1.35.0)", "tabulate", "timeago", "toml", "tqdm", "trio (>=0.25.0)", "trio-asyncio", "watchdog", "xmltodict"]
 cli = ["toml"]
 comparables = ["flashgamma"]
-dev = ["black (>=22.3.0)", "doc8", "mypy", "pre-commit", "readme-renderer", "rope", "tabulate"]
+dev = ["doc8", "pre-commit", "pyright (==1.1.359)", "readme-renderer", "rope", "ruff (==0.4.1)", "tabulate"]
 dicom = ["pydicom (>=2.0.0)", "pynetdicom"]
-docs = ["ipython (>=7.31.1)", "jupyter-book (>=0.12.0)", "matplotlib", "networkx", "numpy (>=1.20.2)", "pydicom (>=2.0.0)", "scipy", "sphinx-argparse", "sphinx-book-theme", "toml", "tqdm"]
-doctests = ["black (>=22.3.0)", "sphinx-book-theme", "tabulate"]
-icom = ["numpy (>=1.20.2)"]
+docs = ["ipython (>=7.31.1)", "jupyter-book (>=0.12.0,<2.0.0)", "matplotlib", "networkx", "numba", "numpy (>=1.26)", "pydicom (>=2.0.0)", "scipy", "sphinx-argparse", "sphinx-book-theme", "toml", "tqdm"]
+doctests = ["ruff (==0.4.1)", "sphinx-book-theme", "tabulate"]
+icom = ["numpy (>=1.26)"]
 mosaiq = ["attrs", "pandas (>=1.0.0)", "pymssql", "scikit-learn", "sqlalchemy", "toml"]
-propagate = ["black (>=22.3.0)"]
-speedups = ["interpolation (>=2.1.0)"]
-tests = ["astroid", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "tqdm"]
-user = ["Pillow (>=9.0.0)", "PyYAML", "attrs", "dbfread", "dicompyler-core", "imageio", "keyring", "matplotlib", "natsort", "numpy (>=1.20.2)", "packaging", "pandas (>=1.0.0)", "pydicom (>=2.0.0)", "pylibjpeg-libjpeg (>=1.3.2)", "pymssql", "pynetdicom", "python-dateutil", "pywin32 (>=301) ; sys_platform == \"win32\"", "requests", "scikit-learn", "scipy", "shapely (>=1.7.0)", "sqlalchemy", "streamlit (>=1.29.0,<1.30.0)", "streamlit-ace", "timeago", "toml", "tqdm", "watchdog", "xmltodict"]
+propagate = ["ruff (==0.4.1)"]
+tests = ["astroid", "numba", "psutil", "pylint", "pytest", "pytest-rerunfailures", "pytest-sugar", "python-dateutil", "tqdm"]
+user = ["Pillow (>=9.0.0)", "PyYAML", "anthropic (==0.29.0)", "anyio", "attrs", "dbfread", "dicompyler-core", "imageio", "keyring", "matplotlib", "natsort", "numba", "numpy (>=1.26)", "packaging", "pandas (>=1.0.0)", "pydicom (>=2.0.0)", "pylibjpeg-libjpeg (>=1.3.2)", "pymssql", "pynetdicom", "python-dateutil", "pywin32 (>=301) ; sys_platform == \"win32\"", "requests", "scikit-learn", "scipy", "shapely (>=1.7.0)", "sqlalchemy", "streamlit (>=1.34.0,<1.35.0)", "timeago", "toml", "tqdm", "trio (>=0.25.0)", "trio-asyncio", "watchdog", "xmltodict"]
 
 [[package]]
 name = "pyparsing"
@@ -1357,5 +1356,5 @@ web = ["wslink (>=1.0.4)"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = "~3.13"
-content-hash = "ec9c7a214d9b6882f737dfb2c637432781150c614b83676c83df2900a1ef4e32"
+python-versions = "~3.12"
+content-hash = "b91b7aace784d85c17ab1f908d7535489854dbfb56fc330c79205d80e32fb123"

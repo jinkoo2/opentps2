@@ -17,7 +17,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "~3.13"
+python = "~3.12"
 cachecontrol = "*"
 numpy = "^1.26.4"
 Pillow = "^10.0.0"
@@ -31,7 +31,7 @@ sparse-dot-mkl = "^0.9.6"
 setuptools = "^67.8.0" # Required for local testing with python -m pip install -e .
 pandas = "^2.2.3"
 scikit-image = "*"
-pymedphys="^0.40.0"
+pymedphys="^0.41.0"
 
 [tool.poetry.group.dev.dependencies]
 
