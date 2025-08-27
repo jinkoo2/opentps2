@@ -12,39 +12,6 @@ variables:
   IMAGE_NAME: $CI_REGISTRY_IMAGE
   IMAGE_TAG: $CI_COMMIT_REF_NAME
 
-before_script:
-  # Install Python and Poetry in the CI environment
-  - apt-get update && apt-get install -y python3.11 python3-pip python3-venv bash git
-  - pip3 install --upgrade pip setuptools wheel
-  - pip3 install poetry
-  - poetry --version
-  - export PYTHONPATH="$CI_PROJECT_DIR/opentps_core:$CI_PROJECT_DIR/opentps_gui"
-
-# ------------------------
-# Core testing
-# ------------------------
-test_core:
-  stage: test_core
-  script:
-    - cd $CI_PROJECT_DIR
-    - poetry install --no-root
-    - python3 CI/tests.py
-
-test_gui:
-  stage: test_gui
-  script:
-    - cd $CI_PROJECT_DIR
-    - poetry install --no-root
-    - export QT_QPA_PLATFORM=offscreen
-    - python -m unittest discover opentps_gui/opentps/gui
-
-unittest_core:
-  stage: unittest_core
-  script:
-    - cd $CI_PROJECT_DIR/opentps_core
-    - touch opentps/__init__.py __init__.py
-    - python3 -m unittest discover -s ./opentps -p '[!example]*.py' -v
-
 # ------------------------
 # Docker build and push
 # ------------------------
@@ -64,6 +31,33 @@ build:
         - opentps_gui/opentps/gui/pyproject.toml
         - pyproject.toml
         - poetry.lock
+
+default:
+  image: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+
+# ------------------------
+# Core testing
+# ------------------------
+test_core:
+  stage: test_core
+  script:
+    - cd $CI_PROJECT_DIR
+    - python CI/tests.py
+
+test_gui:
+  stage: test_gui
+  script:
+    - cd $CI_PROJECT_DIR
+    - export QT_QPA_PLATFORM=offscreen
+    - python -m unittest discover opentps_gui/opentps/gui
+
+unittest_core:
+  stage: unittest_core
+  script:
+    - cd $CI_PROJECT_DIR/opentps_core
+    - touch opentps/__init__.py __init__.py
+    - python -m unittest discover -s ./opentps -p '[!example]*.py' -v
+
 
 # ------------------------
 # Docs
