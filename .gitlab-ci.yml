@@ -9,7 +9,7 @@ stages:
   - docs
 
 variables:
-  IMAGE_NAME: registry.gitlab.com/opentps/opentps
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
   IMAGE_TAG: latest
 
 # ------------------------
