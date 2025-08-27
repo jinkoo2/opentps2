@@ -9,7 +9,7 @@ stages:
   - docs
 
 variables:
-  IMAGE_NAME: opentps/opentps
+  IMAGE_NAME: registry.gitlab.com/opentps/opentps
   IMAGE_TAG: latest
 
 # ------------------------
