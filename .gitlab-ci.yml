@@ -11,19 +11,12 @@ stages:
 variables:
   IMAGE_NAME: $CI_REGISTRY_IMAGE
   IMAGE_TAG: $CI_COMMIT_REF_NAME
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_TLS_CERTDIR: ""
-
-# Use Docker-in-Docker
-image: docker:latest
-services:
-  - docker:dind
 
 before_script:
   # Install Python and Poetry in the CI environment
-  - apt-get update && apt-get install -y python3 python3-pip python3-venv bash git
+  - apt-get update && apt-get install -y python3.11 python3-pip python3-venv bash git
   - pip3 install --upgrade pip setuptools wheel
-  - pip3 install poetry==1.2.0
+  - pip3 install poetry
   - poetry --version
   - export PYTHONPATH="$CI_PROJECT_DIR/opentps_core:$CI_PROJECT_DIR/opentps_gui"
 
