@@ -93,7 +93,7 @@ test_core:
     - python3 CI/tests.py
 
 test_gui:
-  image: python:3.13
+  image: python:3.12
   stage: test_gui
   before_script:
     - *setup_script
