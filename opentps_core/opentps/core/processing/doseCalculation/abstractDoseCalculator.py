@@ -44,7 +44,7 @@ class AbstractDoseCalculator:
         raise NotImplementedError()
 
 class ProgressInfo:
-    """
+    r"""
     Progress information for dose calculation
     /!\ Not implemented yet
     """
