@@ -101,8 +101,19 @@ test_gui:
     - pip show SimpleITK  # For debugging
     - pip show vtk  # For debugging
     - export QT_QPA_PLATFORM=offscreen
-    - python -m unittest discover opentps_gui/opentps/gui; code=$?; [ $code -eq 0 ] && exit 0 || ([ $code -eq 5 ] && echo "⚠️ No tests found, ignoring" && exit 0 || exit $code)
-
+    - python -m unittest discover opentps_gui/opentps/gui
+    - code=$?
+    - |
+      if [ $code -eq 0 ]; then
+        echo "✅ Tests passed"
+        exit 0
+      elif [ $code -eq 5 ]; then
+        echo "⚠️ No tests found, ignoring"
+        exit 0
+      else
+        echo "❌ Tests failed"
+        exit $code
+      fi
 
 docs:
   image: python:3.12
