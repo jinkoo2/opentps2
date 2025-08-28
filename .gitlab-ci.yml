@@ -1,76 +1,83 @@
-# .gitlab-ci.yml pour OpenTPS
+# .gitlab-ci.yml for OpenTPS
 
-stages:
-  - build
-  - setup
-  - test_core
-  - test_gui
-  - unittest_core
-  - docs
+    stages:
+      - build
+      - setup
+      - test_core
+      - test_gui
+      - unittest_core
+      - docs
 
-variables:
-  IMAGE_NAME: $CI_REGISTRY_IMAGE/opentps
-  IMAGE_TAG: latest
+    variables:
+      IMAGE_NAME: $CI_REGISTRY_IMAGE/opentps
+      IMAGE_TAG: latest
 
-build:
-  stage: build
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
-  variables:
-    DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_CERTDIR: "/certs"
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
-  before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-  script:
-    - cd $CI_PROJECT_DIR
-    - docker build -t $IMAGE_NAME:$IMAGE_TAG .
-    - docker push $IMAGE_NAME:$IMAGE_TAG
-  rules:
-    - changes:
-        - Dockerfile
-        - "**/*.toml"
-        - "**/*.lock"
-      when: always
-  needs: []
+    build:
+      stage: build
+      image: docker:24.0.5
+      services:
+        - docker:24.0.5-dind
+      variables:
+        DOCKER_HOST: tcp://docker:2376
+        DOCKER_TLS_CERTDIR: "/certs"
+        DOCKER_TLS_VERIFY: 1
+        DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+      before_script:
+        - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+      script:
+        - cd $CI_PROJECT_DIR
+        - docker build -t $IMAGE_NAME:$IMAGE_TAG .
+        - docker push $IMAGE_NAME:$IMAGE_TAG
+      rules:
+        - changes:
+            - Dockerfile
+            - "**/*.toml"
+            - "**/*.lock"
+          when: always
 
-default:
-  image: $IMAGE_NAME:$IMAGE_TAG
+    default:
+      image: $IMAGE_NAME:$IMAGE_TAG
 
-# ------------------------
-# Tests
-# ------------------------
-test_core:
-  stage: test_core
-  needs: ["build"]
-  script:
-    - cd $CI_PROJECT_DIR
-    - python CI/tests.py
+    # ------------------------
+    # Tests
+    # ------------------------
+    test_core:
+      stage: test_core
+      needs:
+        - job: build
+          optional: true
+      script:
+        - cd $CI_PROJECT_DIR
+        - python CI/tests.py
 
-test_gui:
-  stage: test_gui
-  needs: ["build"]
-  script:
-    - cd $CI_PROJECT_DIR
-    - export QT_QPA_PLATFORM=offscreen
-    - python -m unittest discover opentps_gui/opentps/gui
+    test_gui:
+      stage: test_gui
+      needs:
+        - job: build
+          optional: true
+      script:
+        - cd $CI_PROJECT_DIR
+        - export QT_QPA_PLATFORM=offscreen
+        - python -m unittest discover opentps_gui/opentps/gui
 
-unittest_core:
-  stage: unittest_core
-  needs: ["build"]
-  script:
-    - cd $CI_PROJECT_DIR/opentps_core
-    - touch opentps/__init__.py __init__.py
-    - python -m unittest discover -s ./opentps -p '[!example]*.py' -v
+    unittest_core:
+      stage: unittest_core
+      needs:
+        - job: build
+          optional: true
+      script:
+        - cd $CI_PROJECT_DIR/opentps_core
+        - touch opentps/__init__.py __init__.py
+        - python -m unittest discover -s ./opentps -p '[!example]*.py' -v
 
-docs:
-  stage: docs
-  needs: ["build"]
-  script:
-    - pip install sphinx sphinx-rtd-theme
-    - cd docs
-    - make html
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    docs:
+      stage: docs
+      needs:
+        - job: build
+          optional: true
+      script:
+        - pip install sphinx sphinx-rtd-theme
+        - cd docs
+        - make html
+      rules:
+        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
