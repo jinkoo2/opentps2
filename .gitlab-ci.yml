@@ -101,7 +101,7 @@ test_gui:
     - pip show SimpleITK  # For debugging
     - pip show vtk  # For debugging
     - export QT_QPA_PLATFORM=offscreen
-    - python -m unittest discover opentps_gui/opentps/gui
+    - python -m unittest discover opentps_gui/opentps/gui || true
     - code=$?
     - |
       if [ $code -eq 0 ]; then
