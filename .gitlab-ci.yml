@@ -101,11 +101,12 @@ test_gui:
     - pip show SimpleITK  # For debugging
     - pip show vtk  # For debugging
     - export QT_QPA_PLATFORM=offscreen
-    - set +e
-    - python -m unittest discover opentps_gui/opentps/gui 
-    - code=$?
-    - set -e
-    - [ $code -eq 0 ] || [ $code -eq 5 ]
+    - |
+      set +e
+      python -m unittest discover opentps_gui/opentps/gui 
+      code=$?
+      set -e
+      [ $code -eq 0 ] || [ $code -eq 5 ]
 
 docs:
   image: python:3.12
