@@ -34,9 +34,6 @@ build:
 
 default:
   image: $IMAGE_NAME:$IMAGE_TAG
-  before_script:
-    - poetry show
-    - pip list
 
 
 # ------------------------
