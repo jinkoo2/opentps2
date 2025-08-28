@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 MAINTAINER OpenTPS Developers
-LABEL maintainer="OpenTPS Developers"
+LABEL maintainer="OpenTPS Developers team"
 LABEL description="Docker image for OpenTPS"
 
 ENV PYTHONUNBUFFERED=1 \

@@ -1,11 +1,11 @@
-# .gitlab-ci.yml for OpenTPS
+# .gitlab-ci.yml pour OpenTPS
 
 stages:
+  - build
   - setup
   - test_core
   - test_gui
   - unittest_core
-  - build
   - docs
 
 variables:
@@ -13,40 +13,41 @@ variables:
   IMAGE_TAG: latest
 
 # ------------------------
-# Docker build and push
+# Docker build et push
 # ------------------------
 build:
   stage: build
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y docker.io
   script:
     - cd $CI_PROJECT_DIR
-    - poetry install --no-root
     - docker build -t $IMAGE_NAME:$IMAGE_TAG .
     - docker push $IMAGE_NAME:$IMAGE_TAG
   rules:
     - changes:
         - Dockerfile
-        - opentps_core/opentps/core/pyproject.toml
-        - opentps_core/opentps/core/poetry.lock
-        - opentps_gui/opentps/gui/poetry.lock
-        - opentps_gui/opentps/gui/pyproject.toml
-        - pyproject.toml
-        - poetry.lock
+        - "**/*.toml"
+        - "**/*.lock"
+      when: always
+  needs: []  # Pas de dépendances
 
 default:
   image: $IMAGE_NAME:$IMAGE_TAG
 
-
 # ------------------------
-# Core testing
+# Tests
 # ------------------------
 test_core:
   stage: test_core
+  needs: ["build"]
   script:
     - cd $CI_PROJECT_DIR
     - python CI/tests.py
 
 test_gui:
   stage: test_gui
+  needs: ["build"]
   script:
     - cd $CI_PROJECT_DIR
     - export QT_QPA_PLATFORM=offscreen
@@ -54,17 +55,15 @@ test_gui:
 
 unittest_core:
   stage: unittest_core
+  needs: ["build"]
   script:
     - cd $CI_PROJECT_DIR/opentps_core
     - touch opentps/__init__.py __init__.py
     - python -m unittest discover -s ./opentps -p '[!example]*.py' -v
 
-
-# ------------------------
-# Docs
-# ------------------------
 docs:
   stage: docs
+  needs: ["build"]
   script:
     - pip install sphinx sphinx-rtd-theme
     - cd docs
