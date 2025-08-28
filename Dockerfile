@@ -41,8 +41,7 @@ WORKDIR /opt/project
 COPY . .
 
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-root
-
-ENV PYTHONPATH="/opt/project/opentps/opentps_core:/opt/project/opentps/opentps_gui"
+    && poetry install --no-root \
+    && pip install -e .
 
 CMD ["/bin/bash"]
