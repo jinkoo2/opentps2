@@ -9,7 +9,7 @@ stages:
   - docs
 
 variables:
-  IMAGE_NAME: $CI_REGISTRY_IMAGE
+  IMAGE_NAME: $CI_REGISTRY_IMAGE/opentps
   IMAGE_TAG: latest
 
 # ------------------------
