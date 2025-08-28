@@ -26,12 +26,12 @@ SimpleITK = "^2.2.1"
 sparse-dot-mkl = "^0.9.6"
 setuptools = "^67.8.0" # Required for local testing with python -m pip install -e .
 pandas = "^2.2.3"
-requests = "2.28.1"
+requests = "*"
 scikit-image = "*"
 pymedphys="^0.41.0"
 psutil="*"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 
 [build-system]
 requires = ["poetry-core>=1.2.0"]
