@@ -59,8 +59,7 @@ test_gui:
     - pip show SimpleITK
     - pip show vtk
     - cd $CI_PROJECT_DIR/
-    - apt-get update && apt-get install -y libxcb
-    - export QT_QPA_PLATFORM=offscreen
+    - export QT_QPA_PLATFORM='offscreen'
     - python -m unittest discover opentps_gui/opentps/gui
 
 unittest_core:
