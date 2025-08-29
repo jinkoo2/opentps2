@@ -45,6 +45,7 @@ test_gui:
     - pip show SimpleITK
     - pip show vtk
     - export QT_QPA_PLATFORM=offscreen
+    - python -c "from PyQt5 import QtWidgets; app = QtWidgets.QApplication([]); print('PyQt initialization successful')"
     - |
       set +e
       python -m unittest discover opentps_gui/opentps/gui
