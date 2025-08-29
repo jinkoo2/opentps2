@@ -17,13 +17,6 @@ build:
   image: docker:24.0.5
   services:
     - docker:24.0.5-dind
-  variables:
-    DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_CERTDIR: "/certs"
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
-  before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
     - cd $CI_PROJECT_DIR
     - docker build -t $IMAGE_NAME:$IMAGE_TAG .
@@ -55,8 +48,6 @@ test_gui:
   needs:
     - job: build
       optional: true
-  before_script:
-    - apt-get update && apt-get install -y libgl1
   script:
     - pip show SimpleITK  # For debugging
     - pip show vtk  # For debugging
