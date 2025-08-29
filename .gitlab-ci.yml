@@ -14,14 +14,12 @@ variables:
 
 build:
   stage: build
-  image: quay.io/buildah/stable
+  image: gcr.io/kaniko-project/executor:latest
   variables:
-    IMAGE_NAME: $CI_REGISTRY_IMAGE/opentps
-    IMAGE_TAG: latest
+    DOCKER_CONFIG: /kaniko/.docker/
   script:
-    - buildah login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - buildah bud --file $CI_PROJECT_DIR/Dockerfile --tag $IMAGE_NAME:$IMAGE_TAG $CI_PROJECT_DIR
-    - buildah push $IMAGE_NAME:$IMAGE_TAG
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $IMAGE_NAME:$IMAGE_TAG
   rules:
     - changes:
         - Dockerfile
