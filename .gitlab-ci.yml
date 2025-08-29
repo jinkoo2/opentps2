@@ -1,74 +1,74 @@
 # .gitlab-ci.yml for OpenTPS
 
-    stages:
-      - version_check
-      - setup
-      - test_core
-      - test_gui
-      - unittest_core
-      - docs
+stages:
+  - version_check
+  - setup
+  - test_core
+  - test_gui
+  - unittest_core
+  - docs
 
-    variables:
-      IMAGE_NAME: $CI_REGISTRY_IMAGE/opentps
-      IMAGE_TAG: latest
+variables:
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
+  IMAGE_TAG: latest
 
-    version_check:
-      stage: version_check
-      image: $IMAGE_NAME:$IMAGE_TAG
-      script:
-        - pip install toml
-        - python CI/check_version.py  # This script compare installed versions to those in your .toml file
-      rules:
-        - changes:
-            - Dockerfile
-            - "**/*.toml"
-            - "**/*.lock"
-            - .gitlab-ci.yml
-          when: always
+version_check:
+  stage: version_check
+  image: $IMAGE_NAME:$IMAGE_TAG
+  script:
+    - pip install toml
+    - python CI/check_version.py  # This script compare installed versions to those in your .toml file
+  rules:
+    - changes:
+        - Dockerfile
+        - "**/*.toml"
+        - "**/*.lock"
+        - .gitlab-ci.yml
+      when: always
 
-    test_core:
-      stage: test_core
-      needs:
-        - job: version_check
-          optional: true
-      script:
-        - cd $CI_PROJECT_DIR
-        - python CI/tests.py
+test_core:
+  stage: test_core
+  needs:
+    - job: version_check
+      optional: true
+  script:
+    - cd $CI_PROJECT_DIR
+    - python CI/tests.py
 
-    test_gui:
-      stage: test_gui
-      needs:
-        - job: version_check
-          optional: true
-      script:
-        - pip show SimpleITK
-        - pip show vtk
-        - export QT_QPA_PLATFORM=offscreen
-        - |
-          set +e
-          python -m unittest discover opentps_gui/opentps/gui
-          code=$?
-          set -e
-          [ $code -eq 0 ] || [ $code -eq 5 ]
+test_gui:
+  stage: test_gui
+  needs:
+    - job: version_check
+      optional: true
+  script:
+    - pip show SimpleITK
+    - pip show vtk
+    - export QT_QPA_PLATFORM=offscreen
+    - |
+      set +e
+      python -m unittest discover opentps_gui/opentps/gui
+      code=$?
+      set -e
+      [ $code -eq 0 ] || [ $code -eq 5 ]
 
-    unittest_core:
-      stage: unittest_core
-      needs:
-        - job: version_check
-          optional: true
-      script:
-        - cd $CI_PROJECT_DIR/opentps_core
-        - touch opentps/__init__.py __init__.py
-        - python -m unittest discover -s ./opentps -p '[!example]*.py' -v
+unittest_core:
+  stage: unittest_core
+  needs:
+    - job: version_check
+      optional: true
+  script:
+    - cd $CI_PROJECT_DIR/opentps_core
+    - touch opentps/__init__.py __init__.py
+    - python -m unittest discover -s ./opentps -p '[!example]*.py' -v
 
-    docs:
-      stage: docs
-      needs:
-        - job: version_check
-          optional: true
-      script:
-        - pip install sphinx sphinx-rtd-theme
-        - cd docs
-        - make html
-      rules:
-        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+docs:
+  stage: docs
+  needs:
+    - job: version_check
+      optional: true
+  script:
+    - pip install sphinx sphinx-rtd-theme
+    - cd docs
+    - make html
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
