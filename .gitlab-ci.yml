@@ -55,13 +55,20 @@ test_gui:
   needs:
     - job: build
       optional: true
+  before_script:
+    - apt-get update && apt-get install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0
+    - export DISPLAY=:99
+    - Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+    - sleep 3
   script:
-    - pip show SimpleITK  # For debugging
-    - pip show vtk  # For debugging
-    - export QT_QPA_PLATFORM=offscreen
+    - pip show SimpleITK
+    - pip show vtk
+    - cd $CI_PROJECT_DIR
+    - export QT_QPA_PLATFORM=xcb
+    - export DISPLAY=:99
     - |
       set +e
-      python -m unittest discover opentps_gui/opentps/gui 
+      python -m unittest discover opentps_gui/opentps/gui
       code=$?
       set -e
       [ $code -eq 0 ] || [ $code -eq 5 ]
