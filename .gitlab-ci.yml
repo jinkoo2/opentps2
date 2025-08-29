@@ -32,7 +32,6 @@ test_core:
     - job: version_check
       optional: true
   script:
-    - cd $CI_PROJECT_DIR
     - python CI/tests.py
 
 test_gui:
