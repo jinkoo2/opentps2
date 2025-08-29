@@ -52,6 +52,9 @@ test_core:
 
 test_gui:
   stage: test_gui
+  needs:
+    - job: build
+      optional: true
   before_script:
     - Xvfb :99 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &
     - sleep 3
