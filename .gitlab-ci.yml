@@ -14,22 +14,14 @@ variables:
 
 build:
   stage: build
-  image: docker:24.0.5
-  services:
-    - name: docker:24.0.5-dind
-      alias: docker
+  image: quay.io/buildah/stable
   variables:
-    DOCKER_HOST: tcp://localhost:2375
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_DRIVER: overlay2
-  before_script:
-    - sleep 5
-    - docker info
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    IMAGE_NAME: $CI_REGISTRY_IMAGE/opentps
+    IMAGE_TAG: latest
   script:
-    - cd $CI_PROJECT_DIR
-    - docker build -t $IMAGE_NAME:$IMAGE_TAG .
-    - docker push $IMAGE_NAME:$IMAGE_TAG
+    - buildah login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - buildah bud --file $CI_PROJECT_DIR/Dockerfile --tag $IMAGE_NAME:$IMAGE_TAG $CI_PROJECT_DIR
+    - buildah push $IMAGE_NAME:$IMAGE_TAG
   rules:
     - changes:
         - Dockerfile
@@ -37,7 +29,6 @@ build:
         - "**/*.lock"
         - .gitlab-ci.yml
       when: always
-  privileged: true
 
 default:
   image: $IMAGE_NAME:$IMAGE_TAG
