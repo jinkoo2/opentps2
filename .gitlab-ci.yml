@@ -17,7 +17,7 @@
       image: $IMAGE_NAME:$IMAGE_TAG
       script:
         - pip install toml
-        - python CI/check_versions.py  # This script compare installed versions to those in your .toml file
+        - python CI/check_version.py  # This script compare installed versions to those in your .toml file
       rules:
         - changes:
             - Dockerfile
