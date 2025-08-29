@@ -52,27 +52,25 @@ test_core:
 
 test_gui:
   stage: test_gui
-  needs:
-    - job: build
-      optional: true
   before_script:
-    - apt-get update && apt-get install -y xvfb libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0
-    - export DISPLAY=:99
-    - Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+    - Xvfb :99 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &
     - sleep 3
-  script:
-    - pip show SimpleITK
-    - pip show vtk
-    - cd $CI_PROJECT_DIR
-    - export QT_QPA_PLATFORM=xcb
     - export DISPLAY=:99
-    - |
-      set +e
-      python -m unittest discover opentps_gui/opentps/gui
-      code=$?
-      set -e
-      [ $code -eq 0 ] || [ $code -eq 5 ]
-
+    # Set additional Qt environment variables
+    - export QT_DEBUG_PLUGINS=0  # For debugging Qt plugin issues
+    - export QT_QPA_PLATFORM=xcb  # Use xcb instead of offscreen for GUI testing
+    - export XDG_RUNTIME_DIR=/tmp/runtime-appuser
+    - mkdir -p $XDG_RUNTIME_DIR
+    - chmod 700 $XDG_RUNTIME_DIR
+  script:
+    - cd $CI_PROJECT_DIR/opentps_gui
+    - pip show SimpleITK  # For debugging
+    - pip show vtk  # For debugging
+    # Run a basic GUI initialization test first
+    - python -c "from PyQt5 import QtWidgets; app = QtWidgets.QApplication([]); print('PyQt initialization successful')"
+    # Run a more exhaustive GUI environment test until the CI GUI test will run without environment failures
+    # Run the unit tests
+    - python -m unittest discover -s opentps/gui
 
 unittest_core:
   stage: unittest_core
