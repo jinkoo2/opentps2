@@ -59,8 +59,7 @@ test_gui:
     - pip show SimpleITK
     - pip show vtk
     - cd $CI_PROJECT_DIR/
-    - export QT_QPA_PLATFORM='offscreen'
-    - python -m unittest discover opentps_gui/opentps/gui
+    - xvfb-run -a -s "-screen 0 1024x768x24" python -m unittest discover opentps_gui/opentps/gui
 
 unittest_core:
   stage: unittest_core
