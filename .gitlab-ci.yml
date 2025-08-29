@@ -68,7 +68,6 @@ test_gui:
       set -e
       [ $code -eq 0 ] || [ $code -eq 5 ]
 
-
 unittest_core:
   stage: unittest_core
   needs:
