@@ -44,9 +44,9 @@ class AbstractDoseCalculator:
         raise NotImplementedError()
 
 class ProgressInfo:
-    r"""
+    """
     Progress information for dose calculation
-    /!\ Not implemented yet
+    ! Not implemented yet
     """
     class Status(Enum):
         RUNNING = 'RUNNING'
