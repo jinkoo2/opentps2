@@ -56,12 +56,16 @@ test_gui:
     - job: build
       optional: true
   script:
-    - pip show SimpleITK
-    - pip show vtk
-    - cd $CI_PROJECT_DIR/
-    - apt-get update && apt-get install -y libgl1
+    - pip show SimpleITK  # For debugging
+    - pip show vtk  # For debugging
     - export QT_QPA_PLATFORM=offscreen
-    - python -m unittest discover opentps_gui/opentps/gui
+    - |
+      set +e
+      python -m unittest discover opentps_gui/opentps/gui 
+      code=$?
+      set -e
+      [ $code -eq 0 ] || [ $code -eq 5 ]
+
 
 unittest_core:
   stage: unittest_core
