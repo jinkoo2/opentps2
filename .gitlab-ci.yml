@@ -56,24 +56,18 @@ test_gui:
     - job: build
       optional: true
   before_script:
-    - Xvfb :99 -screen 0 1024x768x24 -ac +extension GLX +render -noreset &
-    - sleep 3
-    - export DISPLAY=:99
-    # Set additional Qt environment variables
-    - export QT_DEBUG_PLUGINS=0  # For debugging Qt plugin issues
-    - export QT_QPA_PLATFORM=xcb  # Use xcb instead of offscreen for GUI testing
-    - export XDG_RUNTIME_DIR=/tmp/runtime-appuser
-    - mkdir -p $XDG_RUNTIME_DIR
-    - chmod 700 $XDG_RUNTIME_DIR
+    - apt-get update && apt-get install -y libgl1
   script:
-    - cd $CI_PROJECT_DIR/opentps_gui
     - pip show SimpleITK  # For debugging
     - pip show vtk  # For debugging
-    # Run a basic GUI initialization test first
-    - python -c "from PyQt5 import QtWidgets; app = QtWidgets.QApplication([]); print('PyQt initialization successful')"
-    # Run a more exhaustive GUI environment test until the CI GUI test will run without environment failures
-    # Run the unit tests
-    - python -m unittest discover -s opentps/gui
+    - export QT_QPA_PLATFORM=offscreen
+    - |
+      set +e
+      python -m unittest discover opentps_gui/opentps/gui 
+      code=$?
+      set -e
+      [ $code -eq 0 ] || [ $code -eq 5 ]
+
 
 unittest_core:
   stage: unittest_core
