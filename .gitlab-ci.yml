@@ -60,7 +60,6 @@ test_gui:
     - pip show vtk
     - cd $CI_PROJECT_DIR/
     - apt-get update && apt-get install -y libgl1
-    - exprort DISPLAY=:99.0
     - export QT_QPA_PLATFORM=offscreen
     - python -m unittest discover opentps_gui/opentps/gui
 
