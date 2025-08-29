@@ -12,9 +12,11 @@ variables:
   IMAGE_NAME: $CI_REGISTRY_IMAGE
   IMAGE_TAG: latest
 
+default:
+    image: $IMAGE_NAME:$IMAGE_TAG
+
 version_check:
   stage: version_check
-  image: $IMAGE_NAME:$IMAGE_TAG
   script:
     - pip install toml
     - python CI/check_version.py  # This script compare installed versions to those in your .toml file
