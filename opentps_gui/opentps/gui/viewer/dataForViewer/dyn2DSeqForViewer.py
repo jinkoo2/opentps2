@@ -1,5 +1,5 @@
 import numpy as np
-from vtkmodules.vtkImagingGeneral import vtkSimpleImageFilterExample
+from opentps.gui.viewer.dataForViewer.vtkSimpleImageFilter import VtkSimpleImageFilter
 
 from opentps.gui.viewer.dataForViewer.genericImageForViewer import GenericImageForViewer
 from opentps.gui.viewer.dataForViewer.image2DForViewer import Image2DForViewer
@@ -18,7 +18,7 @@ class Dyn2DSeqForViewer(GenericImageForViewer):
         # This creates all image3DForViewers within the image sequence with the side effect that all VTK output port are initialized.
         self._image2DForViewerList = self._getImg2DForViewerList(dyn2DSeq.dyn2DImageList)
 
-        self._simpleFilter = vtkSimpleImageFilterExample()
+        self._simpleFilter = VtkSimpleImageFilter()
         self._currentIndexIn2DSeq = 0
         self._updateVTKOutputPort()
         self._vtkOutputPort = self._simpleFilter.GetOutputPort()

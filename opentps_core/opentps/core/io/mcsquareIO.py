@@ -257,7 +257,7 @@ def _print_memory_usage(BeamletMatrix):
     BeamletMatrix : csc_matrix
         The sparse beamlets matrix
     """
-    if BeamletMatrix == []:
+    if not BeamletMatrix:
         logger.info("Beamlets not loaded")
 
 

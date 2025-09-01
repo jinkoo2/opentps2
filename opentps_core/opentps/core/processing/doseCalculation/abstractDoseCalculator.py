@@ -46,7 +46,7 @@ class AbstractDoseCalculator:
 class ProgressInfo:
     """
     Progress information for dose calculation
-    /!\ Not implemented yet
+    ! Not implemented yet
     """
     class Status(Enum):
         RUNNING = 'RUNNING'
