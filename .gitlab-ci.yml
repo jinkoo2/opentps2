@@ -43,7 +43,7 @@ test_gui:
       optional: true
   script:
     - pip show SimpleITK
-    - pip show vtk1
+    - pip show vtk
     - export QT_DEBUG_PLUGINS=1
     - export QT_QPA_PLATFORM="minimal"
     - python -c "from PyQt5 import QtWidgets; app = QtWidgets.QApplication([]); print('PyQt initialization successful')"
