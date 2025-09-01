@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-MAINTAINER OpenTPS Developers
+
 LABEL maintainer="OpenTPS Developers"
 LABEL description="Docker image for OpenTPS"
 
@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcb-icccm4 \
     libxcb-image0 \
     libxcb-keysyms1 \
+    libfontconfig1 \
     libxcb-randr0 \
     libxcb-render-util0 \
     libxcb-xinerama0 \
