@@ -44,6 +44,7 @@ test_gui:
   script:
     - pip show SimpleITK
     - pip show vtk
+    - apt-get update && apt-get install -y libfontconfig1
     - export QT_DEBUG_PLUGINS=1
     - export QT_QPA_PLATFORM="minimal"
     - python -c "from PyQt5 import QtWidgets; app = QtWidgets.QApplication([]); print('PyQt initialization successful')"
