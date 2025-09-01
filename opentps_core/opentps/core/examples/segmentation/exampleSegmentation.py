@@ -67,5 +67,6 @@ def run():
 
     print('Segmentation example completed')
 
+
 if __name__ == "__main__":
     run()

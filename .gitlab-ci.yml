@@ -1,135 +1,93 @@
-# Use specific image.  Slim or bullseye will still need a lot of GUI packages, so this is simpler
-image: python:3.12
+# .gitlab-ci.yml for OpenTPS
+# The line pip install -e . --no-deps updates the docker image with any change made to the code. It is repeated
+# throughout the file because it is faster than relying on artifacts between jobs.
+# It could be even enhanced by caching the pip cache folder.
+# The version_check should also be replaced by a rebuild of the docker image if any dependency changes.
 
-variables:
-  POETRY_VERSION: "2.1.1"
-  POETRY_HOME: "/opt/poetry"
-  POETRY_CACHE_DIR: "$CI_PROJECT_DIR/.cache/poetry"
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
-  PYTHONPATH: "$CI_PROJECT_DIR/opentps_core:$CI_PROJECT_DIR/opentps_gui"
+# If any change occurs in the pyproject.toml, poetry.lock files or the Dockerfile, the image needs to be rebuilt and
+# pushed to the registry.
 
 stages:
-  - build
+  - version_check
   - test_core
   - test_gui
   - unittest_core
-  - doc
+  - docs
 
-# Define the default cache configuration
-cache:
-  key:
-    files:
-      - opentps_core/poetry.lock
-      - opentps_gui/poetry.lock
-  paths:
-    - .cache/poetry
-    - .cache/pip
-    - venv/
-    - $POETRY_HOME
-  policy: pull-push
+variables:
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
+  IMAGE_TAG: latest
 
-# Shared setup logic for all jobs
-.setup_script: &setup_script
-  # Install basic requirements and debug info
-  - python --version
-  - apt-get update && apt-get install -y libgl1 virtualenv libglib2.0-0  # Install system dependencies
+default:
+    image: $IMAGE_NAME:$IMAGE_TAG
 
-  # Set up Poetry (from cache if available)
-  - if [ ! -d "$POETRY_HOME" ] || [ ! -f "$POETRY_HOME/bin/poetry" ]; then
-      echo "Installing Poetry..." &&
-      virtualenv $POETRY_HOME &&
-      $POETRY_HOME/bin/pip install poetry==$POETRY_VERSION;
-    else
-      echo "Using cached Poetry installation";
-    fi
-  - source $POETRY_HOME/bin/activate
-  - $POETRY_HOME/bin/poetry --version
-
-  # Set up project virtualenv (from cache if available)
-  - if [ ! -d "venv" ]; then
-      echo "Creating virtual environment..." &&
-      virtualenv -p python3.12 venv;
-    else
-      echo "Using cached virtual environment";
-    fi
-  - source venv/bin/activate
-
-  # Install core dependencies
-  - cd $CI_PROJECT_DIR/opentps_core
-  - $POETRY_HOME/bin/poetry config virtualenvs.in-project true
-  - $POETRY_HOME/bin/poetry install --no-root
-
-  # Install GUI dependencies
-  - cd $CI_PROJECT_DIR/opentps_gui
-  - $POETRY_HOME/bin/poetry config virtualenvs.in-project true
-  - $POETRY_HOME/bin/poetry install --no-root
-
-  # Return to project root
-  - cd $CI_PROJECT_DIR
-
-build:
-  image: python:3.12
-  stage: build
+version_check:
+  stage: version_check
   before_script:
-    - *setup_script
+    - pip install -e . --no-deps
   script:
-    - cd $CI_PROJECT_DIR/opentps_core
-    - $POETRY_HOME/bin/poetry build
-    - cd $CI_PROJECT_DIR/opentps_gui
-    - $POETRY_HOME/bin/poetry build
-  artifacts:
-    paths:
-      - opentps_core/dist/*.whl
-      - opentps_gui/dist/*.whl
-    expire_in: 1 week
+    - pip install toml
+    - python CI/check_version.py  # This script compare installed versions to those in your .toml file
+  rules:
+    - changes:
+        - Dockerfile
+        - "**/*.toml"
+        - "**/*.lock"
+        - .gitlab-ci.yml
+      when: always
 
 test_core:
-  image: python:3.12
   stage: test_core
+  needs:
+    - job: version_check
+      optional: true
   before_script:
-    - *setup_script
+    - pip install -e . --no-deps
   script:
-    - pip show SimpleITK  # For debugging
-    - python3 CI/tests.py
+    - python CI/tests.py
 
 test_gui:
-  image: python:3.12
   stage: test_gui
+  needs:
+    - job: version_check
+      optional: true
   before_script:
-    - *setup_script
+    - pip install -e . --no-deps
   script:
-    - pip show SimpleITK  # For debugging
-    - pip show vtk  # For debugging
-    - export QT_QPA_PLATFORM=offscreen
+    - pip show SimpleITK
+    - pip show vtk
+    - export QT_DEBUG_PLUGINS=1
+    - export QT_QPA_PLATFORM="offscreen"
+    - python -c "from PyQt5 import QtWidgets; app = QtWidgets.QApplication([]); print('PyQt initialization successful')"
     - |
       set +e
-      python -m unittest discover opentps_gui/opentps/gui 
+      python -m unittest discover opentps_gui/opentps/gui
       code=$?
       set -e
       [ $code -eq 0 ] || [ $code -eq 5 ]
 
-docs:
-  image: python:3.12
-  stage: doc
-  before_script:
-    - *setup_script
-    - pip install sphinx sphinx-rtd-theme
-  script:
-    - echo "Documentation build would go here"
-    #- python3 docs/tools/version_utils.py
-    #- cd docs
-    #- make html
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
-# Must be run after all script because we create __init__.py for unittest
 unittest_core:
   stage: unittest_core
-  image: python:3.12
+  needs:
+    - job: version_check
+      optional: true
   before_script:
-    - *setup_script
+    - pip install -e . --no-deps
   script:
-    - cd $CI_PROJECT_DIR/opentps_core/
-    - touch opentps/__init__.py  # because unittests does not work on namespace package
-    - touch __init__.py  # because unittests does not work on namespace package
-    - python3 -m unittest discover -s ./opentps -p '[!example]*.py' -v
+    - cd $CI_PROJECT_DIR/opentps_core
+    - touch opentps/__init__.py __init__.py
+    - python -m unittest discover -s ./opentps -p '[!example]*.py' -v
+
+docs:
+  stage: docs
+  needs:
+    - job: version_check
+      optional: true
+  before_script:
+    - pip install -e . --no-deps
+  script:
+    - pip install sphinx sphinx-rtd-theme
+    - cd docs
+    - make html
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
