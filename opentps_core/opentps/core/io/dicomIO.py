@@ -781,9 +781,9 @@ def writeRTDose(dose:DoseImage, outputFolder:str, outputFilename:str = None):
     dcm_file.PixelRepresentation = 0  # 0=unsigned, 1=signed
     dcm_file.DoseGridScaling = floatToDS(dose.imageArray.max() / (2 ** dcm_file.BitDepth - 1) )
     if (len(dose.imageArray.shape) > 2):
-        dcm_file.PixelData = (dose.imageArray / dcm_file.DoseGridScaling).astype(np.uint16).transpose(2, 1, 0).tostring()
+        dcm_file.PixelData = (dose.imageArray / dcm_file.DoseGridScaling).astype(np.uint16).transpose(2, 1, 0).tobytes()
     else:
-        dcm_file.PixelData = (dose.imageArray / dcm_file.DoseGridScaling).astype(np.uint16).transpose(1, 0).tostring()
+        dcm_file.PixelData = (dose.imageArray / dcm_file.DoseGridScaling).astype(np.uint16).transpose(1, 0).tobytes()
     
     # save dicom file
     if outputFilename:
