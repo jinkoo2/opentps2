@@ -13,9 +13,9 @@ if exist "ENV_PATH" (
 
 echo This script will install system libraries and tools that you will need to work with OpenTPS. At several points in the installation process, the script will also create a virtual python environment in the CURRENT directory named %ENV_PATH% that will be used to install the python dependencies of OpenTPS.
 
-echo Create the Python virtual environment. You need to install python version 3.9.13 on your PC and set the python path in the system environment.
+echo Create the Python virtual environment. You need to install python version 3.12 on your PC and set the python path in the system environment.
 
-REM Check if Python 3.9 is installed
+REM Check if Python 3.12 is installed
 for /f "tokens=*" %%i in ('python --version 2^>^&1') do set "python_version=%%i"
 echo Installed Python Version: %python_version%
 
@@ -51,13 +51,13 @@ pip install PyQt5==5.15.10
 pip install PyQt5-Qt5=='5.15.2'
 pip install pyqtgraph
 pip install sparse_dot_mkl
-pip install vtk==9.2.6
+pip install vtk==9.5.0
 pip install SimpleITK
 pip install pandas
 pip install scikit-image
 pip install tensorflow
 pip install keras
-pip3 install pymedphys==0.40.0
+pip3 install pymedphys==0.41.0
 REM pip3 install cupy
 
 echo All packages installed successfully.
