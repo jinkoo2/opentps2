@@ -16,6 +16,8 @@ default:
 
 version_check:
   stage: version_check
+  before_script:
+    - pip install -e . --no-deps
   script:
     - pip install toml
     - python CI/check_version.py  # This script compare installed versions to those in your .toml file
