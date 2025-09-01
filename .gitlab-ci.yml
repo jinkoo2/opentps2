@@ -44,7 +44,7 @@ test_gui:
   script:
     - pip show SimpleITK
     - pip show vtk
-    - export QT_QPA_PLATFORM=offscreen
+    - export QT_QPA_PLATFORM="minimal"
     - python -c "from PyQt5 import QtWidgets; app = QtWidgets.QApplication([]); print('PyQt initialization successful')"
     - |
       set +e
