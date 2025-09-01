@@ -1,4 +1,8 @@
 # .gitlab-ci.yml for OpenTPS
+# The line pip install -e . --no-deps updates the docker image with any change made to the code. It is repeated
+# throughout the file because it is faster than relying on artifacts between jobs.
+# It could be even enhanced by caching the pip cache folder.
+# The version_check should also be replaced by a rebuild of the docker image if any dependency changes.
 
 stages:
   - version_check
