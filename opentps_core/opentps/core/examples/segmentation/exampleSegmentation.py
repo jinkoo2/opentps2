@@ -66,7 +66,7 @@ def run():
     plt.savefig(os.path.join(output_path, 'Example_Segmentation.png'))
 
     print('Test passed!')
-    print('Segmentation example completed ----')
+    print('Segmentation example completed')
 
 
 if __name__ == "__main__":
