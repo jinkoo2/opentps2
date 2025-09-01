@@ -4,6 +4,9 @@
 # It could be even enhanced by caching the pip cache folder.
 # The version_check should also be replaced by a rebuild of the docker image if any dependency changes.
 
+# If any change occurs in the pyproject.toml, poetry.lock files or the Dockerfile, the image needs to be rebuilt and
+# pushed to the registry.
+
 stages:
   - version_check
   - test_core
