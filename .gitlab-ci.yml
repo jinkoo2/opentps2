@@ -1,8 +1,6 @@
-# .gitlab-ci.yml for OpenTPS
-
 stages:
-  - version_check
   - setup
+  - version_check
   - test_core
   - test_gui
   - unittest_core
@@ -13,13 +11,31 @@ variables:
   IMAGE_TAG: latest
 
 default:
-    image: $IMAGE_NAME:$IMAGE_TAG
+  image: $IMAGE_NAME:$IMAGE_TAG
 
+# -----------------------
+# 1️⃣ Setup (install repo once)
+# -----------------------
+setup:
+  stage: setup
+  script:
+    - pip install -e .
+  artifacts:
+    paths:
+      - $CI_PROJECT_DIR
+    expire_in: 1h
+
+# -----------------------
+# 2️⃣ Version check
+# -----------------------
 version_check:
   stage: version_check
+  needs:
+    - job: setup
+      artifacts: true
   script:
     - pip install toml
-    - python CI/check_version.py  # This script compare installed versions to those in your .toml file
+    - python CI/check_version.py
   rules:
     - changes:
         - Dockerfile
@@ -28,24 +44,26 @@ version_check:
         - .gitlab-ci.yml
       when: always
 
+# -----------------------
+# 3️⃣ Core tests
+# -----------------------
 test_core:
   stage: test_core
   needs:
     - job: version_check
-      optional: true
-  before_script:
-    - pip install -e .
+      artifacts: true
   script:
     - python CI/tests.py
 
+# -----------------------
+# 4️⃣ GUI tests
+# -----------------------
 test_gui:
   stage: test_gui
   needs:
     - job: version_check
-      optional: true
+      artifacts: true
   script:
-    - pip show SimpleITK
-    - pip show vtk
     - export QT_DEBUG_PLUGINS=1
     - export QT_QPA_PLATFORM="offscreen"
     - python -c "from PyQt5 import QtWidgets; app = QtWidgets.QApplication([]); print('PyQt initialization successful')"
@@ -56,21 +74,27 @@ test_gui:
       set -e
       [ $code -eq 0 ] || [ $code -eq 5 ]
 
+# -----------------------
+# 5️⃣ Unit tests core
+# -----------------------
 unittest_core:
   stage: unittest_core
   needs:
     - job: version_check
-      optional: true
+      artifacts: true
   script:
     - cd $CI_PROJECT_DIR/opentps_core
     - touch opentps/__init__.py __init__.py
     - python -m unittest discover -s ./opentps -p '[!example]*.py' -v
 
+# -----------------------
+# 6️⃣ Documentation
+# -----------------------
 docs:
   stage: docs
   needs:
     - job: version_check
-      optional: true
+      artifacts: true
   script:
     - pip install sphinx sphinx-rtd-theme
     - cd docs

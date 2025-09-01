@@ -65,7 +65,7 @@ def run():
     plt.show()
     plt.savefig(os.path.join(output_path, 'Example_Segmentation.png'))
 
-    print('Test passed!')
+    print('Test passed again!')
     print('Segmentation example completed')
 
 
