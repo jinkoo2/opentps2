@@ -1305,77 +1305,77 @@ def readDicomPlan(dcmFile) -> RTPlan:
                         ReferencedRangeShifterNumber = int(
                             first_layer.RangeShifterSettingsSequence[0].ReferencedRangeShifterNumber)
 
-                for dcm_layer in dcm_beam.IonControlPointSequence:
-                    if (plan.scanMode == "MODULATED"):
-                        if dcm_layer.NumberOfScanSpotPositions == 1:
-                            sum_weights = dcm_layer.ScanSpotMetersetWeights
-                        else:
-                            sum_weights = sum(dcm_layer.ScanSpotMetersetWeights)
-
-                    elif (plan.scanMode == "LINE"):
-                        sum_weights = sum(np.frombuffer(dcm_layer[0x300b1096].value, dtype=np.float32).tolist())
-
-                    if sum_weights == 0.0:
-                        continue
-
-                    layer = PlanProtonLayer()
-                    layer.seriesInstanceUID = plan.seriesInstanceUID
-
-                    if hasattr(dcm_layer, 'SnoutPosition'):
-                        SnoutPosition = float(dcm_layer.SnoutPosition)
-
-                    if hasattr(dcm_layer, 'NumberOfPaintings'):
-                        layer.numberOfPaintings = int(dcm_layer.NumberOfPaintings)
+            for dcm_layer in dcm_beam.IonControlPointSequence:
+                if (plan.scanMode == "MODULATED"):
+                    if dcm_layer.NumberOfScanSpotPositions == 1:
+                        sum_weights = dcm_layer.ScanSpotMetersetWeights
                     else:
-                        layer.numberOfPaintings = 1
+                        sum_weights = sum(dcm_layer.ScanSpotMetersetWeights)
 
-                    layer.nominalEnergy = floatToDS(dcm_layer.NominalBeamEnergy)
-                    layer.scalingFactor = beamMeterset / finalCumulativeMetersetWeight
+                elif (plan.scanMode == "LINE"):
+                    sum_weights = sum(np.frombuffer(dcm_layer[0x300b1096].value, dtype=np.float32).tolist())
 
-                    if (plan.scanMode == "MODULATED"):
-                        _x = dcm_layer.ScanSpotPositionMap[0::2]
-                        _y = dcm_layer.ScanSpotPositionMap[1::2]
-                        mu = np.array(
-                            dcm_layer.ScanSpotMetersetWeights) * layer.scalingFactor  # spot weights are converted to MU
-                        layer.appendSpot(_x, _y, mu)
+                if sum_weights == 0.0:
+                    continue
 
-                    elif (plan.scanMode == "LINE"):
-                        raise NotImplementedError()
-                        # print("SpotNumber: ", dcm_layer[0x300b1092].value)
-                        # print("SpotValue: ", np.frombuffer(dcm_layer[0x300b1094].value, dtype=np.float32).tolist())
-                        # print("MUValue: ", np.frombuffer(dcm_layer[0x300b1096].value, dtype=np.float32).tolist())
-                        # print("SizeValue: ", np.frombuffer(dcm_layer[0x300b1098].value, dtype=np.float32).tolist())
-                        # print("PaintValue: ", dcm_layer[0x300b109a].value)
-                        LineScanPoints = np.frombuffer(dcm_layer[0x300b1094].value, dtype=np.float32).tolist()
-                        layer.LineScanControlPoint_x = LineScanPoints[0::2]
-                        layer.LineScanControlPoint_y = LineScanPoints[1::2]
-                        layer.LineScanControlPoint_Weights = np.frombuffer(dcm_layer[0x300b1096].value,
-                                                                        dtype=np.float32).tolist()
-                        layer.LineScanControlPoint_MU = np.array(
-                            layer.LineScanControlPoint_Weights) * layer.scalingFactor  # weights are converted to MU
-                        if layer.LineScanControlPoint_MU.size == 1:
-                            layer.LineScanControlPoint_MU = [layer.LineScanControlPoint_MU]
-                        else:
-                            layer.LineScanControlPoint_MU = layer.LineScanControlPoint_MU.tolist()
+                layer = PlanProtonLayer()
+                layer.seriesInstanceUID = plan.seriesInstanceUID
 
-                    if beam.rangeShifter is not None:
-                        if hasattr(dcm_layer, 'RangeShifterSettingsSequence'):
-                            RangeShifterSetting = dcm_layer.RangeShifterSettingsSequence[0].RangeShifterSetting
-                            ReferencedRangeShifterNumber = dcm_layer.RangeShifterSettingsSequence[
-                                0].ReferencedRangeShifterNumber
-                            if hasattr(dcm_layer.RangeShifterSettingsSequence[0], 'IsocenterToRangeShifterDistance'):
-                                IsocenterToRangeShifterDistance = dcm_layer.RangeShifterSettingsSequence[
-                                    0].IsocenterToRangeShifterDistance
-                            if hasattr(dcm_layer.RangeShifterSettingsSequence[0], 'RangeShifterWaterEquivalentThickness'):
-                                RangeShifterWaterEquivalentThickness = float(
-                                    dcm_layer.RangeShifterSettingsSequence[0].RangeShifterWaterEquivalentThickness)
+                if hasattr(dcm_layer, 'SnoutPosition'):
+                    SnoutPosition = float(dcm_layer.SnoutPosition)
 
-                        layer.rangeShifterSettings.rangeShifterSetting = RangeShifterSetting
-                        layer.rangeShifterSettings.isocenterToRangeShifterDistance = IsocenterToRangeShifterDistance
-                        layer.rangeShifterSettings.rangeShifterWaterEquivalentThickness = RangeShifterWaterEquivalentThickness
-                        layer.rangeShifterSettings.referencedRangeShifterNumber = ReferencedRangeShifterNumber
+                if hasattr(dcm_layer, 'NumberOfPaintings'):
+                    layer.numberOfPaintings = int(dcm_layer.NumberOfPaintings)
+                else:
+                    layer.numberOfPaintings = 1
 
-                    beam.appendLayer(layer)
+                layer.nominalEnergy = floatToDS(dcm_layer.NominalBeamEnergy)
+                layer.scalingFactor = beamMeterset / finalCumulativeMetersetWeight
+
+                if (plan.scanMode == "MODULATED"):
+                    _x = dcm_layer.ScanSpotPositionMap[0::2]
+                    _y = dcm_layer.ScanSpotPositionMap[1::2]
+                    mu = np.array(
+                        dcm_layer.ScanSpotMetersetWeights) * layer.scalingFactor  # spot weights are converted to MU
+                    layer.appendSpot(_x, _y, mu)
+
+                elif (plan.scanMode == "LINE"):
+                    raise NotImplementedError()
+                    # print("SpotNumber: ", dcm_layer[0x300b1092].value)
+                    # print("SpotValue: ", np.frombuffer(dcm_layer[0x300b1094].value, dtype=np.float32).tolist())
+                    # print("MUValue: ", np.frombuffer(dcm_layer[0x300b1096].value, dtype=np.float32).tolist())
+                    # print("SizeValue: ", np.frombuffer(dcm_layer[0x300b1098].value, dtype=np.float32).tolist())
+                    # print("PaintValue: ", dcm_layer[0x300b109a].value)
+                    LineScanPoints = np.frombuffer(dcm_layer[0x300b1094].value, dtype=np.float32).tolist()
+                    layer.LineScanControlPoint_x = LineScanPoints[0::2]
+                    layer.LineScanControlPoint_y = LineScanPoints[1::2]
+                    layer.LineScanControlPoint_Weights = np.frombuffer(dcm_layer[0x300b1096].value,
+                                                                    dtype=np.float32).tolist()
+                    layer.LineScanControlPoint_MU = np.array(
+                        layer.LineScanControlPoint_Weights) * layer.scalingFactor  # weights are converted to MU
+                    if layer.LineScanControlPoint_MU.size == 1:
+                        layer.LineScanControlPoint_MU = [layer.LineScanControlPoint_MU]
+                    else:
+                        layer.LineScanControlPoint_MU = layer.LineScanControlPoint_MU.tolist()
+
+                if beam.rangeShifter is not None:
+                    if hasattr(dcm_layer, 'RangeShifterSettingsSequence'):
+                        RangeShifterSetting = dcm_layer.RangeShifterSettingsSequence[0].RangeShifterSetting
+                        ReferencedRangeShifterNumber = dcm_layer.RangeShifterSettingsSequence[
+                            0].ReferencedRangeShifterNumber
+                        if hasattr(dcm_layer.RangeShifterSettingsSequence[0], 'IsocenterToRangeShifterDistance'):
+                            IsocenterToRangeShifterDistance = dcm_layer.RangeShifterSettingsSequence[
+                                0].IsocenterToRangeShifterDistance
+                        if hasattr(dcm_layer.RangeShifterSettingsSequence[0], 'RangeShifterWaterEquivalentThickness'):
+                            RangeShifterWaterEquivalentThickness = float(
+                                dcm_layer.RangeShifterSettingsSequence[0].RangeShifterWaterEquivalentThickness)
+
+                    layer.rangeShifterSettings.rangeShifterSetting = RangeShifterSetting
+                    layer.rangeShifterSettings.isocenterToRangeShifterDistance = IsocenterToRangeShifterDistance
+                    layer.rangeShifterSettings.rangeShifterWaterEquivalentThickness = RangeShifterWaterEquivalentThickness
+                    layer.rangeShifterSettings.referencedRangeShifterNumber = ReferencedRangeShifterNumber
+
+                beam.appendLayer(layer)
             plan.appendBeam(beam)
 
     # Other
