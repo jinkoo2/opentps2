@@ -1,0 +1,16 @@
+# nmake -f Makefile.win
+
+LIB = -Qopenmp
+OPTIONS = -Qstd=c++11 -MT -O2 -LD
+INTEL64LIB = "C:\Program Files (x86)\Intel\oneAPI\compiler\2023.2.0\windows\compiler\lib\intel64"
+VCLIB = "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.38.33130\lib\x64" 
+WINSDK1 = "C:\Program Files (x86)\Windows Kits\10\Lib\10.0.22621.0\ucrt\x64"
+WINSDK2 = "C:\Program Files (x86)\Windows Kits\10\Lib\10.0.22621.0\um\x64" 
+LIB_PATH = -link -libpath:$(INTEL64LIB)  -link -libpath:$(VCLIB)  -link -libpath:$(WINSDK1)  -link -libpath:$(WINSDK2) 
+
+default: all
+
+all: shiftBeamlets.dll
+
+shiftBeamlets.dll: shiftBeamlets.cpp
+	icl shiftBeamlets.cpp $(LIB) $(OPTIONS) $(LIB_PATH) -link -DLL -out:shiftBeamlets.dll

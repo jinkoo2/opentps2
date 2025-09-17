@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 		printf("%s\n",errstr);
 		return(FAILURE);
 	}
-        printf("Successfully loaded kernels\n");
+        //printf("Successfully loaded kernels\n");
 
 	if (load_geometry(&density,argv[2]) == FAILURE)
 	{
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 		printf("%s\n",errstr);
 		return(FAILURE);
 	}
-        printf("Successfully loaded geometry files.\n");
+        //printf("Successfully loaded geometry files.\n");
 
 	/* 
 	// diagnostic lines
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 		printf("Failed to open beamspec batch file %s\n",argv[3]);
 		return(FAILURE);
 	}
-        printf("Successfully loaded beamspec files.\n");
+        //printf("Successfully loaded beamspec files.\n");
 
 	// open the dose batch file
 	if ((beamlet_batch_file = fopen(argv[4],"wb")) == NULL)
@@ -143,8 +143,8 @@ int main(int argc, char *argv[])
 			printf("Error in the calculation for beamlet number %d,\n so all zeros were saved for the resulting beamlet file.\n",b);
 			printf("%s\n",errstr);
 		}
-		else
-			printf("Successfully calculated beamlet %d of %s.\n",b,argv[3]); 
+		// else
+		// 	printf("Successfully calculated beamlet %d of %s.\n",b,argv[3]); 
 	}
 
 	// close the beamlet file
