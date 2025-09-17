@@ -29,7 +29,6 @@ pandas = "^2.2.3"
 requests = "*"
 scikit-image = "*"
 pymedphys="^0.41.0"
-psutil="*"
 
 [tool.poetry.group.dev.dependencies]
 

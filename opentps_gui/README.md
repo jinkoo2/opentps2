@@ -21,7 +21,7 @@ poetry install
 3. Create a new Anaconda environment:
 
 ```
-conda create --name OpenTPS python=3.11
+conda create --name OpenTPS python=3.12
 ```
 
 4. Activate the new environment:
