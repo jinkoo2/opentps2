@@ -76,7 +76,7 @@ unittest_core:
   script:
     - cd $CI_PROJECT_DIR/opentps_core
     - touch opentps/__init__.py __init__.py
-    - python -m unittest discover -s ./opentps -p '[!example]*.py' -v
+    - python -m unittest discover -s ./opentps -p '*.py' -v
 
 docs:
   stage: docs

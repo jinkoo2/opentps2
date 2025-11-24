@@ -1078,12 +1078,12 @@ class MCsquareIOTestCase(unittest.TestCase):
         """
         from opentps.core.data.plan._planProtonBeam import PlanProtonBeam
         from opentps.core.data.plan._planProtonLayer import PlanProtonLayer
-
-        import opentps.core.processing.doseCalculation.MCsquare.BDL as BDLModule
+        from opentps.core.data.plan._protonPlan import ProtonPlan
+        import opentps.core.processing.doseCalculation.protons.MCsquare.BDL as BDLModule
 
         bdl = readBDL(os.path.join(str(BDLModule.__path__[0]), 'BDL_default_DN_RangeShifter.txt'))
 
-        plan = RTPlan()
+        plan = ProtonPlan()
         beam = PlanProtonBeam()
         layer = PlanProtonLayer(nominalEnergy=100.)
         layer.appendSpot(0, 0, 1)
