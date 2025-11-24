@@ -7,7 +7,7 @@ import logging
 from opentps.core.data._patientData import PatientData
 from opentps.core.data._patient import Patient
 from opentps.core.data._patientList import PatientList
-from opentps.core.io.dicomIO import readDicomCT, readDicomMRI, readDicomDose, readDicomVectorField, readDicomStruct, readDicomPlan, readDicomRigidTransform
+from opentps.core.io.dicomIO import readDicomCT, readDicomMRI, readDicomDose, readDicomVectorField, readDicomStruct, readDicomPlan, readDicomRigidTransform, readDicomPET
 from opentps.core.io import mhdIO
 from opentps.core.io.serializedObjectIO import loadDataStructure
 
@@ -119,6 +119,8 @@ def readData(inputPaths, maxDepth=-1) -> Sequence[Union[PatientData, Patient]]:
     # read Dicom files
     dicomCT = {}
     dicomMRI = {}
+    dicomPET = {}
+
     for d, filePath in enumerate(fileLists["Dicom"]):
         logger.info(f'Loading data {d+1}/{len(fileLists["Dicom"])} Dicom files : {os.path.basename(filePath)}.')
         dcm = pydicom.dcmread(filePath)
@@ -167,17 +169,27 @@ def readData(inputPaths, maxDepth=-1) -> Sequence[Union[PatientData, Patient]]:
             if newMRI == 1:
                 dicomMRI[dcm.SeriesInstanceUID] = [dynSeriesIndex, filePath]
 
+        # Dicom PET
+        # Positron Emission Tomography Image Storage: 1.2.840.10008.5.1.4.1.1.128
+        # Enhanced PET Image Storage (if present): 1.2.840.10008.5.1.4.1.1.130
+        elif dcm.SOPClassUID in ("1.2.840.10008.5.1.4.1.1.128", "1.2.840.10008.5.1.4.1.1.130"):
+            # collect PET slices by SeriesInstanceUID (same pattern as CT/MR)
+            newPET = 1
+            dynSeriesIndex = -1
+            for key in dicomPET:
+                if key == dcm.SeriesInstanceUID:
+                    dicomPET[dcm.SeriesInstanceUID].append(filePath)
+                    newPET = 0
+            if newPET == 1:
+                dicomPET[dcm.SeriesInstanceUID] = [dynSeriesIndex, filePath]
+
         # Dicom dose
         elif dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.481.2":
             dose = readDicomDose(filePath)
             dataList.append(dose)
 
-        # Dicom RT plan
-        elif dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.481.5":
-            logging.warning("WARNING: cannot import ", filePath, " because photon RT plan is not implemented yet")
-
-        # Dicom RT Ion plan
-        elif dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.481.8":
+        # Dicom RT Photon and Ion plan
+        elif dcm.SOPClassUID in ("1.2.840.10008.5.1.4.1.1.481.8","1.2.840.10008.5.1.4.1.1.481.5"):
             plan = readDicomPlan(filePath)
             dataList.append(plan)
 
@@ -202,6 +214,13 @@ def readData(inputPaths, maxDepth=-1) -> Sequence[Union[PatientData, Patient]]:
         logger.debug(dicomMRI[key][0])
         mri = readDicomMRI(dicomMRI[key][1:])
         dataList.append(mri)
+
+    # import Dicom PET images
+    for key in dicomPET:
+        logger.debug('in dataLoader readData, for key in dicomPET {}'.format(key))
+        logger.debug(dicomPET[key][0])
+        pet = readDicomPET(dicomPET[key][1:])
+        dataList.append(pet)
 
     # read MHD images
     for d, filePath in enumerate(fileLists["MHD"]):

@@ -1,8 +1,6 @@
 import numpy as np
 import math
-import scipy.ndimage as binary_morphology
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, binary_closing
 import copy
 import logging
 logger = logging.getLogger(__name__)
@@ -61,14 +59,6 @@ def buildStructElem(radius):
                 # generate ellipsoid structuring element
                 if (y ** 2 / ellipsoidRadius[0] ** 2 + x ** 2 / ellipsoidRadius[1] ** 2 + z ** 2 / ellipsoidRadius[2] ** 2 <= 1):
                     struct[i, j, k] = True
-
-    # testEllipsoid = skimage.draw.ellipsoid(5, 1, 7, levelset=False)
-
-    # ## to visualize the used structural element
-    # fig = plt.figure(figsize=(8, 8))
-    # ax = fig.add_subplot(1, 1, 1, projection=Axes3D.name)
-    # ax.voxels(struct)
-    # plt.show()
 
     return struct
 
@@ -140,10 +130,10 @@ def dilateMaskScipy(mask, radius=1.0, struct=None, inPlace=True):
         radius = radius / np.array(mask.spacing)
         struct = buildStructElem(radius)
     if inPlace:
-        mask.imageArray = binary_morphology.binary_dilation(mask.imageArray, structure=struct)
+        mask.imageArray = binary_dilation(mask.imageArray, structure=struct)
     else:
         maskCopy = mask.copy()
-        maskCopy.imageArray = binary_morphology.binary_dilation(mask.imageArray, structure=struct)
+        maskCopy.imageArray = binary_dilation(mask.imageArray, structure=struct)
         return maskCopy
 
 def erodeMask(mask, radius=1.0, struct=None, inPlace=True, tryGPU=True):
@@ -210,10 +200,10 @@ def erodeMaskScipy(mask, radius=1.0, struct=None, inPlace=True):
         radius = radius / np.array(mask.spacing)
         struct = buildStructElem(radius)
     if inPlace:
-        mask.imageArray = binary_morphology.binary_erosion(mask.imageArray, structure=struct)
+        mask.imageArray = binary_erosion(mask.imageArray, structure=struct)
     else:
         maskCopy = mask.copy()
-        maskCopy.imageArray = binary_morphology.binary_erosion(mask.imageArray, structure=struct)
+        maskCopy.imageArray = binary_erosion(mask.imageArray, structure=struct)
         return maskCopy
 
 def openMask(mask, radius=1.0, struct=None, inPlace=True, tryGPU=True):
@@ -261,7 +251,7 @@ def openMask(mask, radius=1.0, struct=None, inPlace=True, tryGPU=True):
 
 def openMaskScipy(mask, radius=1.0, struct=None, inPlace=True):
     """
-    Opens the binary mask image using scipy.binary_morphology with either a 3D ellipsoid structuring element build from radius,
+    Opens the binary mask image using scipy.ndimage with either a 3D ellipsoid structuring element build from radius,
     or a given structural element (struct).
     """
 
@@ -269,10 +259,10 @@ def openMaskScipy(mask, radius=1.0, struct=None, inPlace=True):
         radius = radius / np.array(mask.spacing)
         struct = buildStructElem(radius)
     if inPlace:
-        mask.imageArray = binary_morphology.binary_opening(mask.imageArray, structure=struct)
+        mask.imageArray = binary_opening(mask.imageArray, structure=struct)
     else:
         maskCopy = mask.copy()
-        maskCopy.imageArray = binary_morphology.binary_opening(mask.imageArray, structure=struct)
+        maskCopy.imageArray = binary_opening(mask.imageArray, structure=struct)
         return maskCopy
 
 def closeMask(mask, radius=1.0, struct=None, inPlace=True, tryGPU=True):
@@ -315,7 +305,7 @@ def closeMask(mask, radius=1.0, struct=None, inPlace=True, tryGPU=True):
 
 def closeMaskScipy(mask, radius=1.0, struct=None, inPlace=True):
     """
-    Closes the binary mask image using scipy.ndimage.binary_closing with either a 3D ellipsoid structuring element build from radius,
+    Closes the binary mask image using scipy.ndimage with either a 3D ellipsoid structuring element build from radius,
     or a given structural element (struct).
 
     parameters
@@ -338,8 +328,8 @@ def closeMaskScipy(mask, radius=1.0, struct=None, inPlace=True):
         radius = radius / np.array(mask.spacing)
         struct = buildStructElem(radius)
     if inPlace:
-        mask.imageArray = binary_morphology.binary_closing(mask.imageArray, structure=struct)
+        mask.imageArray = binary_closing(mask.imageArray, structure=struct)
     else:
         maskCopy = mask.copy()
-        maskCopy.imageArray = binary_morphology.binary_closing(mask.imageArray, structure=struct)
+        maskCopy.imageArray = binary_closing(mask.imageArray, structure=struct)
         return maskCopy

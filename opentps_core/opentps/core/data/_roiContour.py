@@ -74,7 +74,10 @@ class ROIContour(PatientData):
         mask: ROIMask
             Binary mask image.
         """
-        minSpatialResolution = 1.
+        if spacing is None:
+            minSpatialResolution = 1.
+        else:
+            minSpatialResolution = min(spacing[:2])
 
         contourOrigin = [0, 0, 0]
         contourSpacing = [0, 0, 0]
@@ -114,8 +117,9 @@ class ROIContour(PatientData):
                            displayColor=self._displayColor)
 
         else:
-            if np.isfinite(zDiff[0]):
-                contourSpacing[2] = zDiff[0]
+            finite_zDiff = zDiff[np.isfinite(zDiff)]
+            if finite_zDiff.size > 0:
+                contourSpacing[2] = finite_zDiff.min()
             else:
                 contourSpacing[2] = minSpatialResolution
 
