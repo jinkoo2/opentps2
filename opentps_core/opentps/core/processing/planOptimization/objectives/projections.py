@@ -38,7 +38,7 @@ class PositiveProj(BaseProj):
     Projection on nonnegative orthant (eval, prox)
     This function is the indicator function :math:`i_S(z)` of the set S which
     is zero if `z` is in the set and infinite otherwise. The set S is defined
-    by \\mathbb{R}^N_+ . Inherits from BaseProj.
+    by R^N_+ . Inherits from BaseProj.
     Code from EPFL LTS2 toolbox.
     """
 
