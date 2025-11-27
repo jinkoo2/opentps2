@@ -270,7 +270,7 @@ class MCsquareCTCalibration(AbstractCTCalibration, PiecewiseHU2Density, MCsquare
 # test
 if __name__ == '__main__':
     import os
-    import opentps.core.processing.doseCalculation.MCsquare as MCsquareModule
+    import opentps.core.processing.doseCalculation.protons.MCsquare as MCsquareModule
 
     MCSquarePath = str(MCsquareModule.__path__[0])
     scannerPath = os.path.join(MCSquarePath, 'scanners', 'UCL_Toshiba')
