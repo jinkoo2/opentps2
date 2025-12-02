@@ -42,6 +42,8 @@ class ProtonPlan(RTPlan):
             Total number of monitor units in the plan.
         numberOfSpots: int
             Number of spots in the plan.
+        rangeShifter: list
+            List of range shifters used in the plan.
     """
     def __init__(self, *args, **kwargs):
         super(ProtonPlan, self).__init__(*args, **kwargs)
@@ -49,7 +51,7 @@ class ProtonPlan(RTPlan):
         self.sopInstanceUID = "1.2.840.10008.5.1.4.1.1.481.8"
         self.radiationType = "PROTON"
         self.modality = "RT Ion Plan IOD"
-
+        self.rangeShifter = [] 
 
     @property
     def layers(self) -> Sequence[PlanProtonLayer]:
@@ -71,7 +73,7 @@ class ProtonPlan(RTPlan):
     @spotMUs.setter
     def spotMUs(self, w: Sequence[float]):
         if len(w) != self.numberOfSpots:
-            raise ValueError(f'Cannot spotMU of size {len(w)} to size {self.numberOfSpots}')
+                        raise ValueError(f'spotMU size mismatch: expected {self.numberOfSpots}, got {len(w)}')
         w = np.array(w)
 
         ind = 0

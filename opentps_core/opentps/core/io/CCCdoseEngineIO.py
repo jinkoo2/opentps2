@@ -86,7 +86,7 @@ def writePlan(plan: PhotonPlan, beamDirectory, batchSize):
             i, j, k = rotatedVersorsPerBeam[beamIndex]
             # for beamlet in beam.beamlets:
             XY = beamlet.XY_mm[0]
-            writeBeamletInFile(f, beamNumber, plan.SAD_mm / 10, XY[0] / 10, XY[1] / 10, planBeamSegments[beamIndex].xBeamletSpacing_mm / 10, planBeamSegments[beamIndex].yBeamletSpacing_mm / 10, i, j, k) ### Parameters for Dose Engine should be in cm
+            writeBeamletInFile(f, beamNumber, plan.beams[beamIndex].SAD_mm / 10, XY[0] / 10, XY[1] / 10, planBeamSegments[beamIndex].xBeamletSpacing_mm / 10, planBeamSegments[beamIndex].yBeamletSpacing_mm / 10, i, j, k) ### Parameters for Dose Engine should be in cm
             beamNumber+=1
 
         f.close()

@@ -33,6 +33,33 @@ class RTPlan(PatientData):
 
     numberOffractionsPlanned: int (default: 1)
         Number of fractions planned.
+
+    seriesInstanceUID: str
+        Series instance UID.
+
+    sopInstanceUID: str
+        SOP instance UID.
+
+    modality: str
+        Modality of the plan.
+
+    radiationType: str
+        Type of radiation (e.g., "PHOTON", "ION").
+
+    scanMode: str (default: "MODULATED")
+        Scan mode of the plan.
+
+    treatmentMachineName: str
+        Name of the treatment machine.
+
+    rtPlanName: str
+        Name of the RT plan.
+
+    originalDicomDataset: list
+        Original DICOM dataset.
+
+    planDesign: ProtonPlanDesign or PhotonPlanDesign
+        Design of the plan.
     """
 
     def __init__(self, name="RTPlan", patient=None):
@@ -44,14 +71,12 @@ class RTPlan(PatientData):
         self.modality = ""
         self.radiationType = ""
         self.scanMode = "MODULATED"
-        self.treatmentMachineName = ""
-        self.rangeShifter = []        
+        self.treatmentMachineName = ""       
         self.rtPlanName = ""
 
         self.originalDicomDataset = []
 
         self.planDesign = None
-        self.SAD_mm = 1000
 
 
         super().__init__(name=name, patient=patient)
