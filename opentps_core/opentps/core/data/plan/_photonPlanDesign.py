@@ -23,7 +23,24 @@ class PhotonPlanDesign(RTPlanDesign):
 
     Attributes
     ----------
-
+    xBeamletSpacing_mm : float
+        Spacing between beamlets in x direction in mm.
+    yBeamletSpacing_mm : float
+        Spacing between beamlets in y direction in mm.
+    isocenterPosition_mm : list
+        Isocenter position in mm.
+    ROI_cropping : bool
+        Whether to crop the ROI.
+    robustness : RobustnessPhoton
+        Robustness settings for photon plans.
+    robustnessEval : RobustnessEvalPhoton
+        Robustness evaluation settings for photon plans.
+    SAD_mm : float
+        Source to axis distance in mm.
+    scoringVoxelSpacing : list
+        Voxel spacing for scoring grid in mm.
+    scoringGridSize : list
+        Grid size for scoring grid.
     """
     def __init__(self):
         super().__init__()
@@ -37,6 +54,7 @@ class PhotonPlanDesign(RTPlanDesign):
 
         self.robustness = RobustnessPhoton()
         self.robustnessEval = RobustnessEvalPhoton()
+        self.SAD_mm = None
 
     @property
     def scoringVoxelSpacing(self) -> Sequence[float]:
@@ -76,6 +94,7 @@ class PhotonPlanDesign(RTPlanDesign):
         plan.radiationType = "Photon"
         plan.scanMode = "MODULATED"
         plan.treatmentMachineName = "Unknown"
+        plan.SAD_mm = self.SAD_mm
         if self.isocenterPosition_mm is None:
             self.isocenterPosition_mm = self.targetMask.centerOfMass
             
