@@ -258,8 +258,8 @@ class ROIContour(PatientData):
 
         Returns
         -------
-        mask: roiMask object
-            The function returns the binary mask of the contou
+        contourMask: roiMask object
+            The function returns the binary mask of the contour
         """
         mask3D = np.zeros(gridSize, dtype=bool)
 

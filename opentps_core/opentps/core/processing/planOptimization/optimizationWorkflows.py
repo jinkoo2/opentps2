@@ -49,7 +49,7 @@ def _defineTargetMaskAndPrescription(planStructure:ProtonPlanDesign):
     from opentps.core.data._roiContour import ROIContour
 
     targetMask = None
-    for objective in planStructure.objectives.fidObjList:
+    for objective in planStructure.objectives.ROIRelatedObjList:
         if objective.metric == objective.Metrics.DMIN:
             roi = objective.roi
 
@@ -121,7 +121,7 @@ def _optimizePlan(plan:RTPlan, planStructure:ProtonPlanDesign):
 
     beamletMatrix = planStructure.beamlets.toSparseMatrix()
 
-    objectiveFunction = DoseFidelity(planStructure.objectives.fidObjList, beamletMatrix, xSquare=False, scenariosBL=None, returnWorstCase=False)
+    objectiveFunction = DoseFidelity(planStructure.objectives.ROIRelatedObjList, beamletMatrix, xSquared=False, scenariosBL=None, returnWorstCase=False)
     solver = IntensityModulationOptimizer(optimizationSettings.imptSolver, plan, functions=[objectiveFunction], maxit=optimizationSettings.imptMaxIter)
 
     solver.xSquared = False

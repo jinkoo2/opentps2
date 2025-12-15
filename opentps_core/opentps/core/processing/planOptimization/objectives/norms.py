@@ -46,7 +46,7 @@ class NormL1(Norm):
         # Constructor takes keyword-only parameters to prevent user errors.
         super(NormL1, self).__init__(**kwargs)
 
-    def _eval(self, x):
+    def _eval(self, x, **kwargs):
         return self.lambda_ * np.sum(np.abs(x))
 
     def _prox(self, x, T):
@@ -65,11 +65,11 @@ class NormL2(Norm):
         # Constructor takes keyword-only parameters to prevent user errors.
         super(NormL2, self).__init__(**kwargs)
 
-    def _eval(self, x):
+    def _eval(self, x, **kwargs):
         # euclidean norm
         return self.lambda_ * np.sqrt(np.sum(x ** 2))
 
-    def _grad(self, x):
+    def _grad(self, x, **kwargs):
         return self.lambda_ * np.divide(x, self._eval(x))
 
     def _prox(self, x, T):
@@ -99,12 +99,12 @@ class NormL21(Norm):
         self.groups_ = [self.groupsIds_ == u for u in np.unique(self.groupsIds_) if u >= 0]
         self.scaleReg = scaleReg
         self.oldRegularisation = oldRegularisation
-        targetMask = self.plan.objectives.fidObjList[0].maskVec
+        targetMask = self.plan.objectives.ROIRelatedObjList[0].maskVec
         targetIndices = np.array(targetMask).nonzero()[0]
         self.BLTarget = plan.beamlets.toSparseMatrix()[targetIndices, :]
         self.iter = 0
 
-    def _eval(self, x):
+    def _eval(self, x, **kwargs):
         if self.iter % 10 == 0:
             self.groupRegVector_ = self._get_reg_vector(x, self.lambda_)
             groupRegVector_ = self.groupRegVector_

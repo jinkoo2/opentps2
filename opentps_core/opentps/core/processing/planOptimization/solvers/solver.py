@@ -58,6 +58,7 @@ class ConvexSolver(object):
         self.params['atol'] = self.params.get('atol', None)
         self.params['ftol'] = self.params.get('ftol', 1e-3)
 
+
     def solve(self, functions, x0):
         """
         Solve an planOptimization problem whose objective function is the sum of some

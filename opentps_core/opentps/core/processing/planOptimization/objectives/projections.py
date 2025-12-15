@@ -29,7 +29,7 @@ class BaseProj(BaseFunc):
         self.epsilon = epsilon
         self.method = method
 
-    def _eval(self, x):
+    def _eval(self, x, **kwargs):
         return 0
 
 

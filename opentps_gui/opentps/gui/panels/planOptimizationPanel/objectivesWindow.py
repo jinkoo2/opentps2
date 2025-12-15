@@ -9,7 +9,9 @@ from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QMainWindow, QAction
 
 from opentps.core.data.images import ROIMask
 from opentps.core.data.plan import ProtonPlanDesign,Robustness
-from opentps.core.data.plan import FidObjective, ObjectivesList
+from opentps.core.data.plan import ObjectivesList
+from opentps.core.processing.planOptimization.objectives.baseFunction import BaseFunc
+from opentps.core.processing.planOptimization.objectives import dosimetricObjectives as dosObj
 from opentps.core.data import Patient
 from opentps.core import Event
 
@@ -57,7 +59,7 @@ class ObjectivesWindow(QMainWindow):
     def planDesign(self, pd: ProtonPlanDesign):
         self._roitTable.planDesign = pd
 
-    def getObjectiveTerms(self) -> Sequence[FidObjective]:
+    def getObjectiveTerms(self) -> Sequence[BaseFunc]:
         return self._roitTable.getObjectiveTerms()
 
     def _handleOpen(self):
@@ -69,11 +71,11 @@ class ObjectivesWindow(QMainWindow):
         fname, _ = QFileDialog.getSaveFileName(self, 'Save file','c:\\', "Objective template")
         self._saveTemplate(self._roitTable.getTemplate(), fname)
 
-    def _saveTemplate(self, objectives:Sequence[FidObjective], filePath:str):
+    def _saveTemplate(self, objectives:Sequence[BaseFunc], filePath:str):
         with open(filePath, 'wb') as f:
             pickle.dump(objectives, f)
 
-    def _loadTemplate(self, filePath:str) -> Sequence[FidObjective]:
+    def _loadTemplate(self, filePath:str) -> Sequence[BaseFunc]:
         with open(filePath, 'rb') as f:
             res = pickle.load(f)
 
@@ -146,7 +148,7 @@ class ROITable(QTableWidget):
         self.updateTable()
         self._planDesign = pd
         self.robustnessEnabled = self._planDesign.robustness.selectionStrategy != Robustness.Strategies.DISABLED
-        self.applyTemplate(self._planDesign.objectives.fidObjList)
+        self.applyTemplate(self._planDesign.objectives.objectivesList)
 
     @property
     def patient(self) -> Optional[Patient]:
@@ -249,20 +251,20 @@ class ROITable(QTableWidget):
 
             i += 1
 
-    def applyTemplate(self, template:Sequence[FidObjective]):
+    def applyTemplate(self, template:Sequence[BaseFunc]):
         roiNames = [roi.name for roi in self._rois]
 
         for obj in template:
             roiInd = roiNames.index(obj.roi.name)
 
             if obj.roi.name in roiNames:
-                if obj.metric == FidObjective.Metrics.DMIN:
+                if obj.metric == "DMin":
                     self.item(roiInd, self._weightMinCol).setText(str(obj.weight))
                     self.item(roiInd, self._dMinCol).setText(str(obj.limitValue))
-                elif obj.metric == FidObjective.Metrics.DMAX:
+                elif obj.metric == "DMax":
                     self.item(roiInd, self._weightMaxCol).setText(str(obj.weight))
                     self.item(roiInd, self._dMaxCol).setText(str(obj.limitValue))
-                elif obj.metric == FidObjective.Metrics.DMEAN:
+                elif obj.metric == "DMaxMean":
                     self.item(roiInd, self._weightMeanCol).setText(str(obj.weight))
                     self.item(roiInd, self._dMeanCol).setText(str(obj.limitValue))
                 else:
@@ -276,7 +278,7 @@ class ROITable(QTableWidget):
                 self.setItem(roiInd, self._weightMeanCol, QTableWidgetItem(str(self.DEFAULT_WEIGHT)))
                 self.setItem(roiInd, self._dMeanCol, QTableWidgetItem(str(self.DMEAN_THRESH)))
 
-    def getTemplate(self) -> Sequence[FidObjective]:
+    def getTemplate(self) -> Sequence[BaseFunc]:
         objctivesToSave = []
         for objective in self.getObjectiveTerms():
             roi = objective.roi
@@ -288,7 +290,7 @@ class ROITable(QTableWidget):
 
         return objctivesToSave
 
-    def getObjectiveTerms(self) -> Sequence[FidObjective]:
+    def getObjectiveTerms(self) -> Sequence[BaseFunc]:
         terms = []
 
         for i, roi in enumerate(self._rois):
@@ -310,10 +312,8 @@ class ROITable(QTableWidget):
             if self.item(i, self._dMinCol).text() != 'None' :
                 dmin = float(self.item(i, self._dMinCol).text())
                 if dmin > self.DMIN_THRESH:
-                    obj = FidObjective(roi=roi)
-                    obj.metric = obj.Metrics.DMIN
+                    obj = dosObj.DMin(roi=roi,limitValue=dmin)
                     obj.weight = float(self.item(i, self._weightMinCol).text())
-                    obj.limitValue = dmin
                     obj.robust = robust
                     obj.isTarget = isTarget
                     obj.prescription = prescription
@@ -322,10 +322,8 @@ class ROITable(QTableWidget):
             if self.item(i, self._dMaxCol).text() != 'None' :
                 dmax = float(self.item(i, self._dMaxCol).text())
                 if dmax < self.DMAX_THRESH:
-                    obj = FidObjective(roi=roi)
-                    obj.metric = obj.Metrics.DMAX
+                    obj = dosObj.DMax(roi=roi,limitValue= dmax)
                     obj.weight = float(self.item(i, self._weightMaxCol).text())
-                    obj.limitValue = dmax
                     obj.robust = robust
                     obj.isTarget = isTarget
                     obj.prescription = prescription
@@ -334,10 +332,8 @@ class ROITable(QTableWidget):
             if self.item(i, self._dMeanCol).text() != 'None' :
                 dmean = float(self.item(i, self._dMeanCol).text())
                 if dmean < self.DMEAN_THRESH:
-                    obj = FidObjective(roi=roi)
-                    obj.metric = obj.Metrics.DMEAN
+                    obj = dosObj.DMaxMean(roi=roi,limitValue=dmean)
                     obj.weight = float(self.item(i, self._weightMeanCol).text())
-                    obj.limitValue = dmean
                     obj.robust = robust
                     obj.isTarget = isTarget
                     obj.prescription = prescription
