@@ -43,7 +43,7 @@ class doseCalculationWindow(QDialog):
         if self._beamlets:
             if self._radiationType == "PROTON":
                 self._doseComputationPanel._doseSpacingLabel.show()
-                self._doseComputationPanel._numProtons.setValue(5e4)
+                self._doseComputationPanel._numProtons.setValue(int(5e4))
             self._doseComputationPanel._cropBLBox.show()
             if not(self._doseComputationPanel._cropBLBox.isChecked()):
                 self._contours = None
@@ -263,7 +263,7 @@ class PlanOptiPanel(QWidget):
         contours = []
         targets = []
         prescription = []
-        for obj in self.selectedPlanStructure.objectives.fidObjList:
+        for obj in self.selectedPlanStructure.objectives.objectivesList:
             # remove duplicate
             if obj.roiName not in objROINames:
                 objROINames.append(obj.roiName)
@@ -294,10 +294,10 @@ class PlanOptiPanel(QWidget):
     def _setObjectives(self):
         objectiveList = ObjectivesList()
         for obj in self._objectivesWidget.objectives:
-            objectiveList.append(obj)
+            objectiveList.objectivesList.append(obj)
 
         self.selectedPlanStructure.objectives = objectiveList
-        for obj in self.selectedPlanStructure.objectives.fidObjList:
+        for obj in self.selectedPlanStructure.objectives.objectivesList:
             if obj.robust:
                 continue
 
@@ -442,11 +442,11 @@ class ObjectivesWidget(QWidget):
             objStr += " x "
             objStr += objective.roiName
 
-            if objective.metric == objective.Metrics.DMIN:
+            if objective.metric == "DMin":
                 objStr += ">"
-            if objective.metric == objective.Metrics.DMAX:
+            if objective.metric == "DMax":
                 objStr += "<"
-            elif objective.metric == objective.Metrics.DMEAN:
+            elif objective.metric == "DMaxMean":
                 objStr += "="
             objStr += str(objective.limitValue)
             objStr += ' Gy'

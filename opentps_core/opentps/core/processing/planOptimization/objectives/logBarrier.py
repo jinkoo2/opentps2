@@ -46,12 +46,12 @@ class LogBarrier(BaseFunc):
                 res[beam] += np.sum(x[beam][layer])
         return np.log(np.where(res > 0., res, 1e-300))
 
-    def _eval(self, x):
+    def _eval(self, x, **kwargs):
         beamLayerStruct = self.struct.getBeamStructure(x)
         res = - self.beta * np.sum(self.logCols(beamLayerStruct))
         return res
 
-    def _grad(self, x):
+    def _grad(self, x, **kwargs):
         beamLayerStruct = self.struct.getBeamStructure(x)
         res = -self.beta * self.dlogCols(beamLayerStruct)
         return res

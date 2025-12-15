@@ -15,6 +15,8 @@ from opentps.core.processing.imageProcessing import resampler3D
 from opentps.core.data._patientData import PatientData
 from opentps.core.data.plan import ObjectivesList
 from opentps.core.processing.planEvaluation.robustnessEvaluation import RobustnessEval
+from opentps.core.processing.planOptimization.objectives.baseFunction import BaseFunc
+from opentps.core.processing.planOptimization.objectives.dosimetricObjectives._dosimetricObjective import DosimetricObjective
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +118,7 @@ class RTPlanDesign(PatientData):
         targetMask = None
         if isinstance(target,Iterable):
             Targets_to_merge = []
-            for target,p in list(zip(target,targetPrescription)):                
+            for target,p in list(zip(target,targetPrescription)):
                 if isinstance(target, ROIContour):
                         mask = target.getBinaryMask(origin=self.ct.origin, gridSize=self.ct.gridSize,
                                                 spacing=self.ct.spacing)
@@ -205,8 +207,9 @@ class RTPlanDesign(PatientData):
         if adapt_gridSize_to_new_spacing:
             self.scoringGridSize = np.floor(self.ct.gridSize*self.ct.spacing/self.scoringVoxelSpacing).astype(int)
 
-        for objective in self.objectives.fidObjList:
-            objective._updateMaskVec(spacing=self.scoringVoxelSpacing, gridSize=self.scoringGridSize, origin=self.scoringOrigin)
+        for objective in self.objectives.objectivesList:
+            if isinstance(objective, DosimetricObjective):
+                objective._updateMaskVec(spacing=self.scoringVoxelSpacing, gridSize=self.scoringGridSize, origin=self.scoringOrigin)
 
     def mergeBinaryMask(self, roi: Sequence[Union[ROIContour, ROIMask]], ct:CTImage):
         UnionOfTargetsMasks = ROIMask(name='UnionOfTargetsMasks', origin=ct.origin, spacing=ct.spacing, patient=self.patient)
