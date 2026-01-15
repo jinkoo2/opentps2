@@ -1,6 +1,6 @@
 # opentps-gui
 
-GUI of opentps, a Python application for treatment planning in proton therapy, based on the MCsquare Monte Carlo dose engine.
+GUI library of opentps, a Python application for treatment planning in radiation therapy, based on the MCsquare Monte Carlo dose engine and a CCC dose engine for photons.
 
 ## Installation (Linux):
 
