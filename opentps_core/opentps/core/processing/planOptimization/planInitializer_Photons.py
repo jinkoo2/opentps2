@@ -106,12 +106,16 @@ class PhotonPlanInitializer:
         logger.info('Dilation done.')
         self._beamInitializer.targetMask = roiDilated
 
-        self.SAD_mm = self.plan.SAD_mm
+        if self.plan.SAD_mm is not None:
+            self.SAD_mm = self.plan.SAD_mm
 
         for beam in self.plan:
             beam.removeBeamSegment(beam.beamSegments)
             if beam.beamType == 'Static':
                 beam.createBeamSegment()                
                 self._beamInitializer.beam = beam[0]
-                self._beamInitializer.SAD_mm = self.SAD_mm
+                if self.SAD_mm is not None:
+                    self._beamInitializer.SAD_mm = self.SAD_mm
+                else:
+                    self._beamInitializer.SAD_mm = beam.SAD_mm
                 self._beamInitializer.initializeBeam()

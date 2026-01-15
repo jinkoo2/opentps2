@@ -1,4 +1,3 @@
-
 __all__ = ['DVH']
 
 from typing import Union, Optional
@@ -10,6 +9,8 @@ from opentps.core.data.images._roiMask import ROIMask
 from opentps.core.data._roiContour import ROIContour
 from opentps.core.processing.imageProcessing import resampler3D
 from opentps.core import Event
+import logging
+logger = logging.getLogger(__name__)
 
 
 class DVH:
@@ -191,7 +192,7 @@ class DVH:
 
     def computeDx(self, percentile:float, return_percentage:bool=False) -> float:
         """
-        Compute Dx metric (e.g. D95% if x=95, dose that is reveived in at least 95% of the volume)
+        Compute Dx metric (e.g. D95% if x=95, dose that is received in at least 95% of the volume)
 
         Parameters
         ----------
@@ -206,17 +207,21 @@ class DVH:
         Dx: float
           Dose received in at least x % of the volume contour
 
-        """
+                        """
+        if self._volume is None or len(self._volume) < 2:
+            logger.warning("DVH volume array is too small to compute Dx (length < 2). Returning 0.0.")
+            return 0.0
         index = np.searchsorted(-self._volume, -percentile)
-        if (index > len(self._volume) - 2): index = len(self._volume) - 2
-        volume = self._volume[index]
-        volume2 = self._volume[index + 1]
+        if index <= 0: index = 1
+        if index > len(self._volume) - 1: index = len(self._volume) - 1
+        volume = self._volume[index - 1]
+        volume2 = self._volume[index]
         if (volume == volume2):
             Dx = self._dose[index]
         else:
             w2 = (volume - percentile) / (volume - volume2)
             w1 = (percentile - volume2) / (volume - volume2)
-            Dx = w1 * self._dose[index] + w2 * self._dose[index + 1]
+            Dx = w1 * self._dose[index - 1] + w2 * self._dose[index]
             if Dx < 0: Dx = 0
 
         if return_percentage:
@@ -242,16 +247,20 @@ class DVH:
           Dose received
 
         """
+        if self._volume_absolute is None or len(self._volume_absolute) < 2:
+            logger.warning("DVH volume array is too small to compute Dcc (length < 2). Returning 0.0.")
+            return 0.0
         index = np.searchsorted(-self._volume_absolute, -x)
-        if (index > len(self._volume) - 2): index = len(self._volume) - 2
-        volume = self._volume_absolute[index]
-        volume2 = self._volume_absolute[index + 1]
+        if index <= 0: index = 1
+        if index > len(self._volume_absolute) - 1: index = len(self._volume_absolute) - 1
+        volume = self._volume_absolute[index - 1]
+        volume2 = self._volume_absolute[index]
         if (volume == volume2):
             Dcc = self._dose[index]
         else:
             w2 = (volume - x) / (volume - volume2)
             w1 = (x - volume2) / (volume - volume2)
-            Dcc = w1 * self._dose[index] + w2 * self._dose[index + 1]
+            Dcc = w1 * self._dose[index - 1] + w2 * self._dose[index]
             if Dcc < 0: Dcc = 0
 
         if return_percentage:
@@ -364,52 +373,73 @@ class DVH:
             assert OA <= IA  # cannot do better than the step function
             return OA ** 2 / (IA * AA)
 
-        raise NotImplementedError(f'Homogenity index method {method} not implemented.')
+        else:
+            raise NotImplementedError(f'Homogenity index method {method} not implemented.')
 
-    def conformityIndex(self, dose, Contour, body_contour, method="Paddick"):
+
+
+    def conformityIndex(self, body_contour, method="Paddick", percentile:float=0.95) -> float:
+
         """
         Compute the conformity index describing how tightly the prescription dose is conforming to the target.
+        If the body contour does not overlap with the target, a warning is logged and the union of the body contour and target is used for the body mask.
+        This combined mask is used when computing the prescription isodose volume (V_RI). The target volume (V_T) is always computed from the target mask alone.
+        The body contour is used to compute the volume of the prescription isodose because the dose outside the body is typically not relevant (except when there's no overlap, in which case the union is used).
+        For phantom studies, the body can be the phantom contour.
 
         Parameters
         ----------
-
-        dose: RTdose
-          The RTdose object
-
-        Contour: ROIcontour
-          ROIcontour object of the target
-
         body_contour: ROIcontour
-          ROIcontour object of delineating the contour of the body of the patient
+          ROIcontour object of delineating the contour of the body of the patient. Used to compute the volume of the prescription isodose.
 
-        method: str
+        method: str (default="Paddick")
           Method to use for computing the conformity index
           if method=='RTOG': use the Radiation therapy oncology group guidelines index (https://doi.org/10.1016/0360-3016(93)90548-A)
           if method=='Paddick': use Paddick index, improved RTOG by taking into account the location and shape of the prescription
           isodose with respect to the target volume (https://doi.org/10.3171/sup.2006.105.7.194)
 
-        Return
+        percentile: float
+          Percentile of the prescription isodose to consider (default is 0.95, i.e. 95% of the prescription dose)
+          This is the reference isodose level defined by ICRU.
+
+        Returns
         ------
-        out: float
+        float
           Conformity index
 
         """
         assert self._prescription is not None
-        percentile = 0.95  # ICRU reference isodose
-        if method == 'RTOG':  # Radiation therapy oncology group guidelines (1993)
-            # prescription isodose volume
-            isodose_prescription_volume = np.sum(dose.Image[body_contour.Mask == 1] >= percentile * self._prescription)
-            contour_volume = np.sum(Contour.Mask)
-            return isodose_prescription_volume / contour_volume
 
+        body_mask = body_contour.getBinaryMask(self._doseImage.origin, self._doseImage.gridSize, self._doseImage.spacing)
+        # resample body contour on dose grid if needed
+        if not (self._doseImage.hasSameGrid(body_mask)):
+            body_mask = resampler3D.resampleImage3DOnImage3D(body_mask, self._doseImage, inPlace=False, fillValue=0.)
+            body_mask.patient = None
+        body_mask = body_mask.imageArray.astype(bool)
+        # check overlap between body contour and target
+        if not np.any(np.logical_and(body_mask, self._roiMask.imageArray)):
+            logger.warning("No overlap between body contour and target. Union of the two is taken for conformity index computation.")
+            body_mask = np.logical_or(body_mask, self._roiMask.imageArray)
+
+        # prescription isodose volume
+        isodose_prescription_volume = np.sum(
+            self._doseImage.imageArray[body_mask] >= percentile
+            * self._prescription) #V_RI
+
+        target_volume = np.sum(self._roiMask.imageArray) #V_T
+
+        if method == 'RTOG': # Radiation therapy oncology group guidelines (1993)
+            if isodose_prescription_volume == 0 or target_volume == 0:
+                logger.warning("Conformity index RTOG: division by zero, returning 0.0")
+                return 0.0
+            return isodose_prescription_volume / target_volume
         if method == 'Paddick':
-            # prescription isodose volume
-            isodose_prescription_volume = np.sum(dose.Image[body_contour.Mask == 1] >= percentile * self._prescription)
-            # Target volume
-            contour_volume = np.sum(Contour.Mask)
-            # target volume covered by the prescription isodose volume
-            contour_volume_covered_by_prescription = np.sum(
-                dose.Image[Contour.Mask == 1] >= percentile * self._prescription)
-            return contour_volume_covered_by_prescription ** 2 / (isodose_prescription_volume * contour_volume)
+            target_volume_covered_by_prescription = np.sum(
+                self._doseImage.imageArray[self._roiMask.imageArray] >= percentile * self._prescription) #V_T,RI
+            if isodose_prescription_volume == 0 or target_volume == 0:
+                logger.warning("Conformity index Paddick: division by zero, returning 0.0")
+                return 0.0
+            return target_volume_covered_by_prescription ** 2 / (isodose_prescription_volume * target_volume)
 
-        raise NotImplementedError(f'Conformity index method {method} not implemented.')
+        else:
+            raise NotImplementedError(f'Conformity index method {method} not implemented.')

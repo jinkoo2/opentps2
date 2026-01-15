@@ -14,10 +14,18 @@ class BaseFunc(object):
     function
     """
 
-    def __init__(self, **kwargs):
-        pass
+    def __init__(self,robust=False,weight = 1,**kwargs):
+        self.robust = robust
+        if weight < 0:
+            raise ValueError("weight must be non-negative (currently set to {} for {} objective)".format(weight,self.__class__.__name__))
+        self.weight = weight
+        self.fValue = 0.0
+        self.gradVector = []
+        self.MKL_acceleration = kwargs.get('MKL_acceleration', False)
+        self.GPU_acceleration = kwargs.get('GPU_acceleration', False)
+        self.xSquared = kwargs.get('xSquared', True)
 
-    def eval(self, x):
+    def eval(self, x, **kwargs):
         """
         Function evaluation
 
@@ -31,12 +39,12 @@ class BaseFunc(object):
         sol : float
             Function value at x
         """
-        sol = self._eval(np.asarray(x))
+        sol = self._eval(x,**kwargs)
         name = self.__class__.__name__
         logger.debug('    {} evaluation: {}'.format(name, sol))
         return sol
 
-    def _eval(self, x):
+    def _eval(self, x, **kwargs):
         raise NotImplementedError("Class user should define this prox method.")
 
     def prox(self, x, T):
@@ -55,12 +63,12 @@ class BaseFunc(object):
         sol : array_like
             Proximal operator value at x
         """
-        return self._prox(np.asarray(x), T)
+        return self._prox(x, T)
 
     def _prox(self, x, T):
         raise NotImplementedError("Class user should define this prox method.")
 
-    def grad(self, x):
+    def grad(self, x, **kwargs):
         """
         Function gradient
 
@@ -74,9 +82,9 @@ class BaseFunc(object):
         sol : array_like
             Gradient value at x
         """
-        return self._grad(np.asarray(x))
+        return self._grad(x, **kwargs)
 
-    def _grad(self, x):
+    def _grad(self, x, **kwargs):
         raise NotImplementedError("Class user should define this prox method.")
 
     def cap(self, x):
@@ -118,11 +126,11 @@ class Dummy(BaseFunc):
         # Constructor takes keyword-only parameters to prevent user errors.
         super(Dummy, self).__init__(**kwargs)
 
-    def _eval(self, x):
+    def _eval(self, x, **kwargs):
         return 0
 
     def _prox(self, x, T):
         return x
 
-    def _grad(self, x):
+    def _grad(self, x, **kwargs):
         return np.zeros_like(x)

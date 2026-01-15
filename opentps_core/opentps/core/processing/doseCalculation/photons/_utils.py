@@ -9,8 +9,7 @@ from scipy.sparse import csc_matrix
 from opentps.core.data.images import DoseImage
 import ctypes
 import os
-import psutil
-import os
+import platform
 from opentps.core.data.plan import PhotonPlan
 
 
@@ -199,7 +198,10 @@ def shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAng
     sp.csc_matrix
         Sparse matrix of the shifted beamlets
     """   
-    lib = ctypes.cdll.LoadLibrary(os.path.join(os.path.dirname(os.path.abspath(__file__)), "shiftBeamlets.so"))
+    if platform.system() == "Linux":
+        lib = ctypes.cdll.LoadLibrary(os.path.join(os.path.dirname(os.path.abspath(__file__)), "shiftBeamlets.so"))
+    elif platform.system() == "Windows":
+        lib = ctypes.cdll.LoadLibrary(os.path.join(os.path.dirname(os.path.abspath(__file__)), "shiftBeamlets.dll"))
     
     # Define the argument types and return types for the C++ function
     lib.shiftBeamlets.argtypes = [
@@ -214,7 +216,7 @@ def shiftBeamlets_cpp(sparseBeamlets, gridSize,  scenarioShift_voxel, beamletAng
         ctypes.c_int,
         ctypes.c_int
     ]
-    numThreads = psutil.cpu_count()
+    numThreads = os.cpu_count()
     scenarioShift_voxel[2]*=-1 ### To have the setup error in LPS. Check because some signs problem
     scenarioShift_voxel[1]*=-1 ### To have the setup error in LPS. Check because some signs problem
     gridSize = np.array(gridSize, dtype=np.int32)

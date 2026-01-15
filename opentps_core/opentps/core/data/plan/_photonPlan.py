@@ -12,17 +12,45 @@ logger = logging.getLogger(__name__)
 
 class PhotonPlan(RTPlan):
     """
-            Class for storing the data of a single PhotonPlan. Inherits from RTPlan.
+    Class for storing the data of a single PhotonPlan. Inherits from RTPlan.
 
-            Attributes
-            ----------
-
+    Attributes
+    ----------
+    SAD_mm : float
+        Source to axis distance in mm.
+    numberOfBeamlets : int
+        Total number of beamlets in the plan.
+    numberOfSegments : int
+        Total number of segments in the plan.
+    beamletsAngle_rad : list
+        List of beamlet angles in radians.
+    beamSegments : list
+        List of all beam segments in the plan.
+    beamlets : list
+        List of all beamlets in the plan.
+    beamletMUs : np.ndarray
+        Array of beamlet monitor units.
+    xBeamletSpacing_mm : float
+        Spacing between beamlets in x direction in mm.
+    yBeamletSpacing_mm : float
+        Spacing between beamlets in y direction in mm.
+    beamletsXY : np.ndarray
+        Array of beamlet x,y coordinates.
+    cumulativeMeterset : float
+        Total cumulative meterset of the plan.
+    beamCumulativeMetersetWeight : np.ndarray
+        Array of cumulative meterset weights for each beam.
+    beamSegmentCumulativeMetersetWeight : np.ndarray
+        Array of cumulative meterset weights for each beam segment.
+    numberOfFractionsPlanned : int
+        Number of fractions planned for the plan.
     """
     def __init__(self, name="PhotonPlan", patient=None):
         super().__init__(name=name, patient=patient)
         self.sopInstanceUID = "1.2.840.10008.5.1.4.1.1.481.5"
         self.radiationType = "PHOTON"
         self.modality = "RT Plan IOD"
+        self.SAD_mm = None
     
     @property
     def numberOfBeamlets(self) -> int:

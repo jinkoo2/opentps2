@@ -1,90 +1,93 @@
-# Official language image. Look for the different tagged releases at:
-# https://hub.docker.com/r/library/python/tags/
-image: python:latest
+# .gitlab-ci.yml for OpenTPS
+# The line pip install -e . --no-deps updates the docker image with any change made to the code. It is repeated
+# throughout the file because it is faster than relying on artifacts between jobs.
+# It could be even enhanced by caching the pip cache folder.
+# The version_check should also be replaced by a rebuild of the docker image if any dependency changes.
+
+# If any change occurs in the pyproject.toml, poetry.lock files or the Dockerfile, the image needs to be rebuilt and
+# pushed to the registry.
 
 stages:
-  - build
+  - version_check
   - test_core
   - test_gui
   - unittest_core
-  - doc
+  - docs
 
+variables:
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
+  IMAGE_TAG: latest
 
-before_script:
-  - python --version  # For debugging
-  - pip install virtualenv
-# install poetry in separate venv
-  - export POETRY_HOME=/opt/poetry
-  - virtualenv $POETRY_HOME
-  - source $POETRY_HOME/bin/activate
-  - $POETRY_HOME/bin/pip install poetry==1.2.0
-  - $POETRY_HOME/bin/poetry --version
-# create environment for project
-  - virtualenv venv
-  #- virtualenv --clear venv
-  - source venv/bin/activate
-  #- pip3 install poetry
-  - $POETRY_HOME/bin/poetry --version
-  - cd $CI_PROJECT_DIR/opentps_core
-  - $POETRY_HOME/bin/poetry install --no-root # install dependencies
-  - apt-get update && apt-get install -y libgl1 # For PyQt5
-  #- apt-get install -y '^libxcb.*-dev' # For PyQt5
-  - cd $CI_PROJECT_DIR/opentps_gui
-  - $POETRY_HOME/bin/poetry install --no-root # install dependencies
+default:
+    image: $IMAGE_NAME:$IMAGE_TAG
 
-build:
-  image: python:3.11
-  stage: build
+version_check:
+  stage: version_check
+  before_script:
+    - pip install -e . --no-deps
   script:
-    - export PYTHONPATH="$PWD/opentps_core:$PWD/opentps_gui"
-    - cd $CI_PROJECT_DIR/opentps_core
-    - $POETRY_HOME/bin/poetry build
-    - cd $CI_PROJECT_DIR/opentps_gui
-    - $POETRY_HOME/bin/poetry build
-    #- pip install dist/*
-  artifacts:
-    paths:
-      - dist/*.whl
+    - pip install toml
+    - python CI/check_version.py  # This script compare installed versions to those in your .toml file
+  rules:
+    - changes:
+        - Dockerfile
+        - "**/*.toml"
+        - "**/*.lock"
+        - .gitlab-ci.yml
+      when: always
 
-# TODO: Should tests be executed on the built application
 test_core:
-  image: python:3.11
   stage: test_core
+  needs:
+    - job: version_check
+      optional: true
+  before_script:
+    - pip install -e . --no-deps
   script:
-    - pip show SimpleITK
-    - cd $CI_PROJECT_DIR/
-    - export PYTHONPATH="$CI_PROJECT_DIR/opentps_core:$CI_PROJECT_DIR/opentps_gui"
-    - python3 CI/tests.py
+    - python CI/tests.py
 
 test_gui:
-  image: python:3.11
   stage: test_gui
+  needs:
+    - job: version_check
+      optional: true
+  before_script:
+    - pip install -e . --no-deps
   script:
     - pip show SimpleITK
     - pip show vtk
-    - cd $CI_PROJECT_DIR/
-    - export PYTHONPATH="$CI_PROJECT_DIR/opentps_core:$CI_PROJECT_DIR/opentps_gui"
-    - export QT_QPA_PLATFORM=offscreen
-    - python -m unittest discover opentps_gui/opentps/gui
+    - export QT_DEBUG_PLUGINS=1
+    - export QT_QPA_PLATFORM="offscreen"
+    - python -c "from PyQt5 import QtWidgets; app = QtWidgets.QApplication([]); print('PyQt initialization successful')"
+    - |
+      set +e
+      python -m unittest discover opentps_gui/opentps/gui
+      code=$?
+      set -e
+      [ $code -eq 0 ] || [ $code -eq 5 ]
 
-docs:
-  image: python:3.11
-  stage: doc
-  script:
-    - pip install sphinx sphinx-rtd-theme
-    #- export PYTHONPATH="$CI_PROJECT_DIR"
-    #- python3 docs/tools/version_utils.py
-    #- cd docs
-    #- make html
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
-# Must be run after all script because we create __init__.py for unittest. The absence of this file is essential and tested in test_core.
 unittest_core:
   stage: unittest_core
-  image: python:3.11
+  needs:
+    - job: version_check
+      optional: true
+  before_script:
+    - pip install -e . --no-deps
   script:
-    - cd $CI_PROJECT_DIR/opentps_core/
-    - touch opentps/__init__.py # because unittests does not work on namespace package
-    - touch __init__.py # because unittests does not work on namespace package
-    - python3 -m unittest discover -s ./opentps -p '[!example]*.py' -v
+    - cd $CI_PROJECT_DIR/opentps_core
+    - touch opentps/__init__.py __init__.py
+    - python -m unittest discover -s ./opentps -p '*.py' -v
+
+docs:
+  stage: docs
+  needs:
+    - job: version_check
+      optional: true
+  before_script:
+    - pip install -e . --no-deps
+  script:
+    - pip install sphinx sphinx-rtd-theme
+    - cd docs
+    - make html
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

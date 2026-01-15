@@ -2,7 +2,7 @@ import time
 import json
 import logging
 import scipy.optimize
-from scipy.optimize import Bounds
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +84,8 @@ class ScipyOpt:
             cost.append(func[0].eval(Xi))
             self.Nfeval += 1
 
-        startTime = time.time()
 
+        startTime = time.time()
         cost = [func[0].eval(x0)]
         if 'GRAD' not in func[0].cap(x0):
             logger.error('{} requires the function to implement grad().'.format(self.__class__.__name__))
@@ -101,12 +101,11 @@ class ScipyOpt:
 
 
         options = {key: self.params[key] for key in self.method_options.get(self.meth, []) if key in self.params}
-
+        bounds = scipy.optimize.Bounds(bounds[0], bounds[1]) if bounds is not None else None
         res = scipy.optimize.minimize(func[0].eval, x0, method=self.meth, jac=func[0].grad, callback=callbackF,
                                       options=options, bounds=bounds)
         result = {'sol': res.x.tolist(), 'crit': res.message, 'niter': res.nit if hasattr(res, "nit") else 0, 'time': time.time() - startTime,
-                  'objective': cost} 
-
+                  'objective': np.array(cost).tolist()}
         if self.params['output'] is not None:
             with open(self.params['output'],'w') as f:
                 json.dump(result, f)

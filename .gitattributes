@@ -1,0 +1,9 @@
+# Unix-style line endings for shell scripts
+*.sh eol=lf
+opentps_core/opentps/core/processing/doseCalculation/protons/MCsquare/MCsquare eol=lf
+opentps_core/opentps/core/processing/doseCalculation/protons/MCsquare/MCsquare_opti eol=lf
+# Windows-style line endings for batch files
+*.bat eol=crlf
+# Text files should have consistent line endings
+*.txt eol=lf
+*.dat eol=lf

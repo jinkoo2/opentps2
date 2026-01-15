@@ -1,4 +1,3 @@
-from numpy import matlib as mb
 import numpy as np
 from scipy.special import logsumexp
 
@@ -28,7 +27,7 @@ class EnergySeq(BaseFunc):
         self.factor = factor
         super(EnergySeq, self).__init__(**kwargs)
 
-    def _eval(self, x):
+    def _eval(self, x, **kwargs):
         beamLayerStruct = self.struct.getBeamStructure(x)
 
         beamElements = np.zeros(self.struct.nBeams)
@@ -52,7 +51,7 @@ class EnergySeq(BaseFunc):
 
         return res * self.gamma
 
-    def _grad(self, x):
+    def _grad(self, x, **kwargs):
         beamLayerStruct = self.struct.getBeamStructure(x)
         res = []
         gradX = [[]]
@@ -122,7 +121,7 @@ class EnergySeq(BaseFunc):
         flatRes = [item for sublist in res for item in sublist]
 
         for layer in range(len(flatRes)):
-            tmp = mb.repmat(flatRes[layer], 1, self.struct.nSpotsInLayer[layer])
+            tmp = np.tile(flatRes[layer], (1, self.struct.nSpotsInLayer[layer]))
             gradX = np.concatenate((gradX, tmp), axis=1)
 
         gradX = gradX.flatten()

@@ -1,11 +1,12 @@
 import os
-from distutils.dir_util import copy_tree
+import shutil
+
 from glob import glob
 from typing import Sequence, Union
 import re
 
 import numpy as np
-from numpy.matlib import repmat
+
 
 from opentps.core.data.CTCalibrations.MCsquareCalibration._mcsquareMaterial import MCsquareMaterial
 from opentps.core.data.CTCalibrations.MCsquareCalibration._mcsquareMolecule import MCsquareMolecule
@@ -144,8 +145,8 @@ class MCsquareHU2Material:
         huRef = np.array(self.__hu)
         huRefLen = max(spRef.shape)
 
-        referenceHUs = repmat(huRef.reshape(huRefLen, 1), 1, huLen)
-        queryHUs = repmat(hu.reshape(1, huLen), huRefLen, 1)
+        referenceHUs = np.tile(huRef.reshape(huRefLen, 1), (1, huLen))
+        queryHUs = np.tile(hu.reshape(1,huLen), (huRefLen, 1))
 
         diff = referenceHUs - queryHUs
         diff[diff>0] = -9999
@@ -195,8 +196,8 @@ class MCsquareHU2Material:
         spRef = np.array([material.stoppingPower(energy) for material in self.__materials])
         spRefLen = max(spRef.shape)
 
-        referenceSPs = repmat(spRef.reshape(spRefLen, 1), 1, spLen)
-        querySPs = repmat(sp.reshape(1, spLen), spRefLen, 1)
+        referenceSPs = np.tile(spRef.reshape(spRefLen, 1), (1, spLen))
+        querySPs = np.tile(sp.reshape(1, spLen), (spRefLen, 1))
 
         indexOfClosestSP = (np.abs(referenceSPs - querySPs)).argmin(axis=0)
 
@@ -204,22 +205,22 @@ class MCsquareHU2Material:
         hu = refHUs[indexOfClosestSP]
 
         return np.reshape(hu, spShape)
-    
+
     def convertMaterial2HU(self, materialName:str):
         for i, mat in enumerate(self.__materials):
             if mat.name.casefold() == materialName.casefold():
                 return self.__hu[i]
         raise ValueError(f'Material {materialName} undefined')
-    
+
     def getHU2MaterialConversion(self):
         return (self.__hu, self.__materials)
-    
+
     def getMaterialFromName(self, name:str):
         for mat in self.__materials:
             if mat.name.casefold() == name.casefold():
                 return mat
         raise ValueError(f'Material {name} is not part of the calibration file')
-    
+
     def loadMaterial(self, materialNb, materialsPath='default'):
         """
         Load material from file.
@@ -264,7 +265,7 @@ class MCsquareHU2Material:
 
                     material = self.loadMaterial(int(lineSplit[1]), materialsPath)
                     self.__materials.append(material)
-    
+
     def writeHeader(self):
         """
         Return header of HU to density conversion table
@@ -323,7 +324,7 @@ class MCsquareHU2Material:
 
             targetFolder = os.path.join(folderPath, os.path.basename(last_folder))
             os.makedirs(targetFolder, exist_ok=True)
-            copy_tree(folder, targetFolder)
+            shutil.copytree(folder, targetFolder, dirs_exist_ok=True)
 
     def _writeMCsquareList(self, listFile):
         materialsOrderedForPrinting = self.materialsOrderedForPrinting()

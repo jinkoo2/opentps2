@@ -124,7 +124,10 @@ class CCCDoseCalculator(AbstractDoseCalculator):
     
     @property
     def _CCCexecutablePath(self):
-        return os.path.join(self.WorkSpaceDir,'opentps','core','processing','doseCalculation','photons','CCC_DoseEngine', 'CCC_DoseEngine')
+        if platform.system() == "Linux":
+            return os.path.join(self.WorkSpaceDir,'opentps','core','processing','doseCalculation','photons','CCC_DoseEngine', 'CCC_DoseEngine')
+        elif platform.system() == "Windows":
+            return os.path.join(self.WorkSpaceDir,'opentps','core','processing','doseCalculation','photons','CCC_DoseEngine', 'CCC_DoseEngine_win.exe')
     
     @property
     def ctCalibration(self) -> Optional[AbstractCTCalibration]:
@@ -175,8 +178,12 @@ class CCCDoseCalculator(AbstractDoseCalculator):
     
     def writeExecuteCCCfile(self):
         for batch in range(self.batchSize):
-            f = open(os.path.join(self._executableDir, 'CCC_simulation_batch{}'.format(batch)),'w')
-            f.write('{executablePath} {kernelFilePath} {geometryFilePath} {beamPath} {outputPath}'.format(executablePath = self._CCCexecutablePath, kernelFilePath = self._kernelsFilePath, geometryFilePath = self._geometryFilePath, beamPath = os.path.join(self._beamDirectory,'pencilBeamSpecs_batch{}.txt'.format(batch)), outputPath = os.path.join(self.outputDir,'sparseBeamletMatrix_batch{}.bin'.format(batch))))
+            if platform.system() == "Linux":
+                f = open(os.path.join(self._executableDir, 'CCC_simulation_batch{}'.format(batch)),'w')
+            if platform.system() == "Windows":
+                f = open(os.path.join(self._executableDir, 'CCC_simulation_batch{}.bat'.format(batch)),'w')
+                f.write('@echo off\n')
+            f.write('"{executablePath}" {kernelFilePath} {geometryFilePath} {beamPath} {outputPath}'.format(executablePath = self._CCCexecutablePath, kernelFilePath = self._kernelsFilePath, geometryFilePath = self._geometryFilePath, beamPath = os.path.join(self._beamDirectory,'pencilBeamSpecs_batch{}.txt'.format(batch)), outputPath = os.path.join(self.outputDir,'sparseBeamletMatrix_batch{}.bin'.format(batch))))
             f.close()
 
 
@@ -204,11 +211,19 @@ class CCCDoseCalculator(AbstractDoseCalculator):
                     self._subprocess.append(subprocess.Popen(["sh", 'CCC_simulation_opti_batch{}'.format(batch)], cwd=self._executableDir))
             for process in self._subprocess:
                 process.wait()
+        if platform.system() == "Windows":
+            for batch in range(self.batchSize):
+                if not opti:
+                    self._subprocess.append(subprocess.Popen(os.path.join(self._executableDir,'CCC_simulation_batch{}.bat'.format(batch)), cwd=self._executableDir))
+                else:
+                    self._subprocess.append(subprocess.Popen(os.path.join(self._executableDir, 'CCC_simulation_opti_batch{}.bat'.format(batch)), cwd=self._executableDir))
+            for process in self._subprocess:
+                process.wait()
 
-            if self._subprocessKilled:
-                self._subprocessKilled = False
-                raise Exception('Collapse Cone Convolution subprocess killed by caller.')
-            self._subprocess = []
+        if self._subprocessKilled:
+            self._subprocessKilled = False
+            raise Exception('Collapse Cone Convolution subprocess killed by caller.')
+        self._subprocess = []
 
 
     def _importBeamlets(self):

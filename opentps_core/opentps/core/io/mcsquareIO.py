@@ -257,7 +257,7 @@ def _print_memory_usage(BeamletMatrix):
     BeamletMatrix : csc_matrix
         The sparse beamlets matrix
     """
-    if BeamletMatrix == []:
+    if BeamletMatrix is None:
         logger.info("Beamlets not loaded")
 
 
@@ -863,25 +863,26 @@ def writeObjectives(objectives: ObjectivesList, file_path):
         fid.write("Dose_prescription:\n" + str(objectives.targetPrescription[0]) + "\n\n")
     else:
         fid.write("Dose_prescription:\n" + str(objectives.targetPrescription) + "\n\n")
-    fid.write("Number_of_objectives:\n" + str(len(objectives.fidObjList)) + "\n\n")
+    fid.write("Number_of_objectives:\n" + str(len(objectives.objectivesList)) + "\n\n")
 
-    for objective in objectives.fidObjList:
+    for objective in objectives.objectivesList:
         contourName = objective.roiName.replace(' ', '_').replace('-', '_').replace('.', '_').replace('/', '_')
-
         fid.write("Objective_parameters:\n")
         fid.write("ROIName = " + contourName + "\n")
         fid.write("Weight = " + str(objective.weight) + "\n")
-        if objective.metric == objective.Metrics.DMIN:
+        if objective.metric == objective.Metrics.DMIN.value:
             metric = "Dmin"
             condition = ">"
-        elif objective.metric == objective.Metrics.DMAX:
+        elif objective.metric == objective.Metrics.DMAX.value:
             metric = "Dmax"
             condition = "<"
-        elif objective.metric == objective.Metrics.DMEAN:
+        elif objective.metric == objective.Metrics.DMAXMEAN.value:
             metric = "Dmean"
             condition = "<"
         else:
+            metric = objective.metric
             logger.error("Error: objective metric {} is not supported.".format(metric))
+
         fid.write(metric + " " + condition + " " + str(objective.limitValue) + "\n")
         fid.write("\n")
 
@@ -1078,12 +1079,12 @@ class MCsquareIOTestCase(unittest.TestCase):
         """
         from opentps.core.data.plan._planProtonBeam import PlanProtonBeam
         from opentps.core.data.plan._planProtonLayer import PlanProtonLayer
-
-        import opentps.core.processing.doseCalculation.MCsquare.BDL as BDLModule
+        from opentps.core.data.plan._protonPlan import ProtonPlan
+        import opentps.core.processing.doseCalculation.protons.MCsquare.BDL as BDLModule
 
         bdl = readBDL(os.path.join(str(BDLModule.__path__[0]), 'BDL_default_DN_RangeShifter.txt'))
 
-        plan = RTPlan()
+        plan = ProtonPlan()
         beam = PlanProtonBeam()
         layer = PlanProtonLayer(nominalEnergy=100.)
         layer.appendSpot(0, 0, 1)

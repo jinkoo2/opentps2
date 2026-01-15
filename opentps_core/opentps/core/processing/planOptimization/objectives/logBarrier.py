@@ -1,5 +1,4 @@
 import numpy as np
-from numpy import matlib as mb
 from opentps.core.processing.planOptimization.tools import WeightStructure
 from opentps.core.processing.planOptimization.objectives.baseFunction import BaseFunc
 
@@ -47,12 +46,12 @@ class LogBarrier(BaseFunc):
                 res[beam] += np.sum(x[beam][layer])
         return np.log(np.where(res > 0., res, 1e-300))
 
-    def _eval(self, x):
+    def _eval(self, x, **kwargs):
         beamLayerStruct = self.struct.getBeamStructure(x)
         res = - self.beta * np.sum(self.logCols(beamLayerStruct))
         return res
 
-    def _grad(self, x):
+    def _grad(self, x, **kwargs):
         beamLayerStruct = self.struct.getBeamStructure(x)
         res = -self.beta * self.dlogCols(beamLayerStruct)
         return res
@@ -78,7 +77,7 @@ class LogBarrier(BaseFunc):
                 layerSum[beam] += np.sum(x[beam][layer])
         layerSum[:] = np.reciprocal(np.where(layerSum > 0., layerSum, 1e-300))
         for beam in range(len(layerSum)):
-            tmp = mb.repmat(layerSum[beam], 1, self.struct.nSpotsInBeam[beam])
+            tmp = np.tile(layerSum[beam], (1, self.struct.nSpotsInBeam[beam]))
             X = np.concatenate((X, tmp), axis=1)
 
         res = X.flatten()

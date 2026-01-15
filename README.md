@@ -1,8 +1,8 @@
 # OpenTPS
 
-OpenTPS is a Python application for treatment planning in proton therapy, based on the MCsquare Monte Carlo dose engine.
+OpenTPS is a Python application for treatment planning in radiation therapy, based on the MCsquare Monte Carlo dose engine and a CCC dose engine for photons.
 
-The OpenTPS (version 2.0.2) application consists of the packages opentps-core (version 2.0.2) and opentps-gui (version 2.0.2) which are also available separately.
+The OpenTPS (version 3.0.0) application consists of the packages opentps-core (version 3.0.0) and opentps-gui (version 3.0.0) which are also available separately.
 
 If you are using OpenTPS as part of your research, teaching, or other activities, we would be grateful if you could star the repository and/or cite our work.
 
@@ -23,7 +23,7 @@ primaryClass={physics.med-ph}
 
 ## Without Anaconda (Linux and Windows)
 
-1. Install Python 3.11.
+1. Install Python 3.12.
 2. If you don't want to install OpenTPS and its dependencies in your global Python environment: Create a virtual environment and activate it before going to step 3.
 3. Install the opentps package with pip:
 
@@ -40,10 +40,10 @@ primaryClass={physics.med-ph}
 ## On Windows with Anaconda
 
 1. Install the latest version of Anaconda: https://www.anaconda.com/.
-2. In a conda prompt, create a new virtual environment with python 3.11 and activate it:
+2. In a conda prompt, create a new virtual environment with python 3.12 and activate it:
 
 ```
-   conda create --name OpenTPS python=3.11
+   conda create --name OpenTPS python=3.12
    conda activate OpenTPS
 ```
 
@@ -64,13 +64,13 @@ primaryClass={physics.med-ph}
 ## On Linux
 
 1. Clone the OpenTPS git repository or download the source code.
-2. Run the script `install_opentps_linux.sh` to create a virtual environment `OpenTPS_venv` in the _current directory_ (!). This will also install python 3.9 and add it to the path of your bash shell.
+2. Run the script `install_opentps_linux.sh` to create a virtual environment `OpenTPS_venv` in the _current directory_ (!). This will also install python 3.12 and add it to the path of your bash shell.
 3. Run the script `start_opentps_linux.sh` in the directory where the `OpenTPS_venv` was created in step 2 to start the OpenTPS GUI.
 
 ## On Windows (without Anaconda)
 
 1. Clone the OpenTPS git repository or download the source code.
-2. Install Python 3.9 and add it to the path in your system environment.
+2. Install Python 3.12 and add it to the path in your system environment.
 3. Run the script `install_opentps_venv_windows.sh` to create a virtual environment `OpenTPS_venv` in the _current directory_ (!).
 4. Run the script `start_opentps_venv_windows.sh` in the directory where the `OpenTPS_venv` was created in step 2 to start the OpenTPS GUI.
 

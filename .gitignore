@@ -1,4 +1,3 @@
-
 *__pycache__
 *.pyc
 *~
@@ -16,13 +15,7 @@ version.py
 Perso/
 waldoScripts/
 testData/*
-
-
 OpenTPS_venv/*
-opentps_gui/ws_dev/*
-wei_dev_test.bat
-
-opentps_core/opentps/core/Processing/DoseCalculation/MCsquare/BDL/UMCG_P1_v2_RangeShifter.txt
 *.tps
 *.blm
 *.nrrd

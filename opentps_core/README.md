@@ -1,6 +1,6 @@
 # opentps-core
 
-Core library of opentps, a Python application for treatment planning in proton therapy, based on the MCsquare Monte Carlo dose engine.
+Core library of opentps, a Python application for treatment planning in radiation therapy, based on the MCsquare Monte Carlo dose engine and a CCC dose engine for photons.
 
 ## Installation (Linux):
 
@@ -48,7 +48,7 @@ pip3 install --user cupy
 3. Create a new Anaconda environment:
 
 ```
-conda create --name OpenTPS python=3.11
+conda create --name OpenTPS python=3.12
 ```
 
 4. Activate the new environment:

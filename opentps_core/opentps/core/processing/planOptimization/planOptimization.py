@@ -5,34 +5,20 @@ from typing import Iterable
 import numpy as np
 import scipy.sparse as sp
 
-from opentps.core.processing.planOptimization.objectives.doseFidelity import DoseFidelity
-
-try:
-    import sparse_dot_mkl
-    use_MKL = 0 # Currently deactivated on purpose because sparse_dot_mkl generates seg fault
-except:
-    use_MKL = 0
-
-cupy_available = False
-try:
-    import cupy as cp
-    import cupyx as cpx
-    cupy_available = True
-except:
-    cupy_available = False
 from opentps.core.data.plan._photonPlan import PhotonPlan
 from opentps.core.data.plan._rtPlan import RTPlan
 from opentps.core.data.plan._protonPlan import ProtonPlan
-from opentps.core.processing.planOptimization.solvers import sparcling, \
-    beamletFree
-from opentps.core.processing.planOptimization.solvers import scipyOpt, bfgs, localSearch
+from opentps.core.processing.planOptimization.solvers import scipyOpt, bfgs
 from opentps.core.processing.planOptimization.solvers import fista, gradientDescent
 from opentps.core.processing.planOptimization import planPreprocessing
 from scipy.sparse import csc_matrix
 from opentps.core.data.images._doseImage import DoseImage
+from opentps.core.processing.planOptimization.objectives.doseFidelity import DoseFidelity
+from opentps.core.processing.planOptimization.objectives.weightedSum import WeightedSum
+from opentps.core.processing.planOptimization.objectives.weightedSumMultiThread import WeightedSumMultiThread
+from opentps.core.processing.planOptimization.objectives.robustFunctions.robustWorstCase import RobustWorstCase
+from opentps.core.processing.planOptimization.objectives.wrappers.unloadGPUWrapper import UnloadGPUWrapper
 
-
-logger = logging.getLogger(__name__)
 
 try:
     import sparse_dot_mkl
@@ -53,6 +39,10 @@ try:
 except:
     cupy_available = False
 
+
+logger = logging.getLogger(__name__)
+
+
 class PlanOptimizer:
     """
     This class is used to optimize a plan.
@@ -72,19 +62,26 @@ class PlanOptimizer:
         The threshold weight below which spots are removed from the plan and beamlet matrix.
     xSquared : bool
         If True, the weights are squared. True by default to avoid negative weights.
-    hardwareAcceleration : str
-        The acceleration method. It can be one of the following:
-        - 'GPU' : use the GPU for the optimization.
-        - 'MKL' : use the MKL library for the optimization with the maximum number of threads available.
-        - 'MKL-n' : use the MKL library for the optimization with n threads.
-        - 'MKL-n-DEBUG' : use the MKL library for the optimization with n threads and the debug mode.
-        - 'MKL-DEBUG' : use the MKL library for the optimization with the debug mode.
+    kwargs : dict
+        Additional parameters:
+            hardwareAcceleration : str
+                The acceleration method. It can be one of the following:
+                - 'GPU' : use the GPU for the optimization.
+                - 'MKL' : use the MKL library for the optimization with the maximum number of threads available.
+                - 'MKL-n' : use the MKL library for the optimization with n threads.
+                - 'MKL-n-DEBUG' : use the MKL library for the optimization with n threads and the debug mode.
+                - 'MKL-DEBUG' : use the MKL library for the optimization with the debug mode.
+                - 'MT-n' : use multithreading for the optimization with n threads.
+                - 'MT' : use multithreading for the optimization with 4 threads.
+            croppedMultiplication : bool (default: False)
+                If True, the beamlet matrix is cropped on the union of the ROIs defined in the objectives to speed up the gradient computation.
+                This method slows down multithreading though for GPU and acceleration, it remains faster.
 
     """
-    def __init__(self, plan:RTPlan, hardwareAcceleration:str=None, **kwargs):
+    def __init__(self, plan:RTPlan, **kwargs):
 
         self.solver = scipyOpt.ScipyOpt('L-BFGS-B')
-        
+
         if isinstance(plan, ProtonPlan):
             planPreprocessing.extendPlanLayers(plan)
         self.plan = plan
@@ -95,10 +92,27 @@ class PlanOptimizer:
         # beamlet matrix
         self.GPU_acceleration = False
         self.MKL_acceleration = False
+        self.Multithread_acceleration = False
+        self.Nthreads = None
+        self.croppedMultiplication = kwargs.get('croppedMultiplication', False)
+        hardwareAcceleration = kwargs.get('hardwareAcceleration', None)
+
+        if self.croppedMultiplication:
+            logger.info('Cropped multiplication activated for dose fidelity objective function')
+
         if hardwareAcceleration is not None:
             if hardwareAcceleration == 'GPU':
                 self.use_GPU_acceleration()
-            elif hardwareAcceleration[:3] == 'MKL':
+
+            if hardwareAcceleration[:2] == 'MT':
+                args = hardwareAcceleration.split('-')
+                if len(args) < 2 or not args[1].isdigit():
+                    self.use_multithread_acceleration(4)
+                else:
+                    n_threads = int(args[1])
+                    self.use_multithread_acceleration(n_threads)
+
+            if hardwareAcceleration[:3] == 'MKL':
                 if hardwareAcceleration == 'MKL':
                     self.use_MKL_acceleration()
                 else:
@@ -111,7 +125,7 @@ class PlanOptimizer:
                         self.use_MKL_acceleration(n_threads)
                     elif args[1] == 'DEBUG':
                         self.use_MKL_acceleration(debug=True)
-            else:
+            if hardwareAcceleration!='GPU' and hardwareAcceleration[:2]!='MT' and hardwareAcceleration[:3]!='MKL' and hardwareAcceleration != 'MGPU':
                 logger.warning('Unknown hardware acceleration method. No hardware acceleration will be used')
 
 
@@ -129,7 +143,7 @@ class PlanOptimizer:
         """
         if cupy_available:
             self.GPU_acceleration = True
-            logger.info('cupy imported in planOptimization module')
+            logger.info('CUPY imported successfully')
             logger.info('abnormal used memory: {}'.format(cp.get_default_memory_pool().used_bytes()))
         else:
             logger.warning('Unable to import CUPY, please configure CUPY to enable GPU acceleration')
@@ -183,6 +197,16 @@ class PlanOptimizer:
         self.MKL_acceleration = False
         logger.info('MKL acceleration deactivated')
 
+    def use_multithread_acceleration(self,n_threads):
+        self.Multithread_acceleration = True
+        self.Nthreads = n_threads
+        logger.info('Multithreading activated with {} threads'.format(n_threads))
+
+    def stop_multithread_acceleration(self):
+        self.Multithread_acceleration = False
+        logger.info('Multithreading deactivated')
+
+
 
     def initializeWeights(self):
         """
@@ -194,7 +218,7 @@ class PlanOptimizer:
             The weights.
         """
         # Total Dose calculation
-        totalDose = self.computeDose().imageArray 
+        totalDose = self.computeDose().imageArray
         maxDose = np.max(totalDose)
         try:
             x0 = self.opti_params['init_weights']
@@ -216,48 +240,123 @@ class PlanOptimizer:
         """
         self.plan.planDesign.setScoringParameters()
 
-        # crop on ROI
-        if self.plan.planDesign.ROI_cropping == True:
-            roiObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
-            roiRobustObjectives = np.zeros(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
-        else : 
-            roiObjectives = np.ones(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
-            roiRobustObjectives = np.ones(len(self.plan.planDesign.objectives.fidObjList[0].maskVec)).astype(bool)
+        objectivesUnionROI = np.zeros(len(self.plan.planDesign.objectives.objectivesList[0].maskVec)).astype(bool)
+        objectivesRobustUnionROI = np.zeros(len(self.plan.planDesign.objectives.objectivesList[0].maskVec)).astype(bool)
 
         robust = False
-        for objective in self.plan.planDesign.objectives.fidObjList:
+        for objective in self.plan.planDesign.objectives.objectivesList:
             if objective.robust:
                 robust = True
-                roiRobustObjectives = np.logical_or(roiRobustObjectives, objective.maskVec)
+                objectivesRobustUnionROI = np.logical_or(objectivesRobustUnionROI, objective.maskVec)
             else:
-                roiObjectives = np.logical_or(roiObjectives, objective.maskVec)
-        roiObjectives = np.logical_or(roiObjectives, roiRobustObjectives)
+                objectivesUnionROI = np.logical_or(objectivesUnionROI, objective.maskVec)
 
-        if self.MKL_acceleration :
-            logger.info("Using MKL to create sparse beamlet matrix")
-            beamletMatrix = sparse_dot_mkl.dot_product_mkl(
-                sp.diags(roiObjectives.astype(np.float32), format='csc'), self.plan.planDesign.beamlets.toSparseMatrix())
-        else:
-            beamletMatrix = sp.csc_matrix.dot(sp.diags(roiObjectives.astype(np.float32), format='csc'),
-                                              self.plan.planDesign.beamlets.toSparseMatrix())
+            if self.GPU_acceleration:
+                objective._loadMaskVecToGPU()
 
-        self.plan.planDesign.beamlets.setUnitaryBeamlets(beamletMatrix)
+        objectivesUnionROITotal = np.logical_or(objectivesUnionROI, objectivesRobustUnionROI)
+
+        if self.plan.planDesign.ROI_cropping == True:
+            logger.info('Cropping beamlet matrix on ROIs for sparsity')
+            if self.MKL_acceleration :
+                beamletMatrix = sparse_dot_mkl.dot_product_mkl(
+                    sp.diags(objectivesUnionROITotal.astype(np.float32), format='csc'), self.plan.planDesign.beamlets.toSparseMatrix())
+            else:
+                beamletMatrix = sp.csc_matrix.dot(sp.diags(objectivesUnionROITotal.astype(np.float32), format='csc'),
+                                                  self.plan.planDesign.beamlets.toSparseMatrix())
+            self.plan.planDesign.beamlets.setUnitaryBeamlets(beamletMatrix)
+            if robust:
+                for s in range(len(self.plan.planDesign.robustness.scenarios)):
+                    if self.MKL_acceleration:
+                        beamletMatrix = sparse_dot_mkl.dot_product_mkl(
+                            sp.diags(objectivesRobustUnionROI.astype(np.float32), format='csc'),
+                            self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
+                    else:
+                        beamletMatrix = sp.csc_matrix.dot(
+                            sp.diags(objectivesRobustUnionROI.astype(np.float32), format='csc'),
+                            self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
+                    self.plan.planDesign.robustness.scenarios[s].setUnitaryBeamlets(beamletMatrix)
 
         if robust:
-            for s in range(len(self.plan.planDesign.robustness.scenarios)):
-                if self.MKL_acceleration:
-                    print("Using MKL to create sparse beamlet matrix")
-                    beamletMatrix = sparse_dot_mkl.dot_product_mkl(
-                        sp.diags(roiRobustObjectives.astype(np.float32), format='csc'),
-                        self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
-                else:
-                    beamletMatrix = sp.csc_matrix.dot(
-                        sp.diags(roiRobustObjectives.astype(np.float32), format='csc'),
-                        self.plan.planDesign.robustness.scenarios[s].toSparseMatrix())
-                self.plan.planDesign.robustness.scenarios[s].setUnitaryBeamlets(beamletMatrix)
+            # New cost function for robust optimization
+            if self.Multithread_acceleration:
+                robustSum = WeightedSumMultiThread()
+                robustSum.Nthreads = self.Nthreads
+            else:
+                robustSum = WeightedSum()
+            robustSum.GPU_acceleration = self.GPU_acceleration
+            robustSum.functionList = self.plan.planDesign.objectives.robustObjList
 
-        objectiveFunction = DoseFidelity(self.plan, self.xSquared,self.GPU_acceleration,self.MKL_acceleration)
+            if self.Multithread_acceleration:
+                nonRobustSum = WeightedSumMultiThread()
+                nonRobustSum.Nthreads = self.Nthreads
+            else:
+                nonRobustSum = WeightedSum()
+            nonRobustSum.GPU_acceleration = self.GPU_acceleration
+            nonRobustSum.functionList = self.plan.planDesign.objectives.nonRobustObjList
+
+            doseFidList = []
+            nomDoseFid = DoseFidelity(beamlets=self.plan.planDesign.beamlets.toSparseMatrix(), xSquared=self.xSquared, GPU_acceleration=self.GPU_acceleration,MKL_acceleration=self.MKL_acceleration)
+            nomDoseFid.function = robustSum
+            if self.croppedMultiplication:
+                nomDoseFid.croppedMultiplication = True
+                nomDoseFid.unionMaskVec = objectivesRobustUnionROI
+
+            doseFidList.append(nomDoseFid)
+            for bl in self.plan.planDesign.robustness.scenarios:
+                DoseFid = DoseFidelity(beamlets=bl.toSparseMatrix(), xSquared=self.xSquared, GPU_acceleration=self.GPU_acceleration,MKL_acceleration=self.MKL_acceleration)
+                DoseFid.function = robustSum
+                if self.croppedMultiplication:
+                    DoseFid.croppedMultiplication = True
+                    DoseFid.unionMaskVec = objectivesRobustUnionROI
+                doseFidList.append(DoseFid)
+
+            nonRobustDoseFid = DoseFidelity(beamlets=self.plan.planDesign.beamlets.toSparseMatrix(), xSquared=self.xSquared, GPU_acceleration=self.GPU_acceleration,MKL_acceleration=self.MKL_acceleration)
+            nonRobustDoseFid.function = nonRobustSum
+            if self.croppedMultiplication:
+                nonRobustDoseFid.croppedMultiplication = True
+                nonRobustDoseFid.unionMaskVec = objectivesUnionROI
+
+            robustWC = RobustWorstCase(nScenarios=len(self.plan.planDesign.robustness.scenarios)+1,GPU_acceleration=self.GPU_acceleration)
+            robustWC.robustFunctions = doseFidList
+            robustWC.nonRobustFunction = nonRobustDoseFid
+
+
+            if self.GPU_acceleration:
+                wrapper = UnloadGPUWrapper(robustWC)
+                objectiveFunction = wrapper
+            else:
+                objectiveFunction = robustWC
+
+        else:
+            doseFid = DoseFidelity(beamlets=self.plan.planDesign.beamlets.toSparseMatrix(), xSquared=self.xSquared, GPU_acceleration=self.GPU_acceleration,MKL_acceleration=self.MKL_acceleration)
+
+            if self.croppedMultiplication:
+                doseFid.croppedMultiplication = True
+                doseFid.unionMaskVec = objectivesUnionROI
+
+            if self.Multithread_acceleration:
+                sum = WeightedSumMultiThread()
+                sum.Nthreads = self.Nthreads
+                sum.functionList = self.plan.planDesign.objectives.objectivesList
+                doseFid.function = sum
+                objectiveFunction = doseFid
+            elif self.GPU_acceleration:
+                sum = WeightedSum()
+                sum.GPU_acceleration = self.GPU_acceleration
+                sum.functionList = self.plan.planDesign.objectives.objectivesList
+                doseFid.function = sum
+                wrapper = UnloadGPUWrapper(doseFid)
+                objectiveFunction = wrapper
+            else:
+                sum = WeightedSum()
+                sum.functionList = self.plan.planDesign.objectives.objectivesList
+                doseFid.function = sum
+                objectiveFunction = doseFid
+
+
         self.functions.append(objectiveFunction)
+
 
     def computeDose(self):
         assert hasattr(self.plan, 'planDesign')
@@ -265,13 +364,13 @@ class PlanOptimizer:
         assert self.plan.planDesign.beamlets._sparseBeamlets is not None
 
         beamlets = self.plan.planDesign.beamlets
-        
-        if self.plan.radiationType == 'PROTON':
+        if isinstance(self.plan, ProtonPlan):
             weights = np.array(self.plan.spotMUs, dtype=np.float32)
-        else :
+        elif isinstance(self.plan, PhotonPlan):
             weights = np.array(self.plan.beamletMUs, dtype=np.float32)
 
-        if self.MKL_acceleration:
+
+        if  self.MKL_acceleration:
             totalDose = sparse_dot_mkl.dot_product_mkl(beamlets._sparseBeamlets, weights) * self.plan.numberOfFractionsPlanned
         else:
             totalDose = csc_matrix.dot(beamlets._sparseBeamlets, weights) * self.plan.numberOfFractionsPlanned
@@ -316,9 +415,6 @@ class PlanOptimizer:
         else:
             result = self.solver.solve(self.functions, x0)
 
-        if self.GPU_acceleration:
-            self.functions[0].unload_blGPU()
-            cp._default_memory_pool.free_all_blocks()
 
         return self.postProcess(result)
 
@@ -340,13 +436,16 @@ class PlanOptimizer:
             The value of the objective function.
         """
         # Remove unnecessary attributs in plan
+        if self.GPU_acceleration:
+            cp._default_memory_pool.free_all_blocks()
+            logger.info('abnormal used memory: {}'.format(cp.get_default_memory_pool().used_bytes()))
         try:
             del self.plan._spots
             del self.plan._layers
         except:
             pass
 
-        self.weights = result['sol']
+        self.weights = np.array(result['sol'])
         crit = result['crit']
         self.niter = result['niter']
         self.time = result['time']
@@ -361,8 +460,7 @@ class PlanOptimizer:
 
         # unload scenario beamlets
         for s in range(len(self.plan.planDesign.robustness.scenarios)):
-            if self.plan.planDesign.robustness.scenarios[0] != self.plan.planDesign.beamlets :
-                self.plan.planDesign.robustness.scenarios[s].unload()
+            self.plan.planDesign.robustness.scenarios[s].unload()
 
         # total dose
         logger.info("Total dose calculation ...")
@@ -372,11 +470,11 @@ class PlanOptimizer:
             MUs = self.weights.astype(np.float32) / self.plan.numberOfFractionsPlanned
         if isinstance(self.plan,ProtonPlan):
             self.plan.spotMUs = MUs
-        elif isinstance(self.plan,PhotonPlan): 
+        elif isinstance(self.plan,PhotonPlan):
             self.plan.beamletMUs = MUs
         MU_before_simplify = MUs.copy()
         self.plan.simplify(threshold=self.thresholdSpotRemoval) # remove spots below self.thresholdSpotRemoval
-        
+
         if isinstance(self.plan,ProtonPlan):
             if self.plan.planDesign.beamlets.shape[1] != len(self.plan.spotMUs):
                 # Beamlet matrix has not removed zero weight column
@@ -386,7 +484,7 @@ class PlanOptimizer:
                 self.plan.planDesign.beamlets._weights = self.plan.spotMUs
             else:
                 self.plan.planDesign.beamlets._weights = self.plan.spotMUs
-        elif isinstance(self.plan,PhotonPlan):        
+        elif isinstance(self.plan,PhotonPlan):
             if self.plan.planDesign.beamlets.shape[1] != len(self.plan.beamletMUs):
                 # Beamlet matrix has not removed zero weight column
                 ind_to_keep = MU_before_simplify > self.thresholdSpotRemoval
@@ -445,15 +543,14 @@ class IntensityModulationOptimizer(PlanOptimizer):
         - 'BFGS'
         - 'LBFGS'
         - 'FISTA'
-        - 'LP'
 
     plan : RTPlan
         The plan to optimize.
     dict
         The optimization parameters, depending on the selected method.
     """
-    def __init__(self, method, plan:RTPlan, hardwareAcceleration:str=None, **kwargs):
-        super().__init__(plan, hardwareAcceleration, **kwargs)
+    def __init__(self, method, plan:RTPlan, **kwargs):
+        super().__init__(plan,**kwargs)
         self.method = method
         if "Scipy" in self.method:
             algo = self.method.split('_')[1]
@@ -466,13 +563,9 @@ class IntensityModulationOptimizer(PlanOptimizer):
             self.solver = bfgs.LBFGS(**kwargs)
         elif self.method == "FISTA":
             self.solver = fista.FISTA(**kwargs)
-        elif self.method == "LP":
-            from opentps.core.processing.planOptimization.solvers import lp
-            self.xSquared = False
-            self.solver = lp.LP(self.plan, **kwargs)
         else:
             logger.error(
-                'Method {} is not implemented. Pick among ["Scipy_BFGS", "Scipy_L-BFGS-B", "Scipy_SLSQP", "Scipy_COBYLA", "Scipy_trust-constr", "Gradient", "BFGS", "LBFGS", "FISTA", "LP]'.format(
+                'Method {} is not implemented. Pick among ["Scipy_BFGS", "Scipy_L-BFGS-B", "Scipy_SLSQP", "Scipy_COBYLA", "Scipy_trust-constr", "Gradient", "BFGS", "LBFGS", "FISTA"]'.format(
                     self.method))
 
     def getConvergenceData(self):
@@ -500,8 +593,8 @@ class BoundConstraintsOptimizer(PlanOptimizer):
     dict
         The optimization parameters for the SciPy methods.
     """
-    def __init__(self, plan: RTPlan, hardwareAcceleration:str=None, method='Scipy_L-BFGS-B', bounds=(0.02, 250), **kwargs):
-        super().__init__(plan, hardwareAcceleration, **kwargs)
+    def __init__(self, plan: RTPlan, method='Scipy_L-BFGS-B', bounds=(0.02, 250), **kwargs):
+        super().__init__(plan, **kwargs)
         self.bounds = bounds
         if method == 'Scipy_L-BFGS-B':
             self.method = method
@@ -531,7 +624,7 @@ class BoundConstraintsOptimizer(PlanOptimizer):
             bounds = self.bounds
         bound_min = bounds[0] * self.plan.numberOfFractionsPlanned
         bound_max = bounds[1] * self.plan.numberOfFractionsPlanned
-        return [(bound_min, bound_max)] * self.plan.planDesign.beamlets.shape[1]
+        return (bound_min, bound_max)
 
     def optimize(self, nIterations=None):
         """
@@ -576,7 +669,7 @@ class BoundConstraintsOptimizer(PlanOptimizer):
 
             self.functions = [] # to avoid a beamlet copy with different size
             self.plan.planDesign.beamlets.setUnitaryBeamlets(self.plan.planDesign.beamlets._sparseBeamlets[:, ind_to_keep])
-            objectiveFunction = DoseFidelity(self.plan, self.xSquared)
+            objectiveFunction = DoseFidelity(self.plan.planDesign.beamlets, self.xSquared)
             self.functions.append(objectiveFunction)
 
             # second optimization with lower bound = self.bounds[0]
@@ -592,45 +685,3 @@ class BoundConstraintsOptimizer(PlanOptimizer):
 
     def getConvergenceData(self):
         return super().getConvergenceData(self.method)
-
-
-class ARCPTPlanOptimizer(PlanOptimizer):
-    """
-    This class is used to optimize an arc proton therapy plan (ARCPT). It inherits from PlanOptimizer.
-
-    Attributes
-    ----------
-    method : str
-        The optimization method. It can be one of the following:
-        - 'FISTA'
-        - 'LS'
-        - 'MIP'
-        - 'SPArcling'
-    plan : RTPlan
-        The plan to optimize.
-    dict
-        The optimization parameters, depending on the selected method.
-    """
-    def __init__(self, method, plan, **kwargs):
-        super(ARCPTPlanOptimizer, self).__init__(plan, **kwargs)
-        if method == 'FISTA':
-            self.solver = fista.FISTA()
-        elif method == 'LS':
-            self.solver = localSearch.LS()
-        elif method == 'MIP':
-            from opentps.core.processing.planOptimization.solvers import mip
-            self.xSquared = False
-            self.solver = mip.MIP(self.plan, **kwargs)
-        elif method == 'SPArcling':
-            try:
-                mode = self.opti_params['mode']
-                coreOptimizer = None
-                if mode == "BLBased":
-                    coreOptimizer = self.opti_params['core']
-                self.solver = sparcling.SPArCling(mode, coreOptimizer)
-            except KeyError:
-                # Use default
-                self.solver = sparcling.SPArCling()
-        else:
-            logger.error(
-                'Method {} is not implemented. Pick among ["FISTA","LS","MIP","SPArcling"]'.format(self.method))

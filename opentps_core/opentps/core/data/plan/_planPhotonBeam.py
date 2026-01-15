@@ -9,10 +9,33 @@ __all__ = ['PlanPhotonBeam']
 
 class PlanPhotonBeam:
     """
-        This class is used to store the information of a photon beam.
+    This class is used to store the information of a photon beam.
 
-        Attributes
-        ----------
+    Attributes
+    ----------
+    name : str
+        Name of the beam.
+    isocenterPosition_mm : list
+        Isocenter position in mm.
+    gantryAngle_degree : float
+        Gantry angle in degree.
+    couchAngle_degree : float
+        Couch angle in degree.
+    id : int
+        Beam ID.
+    scalingFactor : float
+        Scaling factor for the beam.
+    seriesInstanceUID : str
+        Series instance UID.
+    beamType : str
+        Type of the beam (e.g., Static, Arc).
+    xBeamletSpacing_mm : float
+        Spacing between beamlets in x direction in mm.
+    yBeamletSpacing_mm : float
+        Spacing between beamlets in y direction in mm.
+    SAD_mm : float
+        Source to axis distance in mm.
+
     """
     def __init__(self):
         self._beamSegments: Sequence[PlanPhotonSegment] = []
@@ -27,6 +50,7 @@ class PlanPhotonBeam:
         self.beamType = "Static"
         self.xBeamletSpacing_mm = 1
         self.yBeamletSpacing_mm = 1
+        self.SAD_mm = 1000
 
     def __getitem__(self, segmentNb) -> PlanPhotonSegment:
         """

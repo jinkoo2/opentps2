@@ -5,6 +5,7 @@
 #include <thread>
 #include <cmath> 
 #include <chrono>
+#include <array>
 
 extern "C" {
 
@@ -125,7 +126,7 @@ void shiftWithoutInterpolation(const float* nonZeroValues, float* nonZeroValuesS
  * @param nOfBeamlets Number of beamlets to shift.
  * @param numThreads Number of threads for parallel execution.
  */
-void shiftBeamlets(const float* nonZeroValues, float* nonZeroValuesShifted, const int* indexes, int* nonZeroIndexesShifted, int* beamIndexes, const float* setUpShift, const int* gridSize, const float* beamletAngles_rad, int nOfBeamlets, int numThreads) {
+__declspec(dllexport) void shiftBeamlets(const float* nonZeroValues, float* nonZeroValuesShifted, const int* indexes, int* nonZeroIndexesShifted, int* beamIndexes, const float* setUpShift, const int* gridSize, const float* beamletAngles_rad, int nOfBeamlets, int numThreads) {
     for (int i = 0; i < nOfBeamlets; ++i) {
         int beamletStart = beamIndexes[i];
         int numberOfElementsInBeamlet = beamIndexes[i + 1] - beamletStart;

@@ -21,20 +21,20 @@ else
   exit;
 fi
 
-# Install Python 3.9
+# Install Python 3.12
 sudo apt update && sudo apt upgrade
 sudo apt install software-properties-common
 sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt install python3.9
+sudo apt install python3.12
 
 # Add Python path to system environment
-echo 'export PATH="/usr/bin/python3.9:$PATH"' >> ~/.bashrc
+echo 'export PATH="/usr/bin/python3.12:$PATH"' >> ~/.bashrc
 source ~/.bashrc
-echo "Python 3.9 installed and path added to system environment."
+echo "Python 3.12 installed and path added to system environment."
 
-# Check if Python 3.9 is installed 
-if ! command -v python3.9 &>/dev/null; then
-    echo "Python 3.9 is not installed. Please install it and try again."
+# Check if Python 3.12 is installed 
+if ! command -v python3.12 &>/dev/null; then
+    echo "Python 3.12 is not installed. Please install it and try again."
     exit 1
 fi
 
@@ -55,8 +55,8 @@ echo 'export LD_LIBRARY_PATH=/opt/intel/mkl/lib/intel64:$LD_LIBRARY_PATH' | sudo
 # curl -sSL https://install.python-poetry.org | python3 -
 
 # Create a virtual environment
-sudo apt-get install python3.9-venv
-python3.9 -m venv $ENV_PATH
+sudo apt-get install python3.12-venv
+python3.12 -m venv $ENV_PATH
 
 # Activate the virtual environment
 source $ENV_PATH/bin/activate
@@ -66,22 +66,7 @@ echo "Virtual environment 'OpenTPS_venv' created"
 pip3 install --upgrade pip
 
 # Install required Python packages
-pip3 install pydicom
-pip3 install "numpy>=1.24.0"
-pip3 install scipy
-pip3 install matplotlib 
-pip3 install Pillow
-pip3 install PyQt5==5.15.7
-pip3 install pyqtgraph
-pip3 install sparse_dot_mkl
-pip3 install vtk==9.2.6
-pip3 install SimpleITK
-pip3 install pandas
-pip3 install scikit-image
-pip3 install tensorflow
-pip3 install keras
-pip3 install pymedphys==0.40.0
-# pip3 install cupy
+pip3 install -e .
 
 echo
 echo "Installation complete. You can start opentps with"
