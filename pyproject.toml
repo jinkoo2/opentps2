@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "opentps"
 homepage = "http://opentps.org/"
-version = "2.0.2"
+version = "3.0.0"
 readme = "README.md"
 license = "Apache-2.0"
 description = "Open source TPS for advanced proton therapy"
