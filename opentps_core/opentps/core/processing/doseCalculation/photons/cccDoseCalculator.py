@@ -69,28 +69,40 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         Name of the folder where robust scenarios are stored
         
     """
-    def __init__(self, batchSize = 1):
-
+    def __init__(self, batchSize=1, simulationDir=None):
+        """
+        Parameters
+        ----------
+        batchSize : int
+            Number of parallel CCC processes.
+        simulationDir : str, optional
+            If set, all engine inputs, batch scripts, and logs are written under this folder
+            (e.g. OUTPUT_DIR/internal_calculation). Otherwise uses ProgramSettings().simulationFolder.
+        """
         self._ctCalibration: Optional[AbstractCTCalibration] = None
         self._ct: Optional[Image3D] = None
         self._plan: Optional[PhotonPlan] = None
         self._roi = None
         self._simulationDirectory = ProgramSettings().simulationFolder
         self._simulationFolderName = 'CCC_simulation'
+        self._simulationDirOverride = simulationDir  # when set, _CCCSimuDir = this path
         self.batchSize = batchSize
 
         self._subprocess = []
         self._subprocessKilled = True
 
-        self.overwriteOutsideROI = None  
+        self.overwriteOutsideROI = None
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.WorkSpaceDir = os.path.abspath(os.path.join(current_dir, os.pardir, os.pardir, os.pardir, os.pardir, os.pardir))
         self.ROFolder = ''
-    
+
     @property
     def _CCCSimuDir(self):
-        folder = os.path.join(self._simulationDirectory, self._simulationFolderName, self.ROFolder)
+        if self._simulationDirOverride is not None:
+            folder = os.path.join(self._simulationDirOverride, self.ROFolder) if self.ROFolder else self._simulationDirOverride
+        else:
+            folder = os.path.join(self._simulationDirectory, self._simulationFolderName, self.ROFolder)
         self._createFolderIfNotExists(folder)
         return folder
 
@@ -203,22 +215,34 @@ class CCCDoseCalculator(AbstractDoseCalculator):
 
         self._subprocessKilled = False
         logger.info("Start CCC simulation")
-        if platform.system() == "Linux":
-            for batch in range(self.batchSize):
-                if not opti:
-                    self._subprocess.append(subprocess.Popen(["sh", 'CCC_simulation_batch{}'.format(batch)], cwd=self._executableDir))
-                else:
-                    self._subprocess.append(subprocess.Popen(["sh", 'CCC_simulation_opti_batch{}'.format(batch)], cwd=self._executableDir))
-            for process in self._subprocess:
-                process.wait()
-        if platform.system() == "Windows":
-            for batch in range(self.batchSize):
-                if not opti:
-                    self._subprocess.append(subprocess.Popen(os.path.join(self._executableDir,'CCC_simulation_batch{}.bat'.format(batch)), cwd=self._executableDir))
-                else:
-                    self._subprocess.append(subprocess.Popen(os.path.join(self._executableDir, 'CCC_simulation_opti_batch{}.bat'.format(batch)), cwd=self._executableDir))
-            for process in self._subprocess:
-                process.wait()
+        out_handles = []
+        err_handles = []
+        for batch in range(self.batchSize):
+            stdout_path = os.path.join(self._CCCSimuDir, 'CCC_engine_batch{}_stdout.log'.format(batch))
+            stderr_path = os.path.join(self._CCCSimuDir, 'CCC_engine_batch{}_stderr.log'.format(batch))
+            out_handles.append(open(stdout_path, 'w'))
+            err_handles.append(open(stderr_path, 'w'))
+
+        try:
+            if platform.system() == "Linux":
+                for batch in range(self.batchSize):
+                    if not opti:
+                        self._subprocess.append(subprocess.Popen(["sh", 'CCC_simulation_batch{}'.format(batch)], cwd=self._executableDir, stdout=out_handles[batch], stderr=err_handles[batch]))
+                    else:
+                        self._subprocess.append(subprocess.Popen(["sh", 'CCC_simulation_opti_batch{}'.format(batch)], cwd=self._executableDir, stdout=out_handles[batch], stderr=err_handles[batch]))
+                for process in self._subprocess:
+                    process.wait()
+            if platform.system() == "Windows":
+                for batch in range(self.batchSize):
+                    if not opti:
+                        self._subprocess.append(subprocess.Popen(os.path.join(self._executableDir,'CCC_simulation_batch{}.bat'.format(batch)), cwd=self._executableDir, stdout=out_handles[batch], stderr=err_handles[batch]))
+                    else:
+                        self._subprocess.append(subprocess.Popen(os.path.join(self._executableDir, 'CCC_simulation_opti_batch{}.bat'.format(batch)), cwd=self._executableDir, stdout=out_handles[batch], stderr=err_handles[batch]))
+                for process in self._subprocess:
+                    process.wait()
+        finally:
+            for f in out_handles + err_handles:
+                f.close()
 
         if self._subprocessKilled:
             self._subprocessKilled = False
