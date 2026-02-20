@@ -246,6 +246,11 @@ class PlanPhotonSegment:
         Xmlc = np.asarray(self.Xmlc_mm)
         if Xmlc.ndim < 2 or Xmlc.size == 0:
             return
+        # Infer jaw bounds from MLC when DICOM did not set them (e.g. some IMRT control points)
+        if len(self.y_jaw_mm) < 2:
+            self.y_jaw_mm = [float(np.min(Xmlc[:, 0])), float(np.max(Xmlc[:, 1]))]
+        if len(self.x_jaw_mm) < 2:
+            self.x_jaw_mm = [float(np.min(Xmlc[:, 2])), float(np.max(Xmlc[:, 3]))]
         FOV = np.abs(Xmlc[0, 0]) + np.abs(Xmlc[-1, 1])  # Suppose square MLC
         numSpotX = math.ceil(FOV / self.xBeamletSpacing_mm)
         numSpotY = math.ceil(FOV / self.yBeamletSpacing_mm)

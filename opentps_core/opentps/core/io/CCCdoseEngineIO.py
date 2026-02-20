@@ -72,21 +72,26 @@ def writePlan(plan: PhotonPlan, beamDirectory, batchSize):
     planBeamSegments = plan.beamSegments
     bemaletNumberPerSegmentAccumulated = np.cumsum([len(beamSegment) for beamSegment in planBeamSegments])
     rotatedVersorsPerBeam = [getRotatedVersors(beamSegment.gantryAngle_degree, beamSegment.couchAngle_degree, beamSegment.beamLimitingDeviceAngle_degree) for beamSegment in plan.beamSegments]
+    # Map flat segment index -> beam index (for VMAT/multi-segment plans, segment index != beam index)
+    segmentIndexToBeamIndex = []
+    for beamIndex, beam in enumerate(plan.beams):
+        for _ in beam.beamSegments:
+            segmentIndexToBeamIndex.append(beamIndex)
     print('There are {} beams per batch file'.format(round(beamsPerBatch)))
     numofBeams = 0
     for batch in range(batchSize):
-        beamletNumMin = math.floor(beamsPerBatch * batch) 
-        beamletNumMax = math.floor(beamsPerBatch * (batch+1) + 1e-4) # To avoid float precision problem I add small number 
+        beamletNumMin = math.floor(beamsPerBatch * batch)
+        beamletNumMax = math.floor(beamsPerBatch * (batch+1) + 1e-4) # To avoid float precision problem I add small number
         numofBeams  += beamletNumMax - beamletNumMin
         f = open(os.path.join(beamDirectory,'pencilBeamSpecs_batch{}.txt'.format(batch)),'w')
         f.write('beamnum:\n'+str(beamletNumMax - beamletNumMin))
         f.write('\n \n')
         for beamlet in planBeamlets[beamletNumMin:beamletNumMax]:
-            beamIndex = np.argwhere(beamNumber < bemaletNumberPerSegmentAccumulated)[0][0]
-            i, j, k = rotatedVersorsPerBeam[beamIndex]
-            # for beamlet in beam.beamlets:
+            segmentIndex = np.argwhere(beamNumber < bemaletNumberPerSegmentAccumulated)[0][0]
+            beamIndex = segmentIndexToBeamIndex[segmentIndex]
+            i, j, k = rotatedVersorsPerBeam[segmentIndex]
             XY = beamlet.XY_mm[0]
-            writeBeamletInFile(f, beamNumber, plan.beams[beamIndex].SAD_mm / 10, XY[0] / 10, XY[1] / 10, planBeamSegments[beamIndex].xBeamletSpacing_mm / 10, planBeamSegments[beamIndex].yBeamletSpacing_mm / 10, i, j, k) ### Parameters for Dose Engine should be in cm
+            writeBeamletInFile(f, beamNumber, plan.beams[beamIndex].SAD_mm / 10, XY[0] / 10, XY[1] / 10, planBeamSegments[segmentIndex].xBeamletSpacing_mm / 10, planBeamSegments[segmentIndex].yBeamletSpacing_mm / 10, i, j, k) ### Parameters for Dose Engine should be in cm
             beamNumber+=1
 
         f.close()
