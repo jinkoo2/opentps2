@@ -250,14 +250,19 @@ def readDose(CTheaderfile_path, outputDir, batchSize, Mu):
         matrixBeamlets_path = os.path.join(outputDir,'sparseBeamletMatrix_batch{}.bin'.format(batch))
         logger.info('Read binary file: {}'.format(matrixBeamlets_path))
         sparseBeamletsDose, numberOfBeamletsInBatch = read_sparse_data(matrixBeamlets_path, header)
+        if numberOfBeamletsInBatch == 0 or len(sparseBeamletsDose) == 0:
+            numberOfBeamlets += numberOfBeamletsInBatch
+            continue
         sparseBeamletsDose = sp.hstack(sparseBeamletsDose)
         if totalDose is None:
             totalDose = csc_matrix.dot(sparseBeamletsDose, Mu[numberOfBeamlets:numberOfBeamlets+numberOfBeamletsInBatch])
         else:
             totalDose += csc_matrix.dot(sparseBeamletsDose, Mu[numberOfBeamlets:numberOfBeamlets+numberOfBeamletsInBatch])
-        numberOfBeamlets+=numberOfBeamletsInBatch
+        numberOfBeamlets += numberOfBeamletsInBatch
 
     orientation = (1, 0, 0, 0, 1, 0, 0, 0, 1)
+    if totalDose is None:
+        totalDose = np.zeros(header['NbrVoxels'], dtype=np.float32)
     totalDose = np.reshape(totalDose, header["Size"], order='F')
     totalDose = np.flip(totalDose, 0)
     totalDose = np.flip(totalDose, 1)

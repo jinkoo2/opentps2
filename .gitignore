@@ -1,3 +1,6 @@
+# Exclude files and folders whose names start with an underscore
+_*
+
 *__pycache__
 *.pyc
 *~

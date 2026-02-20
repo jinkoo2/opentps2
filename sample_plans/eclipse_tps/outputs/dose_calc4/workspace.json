@@ -1,0 +1,172 @@
+{
+  "paths": {
+    "SCRIPT_DIR": "C:\\Users\\jkim20\\Desktop\\projects\\opentps\\_myscripts",
+    "PROJECT_ROOT": "C:\\Users\\jkim20\\Desktop\\projects\\opentps",
+    "DICOM_FOLDER": "C:\\Users\\jkim20\\Desktop\\projects\\opentps\\_mydata\\eclipse_tps\\stereophan_simple_ap_beam",
+    "OUTPUT_DIR": "C:\\Users\\jkim20\\Desktop\\projects\\opentps\\_mydata\\eclipse_tps\\outputs\\dose_calc4",
+    "OUTPUT_DOSE_MHD": "C:\\Users\\jkim20\\Desktop\\projects\\opentps\\_mydata\\eclipse_tps\\outputs\\dose_calc4\\ccc_dose.mhd",
+    "WORKSPACE_JSON": "C:\\Users\\jkim20\\Desktop\\projects\\opentps\\_mydata\\eclipse_tps\\outputs\\dose_calc4\\workspace.json",
+    "OUTPUT_OVERLAY_PNG": "C:\\Users\\jkim20\\Desktop\\projects\\opentps\\_mydata\\eclipse_tps\\outputs\\dose_calc4\\dose_overlay.png"
+  },
+  "ct_metadata": {
+    "name": "Crainial SRS_copy",
+    "shape": [
+      141,
+      141,
+      101
+    ],
+    "origin": [
+      -176.25,
+      -176.25,
+      -126.25
+    ],
+    "spacing": [
+      2.5,
+      2.5,
+      2.5
+    ],
+    "grid_size": [
+      141,
+      141,
+      101
+    ]
+  },
+  "iso_center_mm": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "plan": {
+    "name": "3x3 open AP",
+    "numberOfFractionsPlanned": 1,
+    "scanMode": "MODULATED",
+    "radiationType": "Photon",
+    "beams": [
+      {
+        "name": "AP",
+        "id": 1,
+        "gantryAngle_degree": 0.0,
+        "couchAngle_degree": 0.0,
+        "SAD_mm": 1000.0,
+        "isocenterPosition_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "xBeamletSpacing_mm": 5.0,
+        "yBeamletSpacing_mm": 5.0,
+        "beamType": "Static",
+        "segments": [
+          {
+            "gantryAngle_degree": 0.0,
+            "couchAngle_degree": 0.0,
+            "beamLimitingDeviceAngle_degree": 0.0,
+            "x_jaw_mm": [
+              -15.0,
+              15.0
+            ],
+            "y_jaw_mm": [
+              -15.0,
+              15.0
+            ],
+            "mu": 100.0,
+            "xBeamletSpacing_mm": 5.0,
+            "yBeamletSpacing_mm": 5.0,
+            "Xmlc_mm": [
+              [
+                -15.0,
+                -12.0,
+                -15.0,
+                15.0
+              ],
+              [
+                -12.0,
+                -9.0,
+                -15.0,
+                15.0
+              ],
+              [
+                -9.0,
+                -6.0,
+                -15.0,
+                15.0
+              ],
+              [
+                -6.0,
+                -3.0,
+                -15.0,
+                15.0
+              ],
+              [
+                -3.0,
+                0.0,
+                -15.0,
+                15.0
+              ],
+              [
+                0.0,
+                3.0,
+                -15.0,
+                15.0
+              ],
+              [
+                3.0,
+                6.0,
+                -15.0,
+                15.0
+              ],
+              [
+                6.0,
+                9.0,
+                -15.0,
+                15.0
+              ],
+              [
+                9.0,
+                12.0,
+                -15.0,
+                15.0
+              ],
+              [
+                12.0,
+                15.0,
+                -15.0,
+                15.0
+              ]
+            ],
+            "numberOfBeamlets": 0
+          }
+        ]
+      }
+    ]
+  },
+  "plan_constants": {
+    "half_mm": 15.0,
+    "n_leaves": 10
+  },
+  "dose_calculator": {
+    "batchSize": 4
+  },
+  "scanner_folder": "C:\\Users\\jkim20\\projects\\opentps\\opentps_core\\opentps\\core\\processing\\doseCalculation\\protons\\MCsquare\\Scanners\\UCL_Toshiba",
+  "dose_image_metadata": {
+    "shape": [
+      141,
+      141,
+      101
+    ],
+    "origin": [
+      -176.25,
+      -176.25,
+      -126.25
+    ],
+    "spacing": [
+      2.5,
+      2.5,
+      2.5
+    ],
+    "name": "Dose image",
+    "dose_max": 1.371638873933989,
+    "dose_min": 0.0
+  },
+  "dose_calculation_time_seconds": 7.993950083851814
+}

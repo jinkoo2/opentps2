@@ -191,7 +191,8 @@ def readData(inputPaths, maxDepth=-1) -> Sequence[Union[PatientData, Patient]]:
         # Dicom RT Photon and Ion plan
         elif dcm.SOPClassUID in ("1.2.840.10008.5.1.4.1.1.481.8","1.2.840.10008.5.1.4.1.1.481.5"):
             plan = readDicomPlan(filePath)
-            dataList.append(plan)
+            if plan is not None:
+                dataList.append(plan)
 
         # Dicom struct
         elif dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.481.3":

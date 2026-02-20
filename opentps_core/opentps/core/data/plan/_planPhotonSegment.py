@@ -242,12 +242,15 @@ class PlanPhotonSegment:
             return
         if len(self.Xmlc_mm) == 0:
             print('to convert a segment into beamlets the segment must have the MLC coordinates')
-
-        FOV = np.abs(self.Xmlc_mm[0, 0]) + np.abs(self.Xmlc_mm[-1, 1])  # Suppose square MLC
+            return
+        Xmlc = np.asarray(self.Xmlc_mm)
+        if Xmlc.ndim < 2 or Xmlc.size == 0:
+            return
+        FOV = np.abs(Xmlc[0, 0]) + np.abs(Xmlc[-1, 1])  # Suppose square MLC
         numSpotX = math.ceil(FOV / self.xBeamletSpacing_mm)
         numSpotY = math.ceil(FOV / self.yBeamletSpacing_mm)
-        Xaperture = np.abs(self.Xmlc_mm[:, 2] - self.Xmlc_mm[:, 3])
-        openMLC = self.Xmlc_mm[Xaperture > self.xBeamletSpacing_mm]
+        Xaperture = np.abs(Xmlc[:, 2] - Xmlc[:, 3])
+        openMLC = Xmlc[Xaperture > self.xBeamletSpacing_mm]
         angle = math.radians(self.beamLimitingDeviceAngle_degree)
         for leaf in openMLC:
             jmin = math.floor((leaf[0] + self.yBeamletSpacing_mm / 2) / self.yBeamletSpacing_mm + round(numSpotY / 2))

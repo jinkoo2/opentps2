@@ -1258,10 +1258,10 @@ def readDicomPlan(dcmFile) -> RTPlan:
    
     #### PHOTON PLAN
     if dcm.SOPClassUID == "1.2.840.10008.5.1.4.1.1.481.5":
+        plan = PhotonPlan(name=name, patient=patient)
         plan.modality = "RT Plan IOD"
-        dcm = pydicom.dcmread(dcmFile)
-        plan = PhotonPlan(name=name, patient = patient)
         plan.patient = patient
+        dcm = pydicom.dcmread(dcmFile)
 
         if dcm.BeamSequence[0].RadiationType == "PHOTON": ### Filter also by modality, this TPS doesnt support wedges
             plan.radiationType = "Photon"
@@ -1529,9 +1529,8 @@ def readDicomPlan(dcmFile) -> RTPlan:
 
     # Other
     else:
-        logger.error("ERROR: Unknown SOPClassUID " + dcm.SOPClassUID + " for file " + plan.DcmFile)
-        plan.modality = ""
-        return
+        logger.error("ERROR: Unknown SOPClassUID " + dcm.SOPClassUID + " for file " + str(dcmFile))
+        return None
 
     
     # DICOM tags necessary for cross-platform import    
