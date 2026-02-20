@@ -1,4 +1,3 @@
 # OpenTPS2
 
-For documentation and etc, please check the original OpenTPS project. 
-https://github.com/tpm/OpenTPS
+For documentation and etc, please check the original OpenTPS repository. https://gitlab.com/openmcsquare/opentps
