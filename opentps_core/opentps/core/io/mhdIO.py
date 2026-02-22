@@ -1,6 +1,7 @@
 import os
 import sys
 import gzip
+import zlib
 import numpy as np
 import logging
 
@@ -299,8 +300,12 @@ def readBinaryMHD(inputPath, metaData=None):
     if metaData == None:
         metaData = generateDefaultMetaData()
 
-    # Read binary (use inputPath; support gzip when CompressedData True)
+    # Read binary: .zraw (zlib), .gz (gzip when CompressedData True), or raw
     def _read_bytes(path, compressed):
+        path_lower = path.lower()
+        if path_lower.endswith(".zraw"):
+            with open(path, "rb") as fid:
+                return zlib.decompress(fid.read())
         if compressed:
             with gzip.open(path, "rb") as fid:
                 return fid.read()
