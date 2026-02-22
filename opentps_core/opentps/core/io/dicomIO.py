@@ -1002,7 +1002,7 @@ def readDicomStruct(dcmFile):
         dcmContour = dcm.ROIContourSequence[referencedRoiId]
 
         if not hasattr(dcmContour, 'ContourSequence'):
-            logging.warning("This structure [ ", dcmStruct.ROIName ," ]has no attribute ContourSequence. Skipping ...")
+            logging.warning("This structure [ %s ] has no attribute ContourSequence. Skipping ...", dcmStruct.ROIName)
             continue
 
         # Create ROIContour object
@@ -1335,9 +1335,9 @@ def readDicomPlan(dcmFile) -> RTPlan:
                     
                     for limitingDevice in dcm_beamSegment.BeamLimitingDevicePositionSequence:
                         type = limitingDevice.RTBeamLimitingDeviceType
-                        if type == 'ASYMX':
+                        if type == 'ASYMX' or type == 'X':
                             beamSegment.x_jaw_mm = limitingDevice.LeafJawPositions
-                        elif type == 'ASYMY':
+                        elif type == 'ASYMY' or type == 'Y':
                             beamSegment.y_jaw_mm = limitingDevice.LeafJawPositions
                         elif type == 'MLCX':
                             positions = np.array(limitingDevice.LeafJawPositions)

@@ -87,6 +87,8 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         self._simulationFolderName = 'CCC_simulation'
         self._simulationDirOverride = simulationDir  # when set, _CCCSimuDir = this path
         self.batchSize = batchSize
+        # Optional: override kernel directory for tuning (e.g. 'Kernels_6MV' vs 'Kernels_differentFluence'). None = default.
+        self._kernelsDirOverride: Optional[str] = None
 
         self._subprocess = []
         self._subprocessKilled = True
@@ -149,13 +151,31 @@ class CCCDoseCalculator(AbstractDoseCalculator):
     def ctCalibration(self, ctCalibration: AbstractCTCalibration):
         self._ctCalibration = ctCalibration
 
+    def getKernelDirectory(self):
+        """Return the resolved kernel directory path used for CCC (for logging and workspace)."""
+        defaultKernelsFolder = 'Kernels_6MV'
+        if self._kernelsDirOverride is not None:
+            kernelsDir = os.path.normpath(self._kernelsDirOverride)
+            if not os.path.isabs(kernelsDir):
+                kernelsDir = os.path.join(self.WorkSpaceDir, 'opentps', 'core', 'processing', 'doseCalculation', 'photons', kernelsDir)
+        else:
+            kernelsDir = os.path.join(self.WorkSpaceDir, 'opentps', 'core', 'processing', 'doseCalculation', 'photons', defaultKernelsFolder)
+        return kernelsDir
+
+    @property
+    def kernel_directory(self):
+        """Kernel directory path used for this calculation (for workspace.json)."""
+        return self.getKernelDirectory()
+
     def createKernelFilePath(self):
         """
         Write the kernel file paths into a txt file which is stored into the simulation folder. This is required for the CCC dose calculation.
         """
-        kernelsDir = os.path.join(self.WorkSpaceDir,'opentps','core','processing','doseCalculation','photons','Kernels_differentFluence')
+        kernelsDir = self.getKernelDirectory()
+        print("CCC kernel path: {}".format(kernelsDir))
+        logger.info("CCC kernel path: %s", kernelsDir)
         f = open(os.path.join(self._CCCSimuDir, 'kernelPaths.txt'),'w')
-        for fileName in os.listdir(kernelsDir):
+        for fileName in sorted(os.listdir(kernelsDir)):
             split = fileName.split('.')
             if split[-1] == 'txt':
                 f.write(split[0]+'\n')

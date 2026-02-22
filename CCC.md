@@ -167,12 +167,102 @@ These items were identified and fixed during integration and scripting (dose_cal
 
 ---
 
-## 9. References Within the Codebase
+## 9. CCC Tuning for Better PDD / Depth–Dose Agreement
+
+If the calculated percent depth dose (PDD) or profiles differ from your machine’s measured data (e.g. by a few percent), you can improve agreement by commissioning the following. Tuning is optional and depends on having measured beam data (PDD, profiles, output factors) for your linac and energy.
+
+### 9.1 CT calibration (HU → density)
+
+- **Role:** The CCC engine uses a **density** grid (not HU). Python converts HU → density using the calibration before writing `CT.bin`. Wrong density shifts depth dose (too much/little attenuation).
+- **Where:** `opentps_core/.../photons/LINAC/HU_Density_Conversion.txt` and `HU_Material_Conversion.txt`. The script uses `readScanner(scanner_folder)`; if `DoseCalculationConfig().scannerFolder` does not contain `HU_Density_Conversion.txt`, the code falls back to this photon `LINAC/` folder.
+- **Tuning:** Replace or edit the table in `HU_Density_Conversion.txt` with your institution’s HU–density curve (and material table if used). For a water phantom, ensure the HU range you use (e.g. 0 or small values) maps to density 1.0 g/cm³. Use a scanner-specific calibration for patient CTs.
+
+### 9.2 Kernel set and spectrum (fluence, μ, μ_en)
+
+- **Role:** TERMA and kerma use the **incident spectrum**: per-energy fluence, μ (attenuation), μ_en (mass energy-absorption). These come from the kernel directory’s `fluence.bin`, `mu_*.bin`, `mu_en.bin` (see `parse_func.cpp`). The polyenergetic kernel is built from monoenergetic kernels weighted by this spectrum. Wrong spectrum or attenuation shifts PDD (build-up, slope, range).
+- **Where:** The Python side uses **`Kernels_6MV`** by default in `cccDoseCalculator.createKernelFilePath()`. An alternative set is `Kernels_differentFluence/` (same layout).
+- **Tuning:**
+  1. **Try the other set:** Set `dose_calculator._kernelsDirOverride = 'Kernels_differentFluence'` before `computeDose()` to use the alternative kernel set. Compare PDD.
+  2. **Custom kernels:** To use a fully custom kernel set (e.g. for your beam energy or machine), add a copy of `Kernels_6MV` (or `Kernels_differentFluence`) under the same `photons/` folder, rename it (e.g. `Kernels_6MV_MyLinac`), put your `kernel_header.txt`, `fluence.bin`, `mu_*.bin`, `mu_en.bin` and kernel category files there, then set `dose_calculator._kernelsDirOverride = 'Kernels_6MV_MyLinac'` (or the full path). The engine expects the same file names and layout (see `kernel_header.txt`: Nradii, Nangles, Nenergies; and the parse logic in `parse_func.cpp`).
+  3. **Spectrum/fluence:** If you have a measured or simulated spectrum for your beam, you can generate new fluence (and possibly μ, μ_en) files and place them in that kernel directory. This is the most impactful for PDD shape; fluence is read as a binary float array of length Nenergies.
+
+**Kernel file formats (how to make your own)**  
+The engine reads the kernel directory via the list produced by `createKernelFilePath()` (see `parse_func.cpp`, `load_kernels()`). All binary files are **raw little-endian 32-bit floats** (C `float`, 4 bytes per value), no header. Required files and formats:
+
+| File | Format | Description |
+|------|--------|-------------|
+| **kernel_header.txt** | Text: first line ignored (comment); second line = `Nradii Nangles Nenergies` (three integers). Example: `24 48 14`. | Defines grid dimensions for all .bin arrays. |
+| **radii.bin** | `Nradii` floats | Radial bin boundaries (e.g. cm), length = Nradii. |
+| **angles.bin** | `Nangles` floats | Angular bin boundaries (e.g. rad), length = Nangles. |
+| **energies.bin** | `Nenergies` floats | Energy values (MeV) for each monoenergetic kernel, length = Nenergies. |
+| **fluence.bin** | `Nenergies` floats | Relative fluence (spectrum weight) per energy. |
+| **mu.bin** | `Nenergies` floats | Linear attenuation coefficient μ per energy (e.g. cm⁻¹). |
+| **mu_en.bin** | `Nenergies` floats | Mass energy-absorption coefficient μ_en per energy. |
+| **primary.bin** | `Nradii × Nangles × Nenergies` floats | Primary kernel. Layout: for each energy in order, then `Nradii*Nangles` values with **radius index i as fast** (i.e. `value[i + j*Nradii]` for radius i, angle j). |
+| **first_scatter.bin** | Same as primary | First-scatter kernel, same layout. |
+| **second_scatter.bin** | Same as primary | Second-scatter kernel. |
+| **multiple_scatter.bin** | Same as primary | Multiple-scatter kernel. |
+| **brem_annih.bin** | Same as primary | Bremsstrahlung/annihilation kernel. |
+| **total.bin** | Same as primary | Total kernel (required by parser; engine uses the five category files above). |
+
+Example (Python) to write a 1D per-energy file and the header:
+
+```python
+import struct
+import numpy as np
+
+Nradii, Nangles, Nenergies = 24, 48, 14
+# Write kernel_header.txt
+with open("kernel_header.txt", "w") as f:
+    f.write("Nradii Nangles Nenergies\n")
+    f.write(f"{Nradii} {Nangles} {Nenergies}\n")
+
+# Write fluence.bin (Nenergies floats)
+fluence = np.ones(Nenergies, dtype=np.float32)  # or your spectrum
+with open("fluence.bin", "wb") as f:
+    f.write(fluence.tobytes())
+
+# Write mu.bin, mu_en.bin similarly (Nenergies floats each).
+# energies.bin: Nenergies floats (MeV).
+# radii.bin: Nradii floats; angles.bin: Nangles floats.
+# Each category .bin (primary, first_scatter, ...): Nradii*Nangles*Nenergies floats,
+# order: energy0_rad0_ang0, energy0_rad1_ang0, ..., energy0_rad(Nr-1)_ang(Na-1), energy1_...
+arr = np.zeros((Nenergies, Nangles, Nradii), dtype=np.float32)  # [E, angle, radius]
+with open("primary.bin", "wb") as f:
+    f.write(arr.transpose(0, 2, 1).flatten().tobytes())  # E, radius, angle → correct order
+```
+
+Easiest way to start a custom set: copy `Kernels_6MV` (or `Kernels_differentFluence`) to a new folder, then replace only the files you need (e.g. `fluence.bin`, `mu.bin`, `mu_en.bin` for a new spectrum) and keep dimensions and layout unchanged.
+
+### 9.3 C++ engine constants (`defs.h`)
+
+- **Role:** These affect scatter resolution, edge handling, and low-dose cutoff.
+- **Where:** `opentps_core/.../photons/CCC_DoseEngine/defs.h`.
+- **Relevant defines:**
+  - **`doseCutoffThreshold`** (default `0.005`): Doses below this fraction of the maximum are set to zero. Raising it can trim scatter “tails” and slightly change normalization; lowering it keeps more low dose.
+  - **`NPHI`** (default `12`), **`NTHETA`** (default `6`): Number of azimuthal and polar directions for the convolution. Increasing them can improve accuracy (especially off-axis and build-up) at the cost of runtime. `NTHETA` must divide `N_KERNEL_ANGLES` (48).
+  - **`RSAFE`** (default `2.0` cm): Safety margin for the dose cylinder (dose_mask). Usually leave as is unless you see geometric cutoff.
+  - **`Mus`, `Nus`, `Qus`** (default `5`): Upsampling for insideness at the aperture edge. Increasing can sharpen field edges and slightly affect penumbra.
+- **Tuning:** After changing `defs.h`, rebuild the CCC executable (e.g. `nmake -f Makefile.win` in `CCC_DoseEngine/`). Try a small increase in `NPHI`/`NTHETA` first (e.g. `NTHETA 8` or `12`) and compare PDD and profiles; only then consider changing cutoff or upsample factors.
+
+### 9.4 Workflow summary
+
+1. **Baseline:** Run your current setup (e.g. jaw-only or simple field), export the central-axis PDD (e.g. from the script’s profile along the beam direction) and compare to measured PDD.
+2. **CT/density:** Confirm HU → density for your phantom (e.g. water = 0 HU → 1.0 g/cm³). Adjust `LINAC/` calibration if needed.
+3. **Kernels:** Default is `Kernels_6MV`; try `_kernelsDirOverride = 'Kernels_differentFluence'` if needed. For full commissioning, add a custom kernel set with your beam’s spectrum and rebuild fluence/μ/μ_en as needed.
+4. **Engine resolution:** Optionally increase `NTHETA` (and `NPHI` if needed), rebuild, and re-compare.
+5. **Normalization:** If the shape is good but the absolute value is off, check whether your comparison is normalized (e.g. to dmax or to a reference point); CCC output is in Gy per plan MU as defined by the plan’s MU and fraction count.
+
+**Configurable kernel directory:** You can switch kernel sets without editing file paths by setting `dose_calculator._kernelsDirOverride`. Use a folder name under the photons directory (e.g. `'Kernels_differentFluence'`) or an absolute path to a custom kernel directory. Example: `dose_calculator._kernelsDirOverride = 'Kernels_differentFluence'` before `computeDose()` to use the alternative set.
+
+---
+
+## 10. References Within the Codebase
 
 - **Python:** `opentps.core.processing.doseCalculation.photons.cccDoseCalculator` — `CCCDoseCalculator`, `computeDose()`, `_writeFilesToSimuDir()`, `_startCCC()`, `_importDose()`.  
 - **I/O:** `opentps.core.io.CCCdoseEngineIO` — `writeCT()`, `writePlan()`, `readDose()`, `readBeamlets()`, beamlet file format.  
 - **C++:** `opentps_core/.../photons/CCC_DoseEngine/convolution.cpp` (main), `terma_kerma.cpp`, `calc_dose.cpp`, `terma_dose_masks.cpp`, `defs.h`.  
-- **Kernels:** `Kernels_6MV/`, `Kernels_differentFluence/` (under the photons folder); kernel list is built in `createKernelFilePath()`.  
+- **Kernels:** `Kernels_6MV/` (default), `Kernels_differentFluence/` (under the photons folder); kernel list is built in `createKernelFilePath()`.  
 - **CT calibration:** `LINAC/` (HU_Density, HU_Material); `opentps.core.io.scannerReader.readScanner()`.
 
 This file serves as the single place to understand and maintain the CCC algorithm and its integration in OpenTPS.

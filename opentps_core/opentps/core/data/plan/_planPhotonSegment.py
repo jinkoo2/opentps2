@@ -240,8 +240,26 @@ class PlanPhotonSegment:
     def createBeamletsFromSegments(self):
         if len(self) > 0:
             return
+        # Jaws-only segment (no MLC): create rectangular beamlet grid from jaw extent
+        has_jaws = (len(self.x_jaw_mm) >= 2 and len(self.y_jaw_mm) >= 2)
         if len(self.Xmlc_mm) == 0:
-            print('to convert a segment into beamlets the segment must have the MLC coordinates')
+            if has_jaws:
+                x_lo, x_hi = float(self.x_jaw_mm[0]), float(self.x_jaw_mm[1])
+                y_lo, y_hi = float(self.y_jaw_mm[0]), float(self.y_jaw_mm[1])
+                numSpotX = max(1, math.ceil((x_hi - x_lo) / self.xBeamletSpacing_mm))
+                numSpotY = max(1, math.ceil((y_hi - y_lo) / self.yBeamletSpacing_mm))
+                for j in range(numSpotY):
+                    y = y_lo + (j + 0.5) * self.yBeamletSpacing_mm
+                    if y > y_hi:
+                        break
+                    for i in range(numSpotX):
+                        x = x_lo + (i + 0.5) * self.xBeamletSpacing_mm
+                        if x > x_hi:
+                            break
+                        if x >= x_lo and x <= x_hi and y >= y_lo and y <= y_hi:
+                            self.appendBeamlet(x, y, self.mu)
+                return
+            print('to convert a segment into beamlets the segment must have the MLC coordinates or jaw positions')
             return
         Xmlc = np.asarray(self.Xmlc_mm)
         if Xmlc.ndim < 2 or Xmlc.size == 0:
@@ -251,9 +269,16 @@ class PlanPhotonSegment:
             self.y_jaw_mm = [float(np.min(Xmlc[:, 0])), float(np.max(Xmlc[:, 1]))]
         if len(self.x_jaw_mm) < 2:
             self.x_jaw_mm = [float(np.min(Xmlc[:, 2])), float(np.max(Xmlc[:, 3]))]
-        FOV = np.abs(Xmlc[0, 0]) + np.abs(Xmlc[-1, 1])  # Suppose square MLC
-        numSpotX = math.ceil(FOV / self.xBeamletSpacing_mm)
-        numSpotY = math.ceil(FOV / self.yBeamletSpacing_mm)
+        # Use jaw extent for grid size so open fields (e.g. 10x10) get correct count; fallback to MLC FOV
+        if has_jaws:
+            fov_x = abs(self.x_jaw_mm[1] - self.x_jaw_mm[0])
+            fov_y = abs(self.y_jaw_mm[1] - self.y_jaw_mm[0])
+            numSpotX = max(1, math.ceil(fov_x / self.xBeamletSpacing_mm))
+            numSpotY = max(1, math.ceil(fov_y / self.yBeamletSpacing_mm))
+        else:
+            FOV = np.abs(Xmlc[0, 0]) + np.abs(Xmlc[-1, 1])  # Suppose square MLC
+            numSpotX = math.ceil(FOV / self.xBeamletSpacing_mm)
+            numSpotY = math.ceil(FOV / self.yBeamletSpacing_mm)
         Xaperture = np.abs(Xmlc[:, 2] - Xmlc[:, 3])
         openMLC = Xmlc[Xaperture > self.xBeamletSpacing_mm]
         angle = math.radians(self.beamLimitingDeviceAngle_degree)
