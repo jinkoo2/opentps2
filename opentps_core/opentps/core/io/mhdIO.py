@@ -94,12 +94,8 @@ def exportImageMHD(outputPath, image, vectorField='velocity'):
     # SimpleITK path: single Image3D (no list, no VectorField3D) with compression
     if _SITK_AVAILABLE and type(image) is not list and not isinstance(image, VectorField3D):
         try:
-            arr = np.asarray(image._imageArray)
-            # CT from DICOM is often loaded as float32; cast to int16 when values fit so we get MET_SHORT
-            if arr.dtype in (np.float32, np.float64):
-                arr_min, arr_max = np.nanmin(arr), np.nanmax(arr)
-                if arr_min >= -32768 and arr_max <= 32767:
-                    arr = arr.astype(np.int16)
+            # Preserve image dtype so float32 stays MET_FLOAT (avoid unintended MET_DOUBLE)
+            arr = np.asarray(image._imageArray, dtype=image._imageArray.dtype)
             sitk_img = sitk.GetImageFromArray(np.transpose(arr))
             sitk_img.SetOrigin(np.array(image._origin, float))
             sitk_img.SetSpacing(np.array(image._spacing, float))
@@ -139,12 +135,6 @@ def exportImageMHD(outputPath, image, vectorField='velocity'):
     metaData["ElementType"] = _dtype_to_element_type(image._imageArray.dtype)
 
     binaryData = np.asarray(image._imageArray)
-    # CT from DICOM is often float32; use MET_SHORT when values fit in int16
-    if metaData["ElementType"] == "MET_FLOAT" and binaryData.dtype in (np.float32, np.float64):
-        arr_min, arr_max = np.nanmin(binaryData), np.nanmax(binaryData)
-        if arr_min >= -32768 and arr_max <= 32767:
-            metaData["ElementType"] = "MET_SHORT"
-            binaryData = binaryData.astype(np.int16)
     writeHeaderMHD(mhdPath, metaData=metaData)
     writeBinaryMHD(rawPath, binaryData, metaData=metaData)
 

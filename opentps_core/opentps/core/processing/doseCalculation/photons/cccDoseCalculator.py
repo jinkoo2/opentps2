@@ -208,14 +208,38 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         if not folder.is_dir():
             os.makedirs(folder)
     
+    def _getCCCargv(self, batch, opti=False):
+        """Build argv for the CCC executable (for one batch). Used for direct launch on Windows."""
+        out_dir = os.path.abspath(self.outputDir)
+        kernel_path = os.path.abspath(self._kernelsFilePath)
+        geometry_path = os.path.abspath(self._geometryFilePath)
+        beam_dir = os.path.abspath(self._beamDirectory)
+        exec_path = os.path.abspath(self._CCCexecutablePath)
+        beam_path = os.path.join(beam_dir, 'pencilBeamSpecs_batch{}.txt'.format(batch))
+        output_path = os.path.join(out_dir, 'sparseBeamletMatrix_batch{}.bin'.format(batch))
+        return [exec_path, kernel_path, geometry_path, beam_path, output_path]
+
     def writeExecuteCCCfile(self):
+        # Use absolute paths so the CCC executable writes/reads the same paths Python expects (e.g. when cwd is execFiles).
+        out_dir = os.path.abspath(self.outputDir)
+        kernel_path = os.path.abspath(self._kernelsFilePath)
+        geometry_path = os.path.abspath(self._geometryFilePath)
+        beam_dir = os.path.abspath(self._beamDirectory)
+        exec_path = os.path.abspath(self._CCCexecutablePath)
         for batch in range(self.batchSize):
+            beam_path = os.path.join(beam_dir, 'pencilBeamSpecs_batch{}.txt'.format(batch))
+            output_path = os.path.join(out_dir, 'sparseBeamletMatrix_batch{}.bin'.format(batch))
             if platform.system() == "Linux":
-                f = open(os.path.join(self._executableDir, 'CCC_simulation_batch{}'.format(batch)),'w')
-            if platform.system() == "Windows":
-                f = open(os.path.join(self._executableDir, 'CCC_simulation_batch{}.bat'.format(batch)),'w')
+                f = open(os.path.join(self._executableDir, 'CCC_simulation_batch{}'.format(batch)), 'w')
+                f.write('"{executablePath}" "{kernelFilePath}" "{geometryFilePath}" "{beamPath}" "{outputPath}"'.format(
+                    executablePath=exec_path, kernelFilePath=kernel_path, geometryFilePath=geometry_path,
+                    beamPath=beam_path, outputPath=output_path))
+            elif platform.system() == "Windows":
+                f = open(os.path.join(self._executableDir, 'CCC_simulation_batch{}.bat'.format(batch)), 'w')
                 f.write('@echo off\n')
-            f.write('"{executablePath}" {kernelFilePath} {geometryFilePath} {beamPath} {outputPath}'.format(executablePath = self._CCCexecutablePath, kernelFilePath = self._kernelsFilePath, geometryFilePath = self._geometryFilePath, beamPath = os.path.join(self._beamDirectory,'pencilBeamSpecs_batch{}.txt'.format(batch)), outputPath = os.path.join(self.outputDir,'sparseBeamletMatrix_batch{}.bin'.format(batch))))
+                f.write('"{executablePath}" "{kernelFilePath}" "{geometryFilePath}" "{beamPath}" "{outputPath}"'.format(
+                    executablePath=exec_path, kernelFilePath=kernel_path, geometryFilePath=geometry_path,
+                    beamPath=beam_path, outputPath=output_path))
             f.close()
 
 
@@ -277,6 +301,17 @@ class CCCDoseCalculator(AbstractDoseCalculator):
     def _importDose(self):
         beamletDose = CCCdoseEngineIO.readDose(os.path.join(self._ctDirName, 'CT_HeaderFile.txt'), self.outputDir, self.batchSize, self._plan.beamletMUs)
         return beamletDose
+
+    def getTermaImage(self):
+        """
+        Read and return the summed TERMA from CCC output (terma_batch*.bin) as an Image3D.
+        Call after computeDose(); returns None if terma files are not present.
+        """
+        return CCCdoseEngineIO.readTerma(
+            os.path.join(self._ctDirName, 'CT_HeaderFile.txt'),
+            self.outputDir,
+            self.batchSize,
+        )
 
     def fromHU2Densities(self, ct : CTImage, overRidingList : Sequence[Dict[str, Any]] = None):
         """
@@ -540,7 +575,6 @@ class CCCDoseCalculator(AbstractDoseCalculator):
         self._writeFilesToSimuDir()
         self.writeExecuteCCCfile()
         self._startCCC()
-
 
         Dose = self._importDose()
         Dose.imageArray *= self._plan.numberOfFractionsPlanned

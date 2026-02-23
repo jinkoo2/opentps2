@@ -2,7 +2,7 @@ import os
 
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog, QComboBox, QLabel
 from pyqtgraph import PlotWidget, PlotCurveItem, mkPen
 from pyqtgraph.exporters import ImageExporter
 
@@ -130,11 +130,28 @@ class _ProfileToolbar(QWidget):
         self.setLayout(self._layout)
 
         self.setAutoFillBackground(True)
+        self._showCombo = QComboBox(self)
+        self._showCombo.addItems(["Show: Both", "Primary (CT) only", "Secondary (dose) only"])
+        self._showCombo.setToolTip("Choose which profile(s) to plot. Use 'Secondary only' when CT and dose scales differ too much.")
+        self._showCombo.currentIndexChanged.connect(self._onShowModeChanged)
+        self._layout.addWidget(QLabel("Plot:"))
+        self._layout.addWidget(self._showCombo)
+
         self._layout.addWidget(self._buttonNewProfile)
         self._layout.addWidget(self._buttonStop)
         self._layout.addWidget(self._buttonSave)
 
         self._layout.addStretch(1)
+
+    def _showMode(self):
+        return self._showCombo.currentIndex()  # 0=Both, 1=Primary only, 2=Secondary only
+
+    def _onShowModeChanged(self):
+        mode = self._showMode()
+        if mode == 1:
+            self._profileViewer.drawProfile(1, [0, 0], [0, 0])
+        elif mode == 2:
+            self._profileViewer.drawProfile(0, [0, 0], [0, 0])
 
     def _setProfileWidgetEnabled(self):
         self._viewController.profileWidgetEnabled = True
@@ -146,6 +163,13 @@ class _ProfileToolbar(QWidget):
             lambda *args, **kwargs: self._drawContourProfiles(*args, **kwargs)
 
     def _drawImageProfile(self, ind, *args, name='', **kwargs):
+        mode = self._showMode()
+        if mode == 1 and ind == 1:
+            self._profileViewer.drawProfile(1, [0, 0], [0, 0], **kwargs)
+            return
+        if mode == 2 and ind == 0:
+            self._profileViewer.drawProfile(0, [0, 0], [0, 0], **kwargs)
+            return
         self._profileViewer.drawProfile(ind, *args, **kwargs, name=name)
 
     def _drawContourProfiles(self, contourData, name=[], pen=[]):

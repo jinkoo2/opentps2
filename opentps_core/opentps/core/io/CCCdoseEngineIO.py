@@ -11,6 +11,7 @@ import math
 from opentps.core.data import SparseBeamlets
 import math
 from opentps.core.data.images._doseImage import DoseImage
+from opentps.core.data.images._image3D import Image3D
 from typing import Optional, Sequence, Union
 from opentps.core.data import ROIContour
 from opentps.core.data.images import ROIMask
@@ -141,6 +142,8 @@ def read_header(path):
     header['Size'][0], header['Size'][1] = header['Size'][1], header['Size'][0]
     header['Origin_shifted_cm'] = np.array(Lines[3].rstrip('\n').split(' '),float)
     header['Spacing_cm'] = np.array(Lines[5].rstrip('\n').split(' '),float)
+    # Swap back to OpenTPS order (CCC header writes spacing[1], spacing[0], spacing[2])
+    header['Spacing_cm'][0], header['Spacing_cm'][1] = header['Spacing_cm'][1], header['Spacing_cm'][0]
     header['Origin_cm'] = np.array(Lines[7].rstrip('\n').split(' '),float)
     f.close()
     header['NbrVoxels'] = np.prod(header['Size'])
@@ -240,9 +243,11 @@ def readBeamlets(CTheaderfile_path, outputDir, batchSize, roi: Optional[Sequence
     return beamletDose
 
 
-def readDose(CTheaderfile_path, outputDir, batchSize, Mu): 
+def readDose(CTheaderfile_path, outputDir, batchSize, Mu):
     if (not CTheaderfile_path.endswith('.txt')):
         raise NameError('File ', CTheaderfile_path, ' is not a valid sparse matrix header')
+
+    Mu = np.asarray(Mu, dtype=np.float32)
 
     # Read sparse beamlets header file
     logger.info('Reading header from: {}'.format(CTheaderfile_path))
@@ -268,6 +273,8 @@ def readDose(CTheaderfile_path, outputDir, batchSize, Mu):
     orientation = (1, 0, 0, 0, 1, 0, 0, 0, 1)
     if totalDose is None:
         totalDose = np.zeros(header['NbrVoxels'], dtype=np.float32)
+    else:
+        totalDose = np.asarray(totalDose, dtype=np.float32)
     totalDose = np.reshape(totalDose, header["Size"], order='F')
     totalDose = np.flip(totalDose, 0)
     totalDose = np.flip(totalDose, 1)
@@ -277,3 +284,56 @@ def readDose(CTheaderfile_path, outputDir, batchSize, Mu):
 
 
     return doseImage
+
+
+def readTerma(CTheaderfile_path, outputDir, batchSize):
+    """
+    Read summed TERMA (Total Energy Released per Unit Mass) from CCC output
+    (terma_batch0.bin, terma_batch1.bin, ...), reshape to OpenTPS grid, and return as Image3D.
+
+    Parameters
+    ----------
+    CTheaderfile_path : str
+        Path to CT_HeaderFile.txt (for grid size, spacing, origin).
+    outputDir : str
+        Directory containing terma_batch{N}.bin files.
+    batchSize : int
+        Number of batches (same as used for dose).
+
+    Returns
+    -------
+    Image3D
+        TERMA image with same grid as the dose (origin/spacing in mm).
+    """
+    if not CTheaderfile_path.endswith('.txt'):
+        raise NameError('File ', CTheaderfile_path, ' is not a valid header path')
+    header = read_header(CTheaderfile_path)
+    nbr_voxels = header['NbrVoxels']
+    totalTerma = np.zeros(nbr_voxels, dtype=np.float32)
+    found_any = False
+    for batch in range(batchSize):
+        terma_path = os.path.join(outputDir, 'terma_batch{}.bin'.format(batch))
+        if not os.path.isfile(terma_path):
+            continue
+        found_any = True
+        with open(terma_path, 'rb') as f:
+            batch_terma = np.fromfile(f, dtype=np.float32, count=nbr_voxels)
+        if batch_terma.size != nbr_voxels:
+            logger.warning('Terma file %s size mismatch: got %d, expected %d', terma_path, batch_terma.size, nbr_voxels)
+            continue
+        totalTerma += batch_terma
+    if not found_any:
+        logger.warning('No terma batch files found in %s (CCC may not have been built with terma output)', outputDir)
+        return None
+    totalTerma = np.reshape(totalTerma, header["Size"], order='F')
+    totalTerma = np.flip(totalTerma, 0)
+    totalTerma = np.flip(totalTerma, 1)
+    orientation = (1, 0, 0, 0, 1, 0, 0, 0, 1)
+    termaImage = Image3D(
+        imageArray=totalTerma,
+        name="Terma",
+        origin=header["Origin_cm"] * 10,
+        spacing=header["Spacing_cm"] * 10,
+        angles=orientation,
+    )
+    return termaImage

@@ -302,6 +302,42 @@ def iecGantryCoordinatetoDicom(beam: PlanProtonBeam, point: Sequence[float]) -> 
 
     return sitkImageProcessing.applyTransform3DToPoint(tform, np.array((u, v, w)))
 
+def forwardDicomToIECGantryFromAngles(isocenter_mm: Sequence[float], gantryAngle_degree: float, couchAngle_degree: float) -> np.ndarray:
+    """
+    Transformation matrix from DICOM to IEC Gantry coordinates using explicit isocenter and angles (e.g. for photon beams).
+
+    parameters
+    ----------
+    isocenter_mm : [x, y, z] in mm
+    gantryAngle_degree : gantry angle in degrees
+    couchAngle_degree : couch/patient support angle in degrees
+
+    returns
+    -------
+    np.ndarray
+        4x4 transformation matrix (DICOM -> IEC Gantry).
+    """
+    orig = np.array(isocenter_mm, dtype=float)
+    M = _roll(-gantryAngle_degree, [0., 0., 0.]) @ \
+        _rot(couchAngle_degree, [0., 0., 0.]) @ \
+        _pitch(-90, [0., 0., 0.])
+    Trs = np.array([[1., 0., 0., -orig[0]], [0., 1., 0., -orig[1]], [0., 0., 1., -orig[2]], [0., 0., 0., 1.]])
+    Flip = np.array([[1., 0., 0., 0.], [0., 1., 0., 0.], [0., 0., -1., 0.], [0., 0., 0., 1.]])
+    T = linalg.inv(Flip @ Trs) @ M @ Flip @ Trs
+    return T
+
+
+def beamAxisPointDicomFromAngles(isocenter_mm: Sequence[float], gantryAngle_degree: float, couchAngle_degree: float, distance_mm: float = 500.) -> Sequence[float]:
+    """
+    DICOM coordinates of a point at distance_mm from isocenter along the beam axis (source side).
+    Uses the same convention as IEC: beam direction from source to isocenter.
+    """
+    T = forwardDicomToIECGantryFromAngles(isocenter_mm, gantryAngle_degree, couchAngle_degree)
+    point_iec = np.array([0., 0., distance_mm, 1.])
+    point_dicom = linalg.inv(T) @ point_iec
+    return [float(point_dicom[0]), float(point_dicom[1]), float(point_dicom[2])]
+
+
 def _forwardDicomToIECGantry(beam:PlanProtonBeam) -> np.ndarray:
     """
     Calculates the transformation matrix from DICOM to IEC Gantry coordinates.

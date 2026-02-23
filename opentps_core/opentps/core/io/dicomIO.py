@@ -699,7 +699,25 @@ def readDicomDose(dcmFile):
         dt = dt.newbyteorder('B')
 
     imageData = np.frombuffer(dcm.PixelData, dtype=dt)
-    imageData = imageData.reshape((dcm.Columns, dcm.Rows, dcm.NumberOfFrames), order='F')
+    expected_pixels = dcm.Columns * dcm.Rows * dcm.NumberOfFrames
+    n_frames_actual = dcm.NumberOfFrames
+    if imageData.size != expected_pixels:
+        # Header/data mismatch (e.g. file written with wrong NumberOfFrames). Infer frames from actual data length.
+        if imageData.size % (dcm.Columns * dcm.Rows) == 0:
+            n_frames_actual = imageData.size // (dcm.Columns * dcm.Rows)
+            logging.warning(
+                "DICOM RT Dose pixel count (%d) does not match header Columns*Rows*NumberOfFrames (%d*%d*%d). "
+                "Using %d frames from data length.",
+                imageData.size, dcm.Columns, dcm.Rows, dcm.NumberOfFrames, n_frames_actual
+            )
+            imageData = imageData.reshape((dcm.Columns, dcm.Rows, n_frames_actual), order='F')
+        else:
+            raise ValueError(
+                "Cannot reshape RT Dose pixel data: size %d does not match header (Columns=%d, Rows=%d, NumberOfFrames=%d)"
+                % (imageData.size, dcm.Columns, dcm.Rows, dcm.NumberOfFrames)
+            )
+    else:
+        imageData = imageData.reshape((dcm.Columns, dcm.Rows, dcm.NumberOfFrames), order='F')
     imageData = imageData * dcm.DoseGridScaling
 
     # collect other information
@@ -713,8 +731,13 @@ def readDicomDose(dcmFile):
     if (hasattr(dcm, 'SliceThickness') and dcm.SliceThickness != "" and dcm.SliceThickness is not None):
         sliceThickness = float(dcm.SliceThickness)
     else:
-        if (hasattr(dcm, 'GridFrameOffsetVector') and not dcm.GridFrameOffsetVector is None):
-            sliceThickness = abs((dcm.GridFrameOffsetVector[-1] - dcm.GridFrameOffsetVector[0]) / (len(dcm.GridFrameOffsetVector) - 1))
+        if (hasattr(dcm, 'GridFrameOffsetVector') and dcm.GridFrameOffsetVector is not None):
+            gfv = dcm.GridFrameOffsetVector
+            n_offsets = min(len(gfv), n_frames_actual)
+            if n_offsets >= 2:
+                sliceThickness = abs((gfv[n_offsets - 1] - gfv[0]) / (n_offsets - 1))
+            else:
+                sliceThickness = ""
         else:
             sliceThickness = ""
 
@@ -893,15 +916,12 @@ def writeRTDose(dose:DoseImage, outputFolder:str, outputFilename:str = None):
     dcm_file.ReferringPhysicianName = dose.referringPhysicianName if hasattr(dose, "referringPhysicianName") else ""
     dcm_file.OperatorName = dose.operatorName if hasattr(dose, 'operatorName') else ""
 
-    # image information
-    dcm_file.Width = dose.gridSize[0] if hasattr(dose, 'gridSize') else dose.imageArray.shape[0]
+    # image information (must match PixelData length: use imageArray.shape so header and data are consistent)
+    dcm_file.Width = dose.imageArray.shape[0]
     dcm_file.Columns = dcm_file.Width
-    dcm_file.Height = dose.gridSize[1] if hasattr(dose, 'gridSize') else dose.imageArray.shape[1]
+    dcm_file.Height = dose.imageArray.shape[1]
     dcm_file.Rows = dcm_file.Height
-    if (hasattr(dose, 'gridSize') and len(dose.gridSize) > 2):
-        dcm_file.NumberOfFrames = dose.gridSize[2]
-    else:
-        dcm_file.NumberOfFrames = 1
+    dcm_file.NumberOfFrames = dose.imageArray.shape[2] if len(dose.imageArray.shape) > 2 else 1
         
     dcm_file.SliceThickness = dose.spacing[2] if hasattr(dose, 'spacing') else ""
     dcm_file.PixelSpacing = arrayToDS(dose.spacing[0:2]) if hasattr(dose, 'spacing') else ""
@@ -914,8 +934,9 @@ def writeRTDose(dose:DoseImage, outputFolder:str, outputFilename:str = None):
     dcm_file.FrameIncrementPointer = dose.frameIncrementPointer if hasattr(dose, 'frameIncrementPointer') else {}
     dcm_file.PositionReferenceIndicator = dose.positionReferenceIndicator if hasattr(dose, 'positionReferenceIndicator') else ""
     
-    if (hasattr(dose, 'gridSize') and len(dose.gridSize) > 2):
-        dcm_file.GridFrameOffsetVector = list(np.arange(0, dose.gridSize[2] * dose.spacing[2], dose.spacing[2]))
+    if len(dose.imageArray.shape) > 2 and hasattr(dose, 'spacing') and len(dose.spacing) > 2:
+        n_frames = dose.imageArray.shape[2]
+        dcm_file.GridFrameOffsetVector = list(np.arange(0, n_frames * dose.spacing[2], dose.spacing[2]))
     else:
         dcm_file.GridFrameOffsetVector = dose.gridFrameOffsetVector if hasattr(dose, 'gridFrameOffsetVector') and not(dose.gridFrameOffsetVector is None) else ""
     # transfer syntax
@@ -930,9 +951,9 @@ def writeRTDose(dose:DoseImage, outputFolder:str, outputFilename:str = None):
     dcm_file.PixelRepresentation = 0  # 0=unsigned, 1=signed
     dcm_file.DoseGridScaling = floatToDS(dose.imageArray.max() / (2 ** dcm_file.BitDepth - 1) )
     if (len(dose.imageArray.shape) > 2):
-        dcm_file.PixelData = (dose.imageArray / dcm_file.DoseGridScaling).astype(np.uint16).transpose(2, 1, 0).tostring()
+        dcm_file.PixelData = (dose.imageArray / dcm_file.DoseGridScaling).astype(np.uint16).transpose(2, 1, 0).tobytes()
     else:
-        dcm_file.PixelData = (dose.imageArray / dcm_file.DoseGridScaling).astype(np.uint16).transpose(1, 0).tostring()
+        dcm_file.PixelData = (dose.imageArray / dcm_file.DoseGridScaling).astype(np.uint16).transpose(1, 0).tobytes()
 
     # save dicom file
     if outputFilename:
@@ -1625,7 +1646,7 @@ def writeRTPlan(plan: RTPlan, outputFolder:str, outputFilename:str=None, struct:
         patient = plan._patient
         if patient:
             dcm_file.PatientName = patient._name
-            dcm_file.PatientID = patient.seriesInstanceUID
+            dcm_file.PatientID = getattr(patient, 'id', '') or ''
             dcm_file.PatientBirthDate = getattr(patient, 'birthDate', '')
             dcm_file.PatientSex = getattr(patient, 'sex', '')
 
@@ -1706,7 +1727,7 @@ def writeRTPlan(plan: RTPlan, outputFolder:str, outputFilename:str=None, struct:
         dcm_file.is_implicit_VR = True
 
         # Set the Content Date/Time
-        dt = datetime.datetimenow()
+        dt = datetime.datetime.now()
         dcm_file.ContentDate = dt.strftime('%Y%m%d')
         dcm_file.ContentTime = dt.strftime('%H%M%S')
 

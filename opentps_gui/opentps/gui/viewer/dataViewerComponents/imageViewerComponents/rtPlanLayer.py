@@ -8,7 +8,7 @@ from vtkmodules.vtkFiltersSources import vtkSphereSource, vtkLineSource
 from vtkmodules.vtkRenderingCore import vtkActor, vtkPolyDataMapper
 
 from opentps.core.data.images._image3D import Image3D
-from opentps.core.data.plan import PlanProtonBeam
+from opentps.core.data.plan import PlanProtonBeam, PlanPhotonBeam
 from opentps.core.data.plan._rtPlan import RTPlan
 from opentps.core.processing.imageProcessing import imageTransform3D
 
@@ -68,16 +68,23 @@ class BeamLayer:
 
         # TODO: update view
 
-    def setBeam(self, beam:PlanProtonBeam, referenceImage:Image3D):
+    def setBeam(self, beam, referenceImage: Image3D):
         transfo_mat = vtkCommonMath.vtkMatrix4x4()
         transfo_mat.DeepCopy(self._resliceAxes)
         transfo_mat.Invert()
-        posAfterInverse = transfo_mat.MultiplyPoint((beam.isocenterPosition[0], beam.isocenterPosition[1], beam.isocenterPosition[2], 1))
 
+        if isinstance(beam, PlanPhotonBeam):
+            iso = beam.isocenterPosition_mm
+            point2 = imageTransform3D.beamAxisPointDicomFromAngles(
+                iso, beam.gantryAngle_degree, beam.couchAngle_degree, 500.
+            )
+        else:
+            iso = beam.isocenterPosition
+            point2 = imageTransform3D.dicomCoordinate2iecGantry(beam, iso)
+            point2 = imageTransform3D.iecGantryCoordinatetoDicom(beam, [point2[0], point2[1], point2[2] - 500])
+
+        posAfterInverse = transfo_mat.MultiplyPoint((iso[0], iso[1], iso[2], 1))
         self._sphereSource.SetCenter(posAfterInverse[0], posAfterInverse[1], 0)
-
-        point2 = imageTransform3D.dicomCoordinate2iecGantry(beam, beam.isocenterPosition)
-        point2 = imageTransform3D.iecGantryCoordinatetoDicom(beam, [point2[0], point2[1], point2[2] - 500])
 
         posAfterInverse2 = transfo_mat.MultiplyPoint((point2[0], point2[1], point2[2], 1))
 
